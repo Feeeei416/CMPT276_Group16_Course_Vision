@@ -12,14 +12,14 @@ import jakarta.persistence.*;
 // Serializable so login can store the user in the session (sessions are saved in the database)
 public class User implements Serializable {
 
-    // Keeps saved sessions readable after fields are added to this class
+    // Keeps saved sessions readable
     private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Stored lowercase so the unique constraint ignores case
+    // Stored lowercase so is case insensitive
     @Column(nullable = false, unique = true)
     private String email;
 
