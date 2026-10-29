@@ -65,6 +65,4 @@ class UserRepositoryTest {
                 .getSingleResult();
         assertThat(storedRole.toString()).isEqualTo(role.name());
     }
-
-
 }
