@@ -34,6 +34,11 @@ public class AdvisorAssignment {
         }
         this.advisor = advisor;
         this.student = student;
+    }
+
+    // Runs just before the first save, so every assignment gets a time
+    @PrePersist
+    void beforeFirstSave() {
         this.assignedAt = Instant.now();
     }
 

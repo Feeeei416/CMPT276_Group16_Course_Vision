@@ -11,5 +11,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Check if the email already registered
     boolean existsByEmail(String email);
 
+    // Same as findByEmail, but normalizes the email first so callers can pass it as typed
+    default Optional<User> findByNormalizedEmail(String email) {
+        return findByEmail(User.normalizeEmail(email));
+    }
+
+    // Same as existsByEmail, but normalizes the email first
+    default boolean existsByNormalizedEmail(String email) {
+        return existsByEmail(User.normalizeEmail(email));
+    }
+
 }
 

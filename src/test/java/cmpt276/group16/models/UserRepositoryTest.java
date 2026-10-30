@@ -32,6 +32,7 @@ class UserRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getEmail()).isEqualTo("maddenwynans@example.com");
         assertThat(found.get().getDisplayName()).isEqualTo("Madden");
+        assertThat(found.get().getCreatedAt()).isNotNull();
     }
 
     @Test
@@ -64,5 +65,23 @@ class UserRepositoryTest {
                 .setParameter(1, saved.getId())
                 .getSingleResult();
         assertThat(storedRole.toString()).isEqualTo(role.name());
+    }
+
+    @Test
+    void setEmailStoresItLowercase() {
+        User user = new User("madden@example.com", "hash", "Madden", Role.STUDENT);
+
+        user.setEmail("  New.Email@Example.com ");
+
+        assertThat(user.getEmail()).isEqualTo("new.email@example.com");
+    }
+
+    @Test
+    void normalizedLookupsIgnoreCaseAndSpaces() {
+        userRepository.saveAndFlush(new User("madden@example.com", "hash", "Madden", Role.STUDENT));
+
+        assertThat(userRepository.findByNormalizedEmail("  MADDEN@Example.com ")).isPresent();
+        assertThat(userRepository.existsByNormalizedEmail(" Madden@EXAMPLE.com")).isTrue();
+        assertThat(userRepository.existsByNormalizedEmail("someone.else@example.com")).isFalse();
     }
 }

@@ -44,6 +44,11 @@ public class User implements Serializable {
         this.passwordHash = passwordHash;
         this.displayName = displayName;
         this.role = role;
+    }
+
+    // Runs just before the first save, so every user gets a creation time
+    @PrePersist
+    void beforeFirstSave() {
         this.createdAt = Instant.now();
     }
 
@@ -60,7 +65,7 @@ public class User implements Serializable {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = normalizeEmail(email);
     }
 
     public String getPasswordHash() {
@@ -89,10 +94,6 @@ public class User implements Serializable {
 
     public Instant getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
     }
 
     // Make email case insensitive
