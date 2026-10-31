@@ -53,6 +53,15 @@ class UploadErrorHandlerTest {
 				.contains("Upload a file under " + UploadErrorHandler.readable(maxFileSize) + ".");
 	}
 
+	// Tomcat only reads 2 MB past the limit by default, then drops the connection before the page arrives
+	@Test
+	void muchLargerFileStillGetsTheErrorPage() {
+		ResponseEntity<String> response = upload(new byte[10 * 1024 * 1024]);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody()).contains("Upload a file under " + UploadErrorHandler.readable(maxFileSize) + ".");
+	}
+
 	@Test
 	void sizeIsShownInTheLargestWholeUnit() {
 		assertThat(UploadErrorHandler.readable(DataSize.ofMegabytes(1))).isEqualTo("1 MB");
