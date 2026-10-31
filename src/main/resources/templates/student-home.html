@@ -8,6 +8,9 @@
 	    <main class="content">
 		<h1 th:text="'Welcome, ' + ${displayName}">Welcome, Student</h1>
 
+		<!-- Set by TranscriptController after the student confirms -->
+		<p th:if="${message}" th:text="${message}" class="notice">Saved 8 courses from your transcript. WHAT?</p>
+
 		<section>
 		    <h2 class="label">Transcript</h2>
 		    <p>Upload your SFU unofficial transcript and we'll fill in the courses you've taken.</p>
