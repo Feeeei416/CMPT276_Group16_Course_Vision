@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpSession;
 
 import java.util.*;
 
+import org.aspectj.apache.bcel.classfile.Module.Uses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -87,9 +88,11 @@ public class LoginController {
         }
     }
 
+    /** POST /logout : ends the session and returns to the login page. */
     @PostMapping("/logout")
     public String logout(HttpSession session){
         // processing logout
+        // Remove the session and everything stored in it, including the logged-in user
         session.invalidate();
             
         return "redirect:/login?logout";
