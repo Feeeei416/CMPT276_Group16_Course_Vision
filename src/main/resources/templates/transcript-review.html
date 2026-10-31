@@ -10,6 +10,11 @@
 		<p th:text="|We found ${courses.size()} courses. Check them, then confirm to save them. Nothing is saved until you confirm.|">
 		    We found 8 courses.</p>
 
+	<div th:if="${savedCourseCount > 0}" class="alert" role="alert">
+	    <p th:text="|You already have ${savedCourseCount} saved ${savedCourseCount == 1 ? 'course' : 'courses'}. Confirming replaces them with the courses below.|">
+		You already have 8 saved courses. Confirming replaces them with the courses below.</p>
+	</div>
+
 		<div th:unless="${skippedLines.isEmpty()}" class="alert" role="alert">
 		    <p>These lines looked like courses but couldn't be read, so they aren't in the list:</p>
 		    <ul>

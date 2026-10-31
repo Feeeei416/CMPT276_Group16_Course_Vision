@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import cmpt276.group16.models.StudentProfile;
+import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.transcript.ParsedCourse;
 import cmpt276.group16.transcript.TranscriptParseException;
 import cmpt276.group16.transcript.TranscriptParseResult;
@@ -33,12 +34,14 @@ public class TranscriptController {
 	private final CurrentStudent currentStudent;
 	private final TranscriptParser transcriptParser;
 	private final TranscriptService transcriptService;
+	private final TranscriptCourseRepository transcriptCourseRepository;
 
 	public TranscriptController(CurrentStudent currentStudent, TranscriptParser transcriptParser,
-			TranscriptService transcriptService) {
+			TranscriptService transcriptService, TranscriptCourseRepository transcriptCourseRepository) {
 		this.currentStudent = currentStudent;
 		this.transcriptParser = transcriptParser;
 		this.transcriptService = transcriptService;
+		this.transcriptCourseRepository = transcriptCourseRepository;
 	}
 
 	@GetMapping
@@ -52,7 +55,8 @@ public class TranscriptController {
 	@PostMapping
 	public String upload(@RequestParam(name = "file", required = false) MultipartFile file,
 			HttpSession session, Model model) {
-		if (currentStudent.find(session).isEmpty()) {
+		Optional<StudentProfile> student = currentStudent.find(session);
+		if (student.isEmpty()) {
 			return "redirect:/login";
 		}
 		// Drop courses from any earlier upload that wasn't confirmed
@@ -68,6 +72,8 @@ public class TranscriptController {
 			session.setAttribute(PENDING_COURSES, new ArrayList<>(result.courses()));
 			model.addAttribute("courses", result.courses());
 			model.addAttribute("skippedLines", result.skippedLines());
+			// Confirming replaces these, so the review page warns about them
+			model.addAttribute("savedCourseCount", transcriptCourseRepository.countByStudent(student.get()));
 			return "transcript-review";
 		} catch (TranscriptParseException e) {
 			model.addAttribute("error", e.getMessage());

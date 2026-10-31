@@ -10,5 +10,7 @@ public interface TranscriptCourseRepository extends JpaRepository<TranscriptCour
 	// transcript
 	List<TranscriptCourse> findByStudentOrderByIdAsc(StudentProfile student);
 
+	long countByStudent(StudentProfile student);
+
 	void deleteByStudent(StudentProfile student);
 }

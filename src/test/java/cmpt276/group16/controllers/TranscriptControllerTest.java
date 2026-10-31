@@ -2,6 +2,7 @@ package cmpt276.group16.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -136,6 +138,32 @@ class TranscriptControllerTest {
 
 		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
 				.hasSize(TestTranscripts.SAMPLE_COURSE_COUNT);
+	}
+
+	@Test
+	void firstUploadHasNoReplaceWarning() throws Exception {
+		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+				.andExpect(content().string(not(containsString("Confirming replaces"))));
+	}
+
+	// Confirming deletes the earlier courses, so the review page has to say so first
+	@Test
+	void uploadAfterConfirmingWarnsThatSavedCoursesWillBeReplaced() throws Exception {
+		uploadSample();
+		mockMvc.perform(post("/student/transcript/confirm").session(session));
+
+		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+				.andExpect(content().string(containsString("You already have " + TestTranscripts.SAMPLE_COURSE_COUNT
+						+ " saved courses. Confirming replaces them")));
+	}
+
+	@Test
+	void replaceWarningUsesSingularForOneCourse() throws Exception {
+		transcriptCourseRepository.save(new TranscriptCourse(student, "2025 Fall", "CMPT", "120",
+				"Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-"));
+
+		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+				.andExpect(content().string(containsString("You already have 1 saved course. Confirming")));
 	}
 
 	// e.g. the student clicks Confirm twice
