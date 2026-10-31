@@ -11,6 +11,9 @@
     --color-error:rgb(114, 28, 36);
     --color-error-bg: rgb(248, 215, 218);
     --color-error-border: rgb(245, 198, 203);
+    --color-notice: rgb(21, 87, 36);
+    --color-notice-bg: rgb(212, 237, 218);
+    --color-notice-border: rgb(195, 230, 203);
 
     /* Font */
     --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -26,7 +29,28 @@
     --height-input: 40px;
 }
 
+/* Make width and height include padding and border, so width: 100% never overflows */
 *, *::before, *::after { box-sizing: border-box; }
+
+/* Header */
+.site-header {
+    background-color: var(--color-bg);
+    padding: var(--space-md) var(--space-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap:var(--space-md);
+}
+
+.site-title {
+    font-weight: bold;
+    font-size: 24px;
+}
 
 /* Basic Element Sytles */
 .input {
@@ -41,31 +65,40 @@
 }
 
 .btn {
-    background-color: var(--color-primary);
-    box-shadow: var(--color-shadow) 1px 1px 2px 0px;
-    color: var(--color-surface);
-    border: none;
     border-radius: var(--radius);
     height: var(--height-input);
-    width: 100%;
-    padding-top: 4px;
-    padding-bottom: 4px;
+    padding: 4px var(--space-md);
     margin: 0;
     font: inherit;
     cursor: pointer;
 }
 
-.btn:hover {
+.btn-primary {
+    border: none;
+    background-color: var(--color-primary);
+    box-shadow: var(--color-shadow) 1px 1px 2px 0px;
+    color: var(--color-surface);
+}
+
+.btn-primary:hover {
     background-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+    border: 1px solid var(--color-primary);
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-primary);
+    color: var(--color-surface);
 }
 
 .link {
     color: var(--color-primary);
-    padding-top: 4px;
-    padding-bottom: 4px;
     margin: 0;
     font: inherit;
-    cursor: pointer;
 }
 
 .link:hover {
@@ -78,10 +111,18 @@
     border: 1px solid var(--color-error-border);
     border-radius: var(--radius);
     width: 100%;
-    padding-top: 12px;
-    padding-bottom: 12px;
-    padding-left: 20px;
-    padding-right: 20px;
+    padding: 12px 20px;
+    margin-bottom: var(--space-md);
+    font: inherit;
+}
+
+.notice-message {
+    color: var(--color-notice);
+    background-color: var(--color-notice-bg);
+    border: 1px solid var(--color-notice-border);
+    border-radius: var(--radius);
+    width: 100%;
+    padding: 12px 20px;
     margin-bottom: var(--space-md);
     font: inherit;
 }
@@ -109,7 +150,7 @@ body {
 }
 
 /* Login Section */
-.login-page {
+.page {
     max-width: 1000px;
     margin: 0 auto;
 }
@@ -129,5 +170,6 @@ body {
 .login-title {
     color: var(--color-text);
     margin-bottom: var(--space-sm);
+    font-weight: bold;
     font-size: 32px;
 }

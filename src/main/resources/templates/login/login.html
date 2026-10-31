@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
-    <link rel="stylesheet" th:href="@{/css/login.css}">
     <title>Login</title>
 </head>
 <body>
-    <main class="login-page">
+    <main class="page">
         <div class="login-card">
             <div class="login-content">
                 <h1 class="login-title">Login</h1>
@@ -16,6 +15,10 @@
                     <!-- Error -->
                     <div class="error-message" th:if="${error}">
                         <span th:text="${error}"></span>
+                    </div>
+                    <!-- Logout notice -->
+                    <div class="notice-message" th:if="${param.logout}" role="status">
+                        You have been signed out.
                     </div>
 
                     <!-- Input -->

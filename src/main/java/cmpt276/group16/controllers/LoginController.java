@@ -87,6 +87,14 @@ public class LoginController {
         }
     }
 
+    @PostMapping("/logout")
+    public String logout(HttpSession session){
+        // processing logout
+        session.invalidate();
+            
+        return "redirect:/login?logout";
+    }
+
     /** Shows the login page again with the error message and the email the user typed. */
     private String showLoginError(Model model, String email) {
         model.addAttribute("error", LOGIN_ERROR);
