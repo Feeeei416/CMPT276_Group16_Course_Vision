@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <!-- Shared page parts of which each page pulls them in with th:replace, so the header and footer live in one place -->
+    <!-- shared page parts, each page pulls them in with th:replace, so they live in one place -->
 
     <head th:fragment="head(title)">
 	<meta charset="UTF-8">
@@ -11,25 +11,14 @@
 
     <body>
 	<header th:fragment="header" class="site-header">
-	    <div class="site-header-bar">
-		<a class="brand" th:href="@{/student/home}">
-		    <span class="brand-mark">CV</span>
-		    <span class="brand-name">Course Vision</span>
-		</a>
-		<!-- session.user is set by login -->
-		<div class="account" th:if="${session.user}">
-		    <span class="account-name" th:text="${session.user.displayName}">Demo Student</span>
-		    <form th:action="@{/logout}" method="post">
-			<button type="submit" class="link-button">Log out</button>
-		    </form>
-		</div>
+	    <a class="brand" th:href="@{/student/home}">Course Vision</a>
+	    <!-- session.user is set by login -->
+	    <div class="account" th:if="${session.user}">
+		<span th:text="${session.user.displayName}">Demo Student</span>
+		<form th:action="@{/logout}" method="post">
+		    <button type="submit" class="link-button">Log out</button>
+		</form>
 	    </div>
-	    <div class="site-header-band"></div>
 	</header>
-
-	<footer th:fragment="footer" class="site-footer">
-	    <p>Course Vision is a CMPT 276 student project (Group 16). It is not an official SFU website.</p>
-	    <p>Your transcript PDF is read once and never stored. Only the courses you confirm are saved.</p>
-	</footer>
     </body>
 </html>
