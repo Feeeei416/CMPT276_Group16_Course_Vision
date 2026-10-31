@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head th:replace="~{fragments/layout :: head('Log in')}"></head>
+    <body>
+	<div class="page">
+	    <header th:replace="~{fragments/layout :: header}"></header>
+
+	    <main class="content two-column">
+		<aside class="notice">
+		    <h2 class="notice-title">Placeholder login</h2>
+		    <!-- replace this page when the real login story is merged -->
+		    <p>Real login isn't built yet. The button signs you in as a demo student so you can try the student pages.</p>
+		</aside>
+
+		<section>
+		    <h1>Students</h1>
+		    <form th:action="@{/login}" method="post">
+			<button type="submit" class="button">Log in as demo student</button>
+		    </form>
+		</section>
+	    </main>
+
+	    <footer th:replace="~{fragments/layout :: footer}"></footer>
+	</div>
+    </body>
+</html>

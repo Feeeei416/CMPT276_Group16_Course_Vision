@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <!-- shared page parts, each page pulls them in with th:replace, so they live in one place -->
+
+    <head th:fragment="head(title)">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title th:text="${title} + ' | Course Vision'">Course Vision</title>
+	<link rel="stylesheet" th:href="@{/css/sfu.css}">
+    </head>
+
+    <body>
+	<header th:fragment="header" class="site-header">
+	    <a class="brand" th:href="@{/student/home}">Course Vision</a>
+	    <!-- session.user is set by login -->
+	    <div class="account" th:if="${session.user}">
+		<span th:text="${session.user.displayName}">Demo Student</span>
+		<form th:action="@{/logout}" method="post">
+		    <button type="submit" class="link-button">Log out</button>
+		</form>
+	    </div>
+	</header>
+    </body>
+</html>
