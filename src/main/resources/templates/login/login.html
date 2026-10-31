@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" th:href="@{/css/login.css}">
+    <title>Login</title>
+</head>
+<body>
+    <main class="login-page">
+        <div class="login-card">
+            <div class="login-content">
+                <h1 class="login-title">Login</h1>
+                <form method="post" th:action="@{/login}" >
+                    <!-- Error -->
+                    <div class="error-message" th:if="${error}">
+                        <span th:text="${error}"></span>
+                    </div>
+
+                    <!-- Input -->
+                    <div class="form-field">
+                        <label class="form-label" for="email">Email</label>
+                        <input type="email" id="email" name="email" class="input" autocomplete="email" placeholder="Email" th:value="${email}">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password" id="password" name="password" class="input" autocomplete="current-password" placeholder="Password">
+                    </div>
+
+                    <!-- Submit button -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Sign in</button>
+                    </div>
+                </form>
+                <div class="form-actions">
+                        <a th:href="@{/create}" class="link">Sign up</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

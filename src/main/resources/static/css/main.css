@@ -1,0 +1,133 @@
+:root {
+    /* Color */
+    --color-primary: rgb(166, 25, 46);
+    --color-primary-hover: rgb(119, 17, 34);
+    --color-shadow: rgb(119, 119, 119);
+    --color-bg:rgb(233, 239, 241);
+    --color-surface: rgb(255, 255, 255); 
+    --color-text: rgb(33, 37, 41);
+    --color-text-muted: rgb(136, 136, 136);
+    --color-border: rgb(187, 187, 187);
+    --color-error:rgb(114, 28, 36);
+    --color-error-bg: rgb(248, 215, 218);
+    --color-error-border: rgb(245, 198, 203);
+
+    /* Font */
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    /* Space & Radius */
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --radius: 4px;
+
+    /* Height */
+    --height-input: 40px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Basic Element Sytles */
+.input {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    width: 100%;
+    height: var(--height-input);
+    padding-left: var(--space-sm);
+    margin: 0;
+    font: inherit;
+}
+
+.btn {
+    background-color: var(--color-primary);
+    box-shadow: var(--color-shadow) 1px 1px 2px 0px;
+    color: var(--color-surface);
+    border: none;
+    border-radius: var(--radius);
+    height: var(--height-input);
+    width: 100%;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    margin: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: var(--color-primary-hover);
+}
+
+.link {
+    color: var(--color-primary);
+    padding-top: 4px;
+    padding-bottom: 4px;
+    margin: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.link:hover {
+    color: var(--color-primary-hover);
+}
+
+.error-message {
+    color: var(--color-error);
+    background-color: var(--color-error-bg);
+    border: 1px solid var(--color-error-border);
+    border-radius: var(--radius);
+    width: 100%;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    padding-left: 20px;
+    padding-right: 20px;
+    margin-bottom: var(--space-md);
+    font: inherit;
+}
+
+body {
+    background-color: var(--color-primary);
+    color: var(--color-text);
+    font-family:var(--font-body);
+    line-height: 1.5;
+    padding: 20px;
+    margin: 0;
+}
+
+.form-field {
+    margin-bottom: var(--space-md);
+}
+
+.form-label {
+    display: block;
+    margin-bottom: var(--space-sm);
+}
+
+.form-actions {
+    margin-top: var(--space-sm);
+}
+
+/* Login Section */
+.login-page {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.login-card {
+    background-color: var(--color-bg);
+    margin-bottom: var(--space-xl);
+    border: none;
+    padding: var(--space-xl);
+}
+
+.login-content {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.login-title {
+    color: var(--color-text);
+    margin-bottom: var(--space-sm);
+    font-size: 32px;
+}
