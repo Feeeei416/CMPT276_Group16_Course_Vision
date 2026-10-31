@@ -104,6 +104,12 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-crypto</artifactId>
 		</dependency>
+		 <!-- Reads the text out of uploaded transcript PDFs -->
+                <dependency>
+                        <groupId>org.apache.pdfbox</groupId>
+                        <artifactId>pdfbox</artifactId>
+                        <version>3.0.8</version>
+                </dependency>
 
 	</dependencies>
 
