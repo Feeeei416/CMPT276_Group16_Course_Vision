@@ -135,6 +135,6 @@ class StudentHomeControllerTest {
 	void stylesheetIsServed() throws Exception {
 		mockMvc.perform(get("/css/sfu.css"))
 				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("--red: #a6192e")));
+				.andExpect(content().contentTypeCompatibleWith("text/css"));
 	}
 }

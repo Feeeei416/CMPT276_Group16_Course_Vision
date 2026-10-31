@@ -96,7 +96,7 @@ class TranscriptControllerTest {
 		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
 				.andExpect(status().isOk())
 				.andExpect(view().name("transcript-review"))
-				.andExpect(content().string(containsString("We found 8 courses")))
+				.andExpect(content().string(containsString("We found " + TestTranscripts.SAMPLE_COURSE_COUNT + " courses")))
 				.andExpect(content().string(containsString(">2025 Fall<")))
 				.andExpect(content().string(containsString(">CMPT<")))
 				.andExpect(content().string(containsString(">120<")))
@@ -115,7 +115,8 @@ class TranscriptControllerTest {
 
 		mockMvc.perform(post("/student/transcript/confirm").session(session))
 				.andExpect(redirectedUrl("/student/home"))
-				.andExpect(flash().attribute("message", "Saved 8 courses from your transcript."));
+				.andExpect(flash().attribute("message",
+						"Saved " + TestTranscripts.SAMPLE_COURSE_COUNT + " courses from your transcript."));
 
 		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
 				.hasSize(TestTranscripts.SAMPLE_COURSE_COUNT)
