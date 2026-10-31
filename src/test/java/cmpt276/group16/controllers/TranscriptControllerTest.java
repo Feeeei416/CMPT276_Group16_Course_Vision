@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,184 +36,227 @@ import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.transcript.TestTranscripts;
 
-// Filters are off so the test's MockHttpSession is used instead of the database-backed session.
-// @Transactional undoes each test's database changes when it finishes
+// Same setup as StudentHomeControllerTest: a MockHttpSession instead of the database-backed one,
+// and each test's database changes are rolled back
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 class TranscriptControllerTest {
 
-	@Autowired
-	private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-	@Autowired
-	private UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
 
-	@Autowired
-	private StudentProfileRepository studentProfileRepository;
+    @Autowired
+    private StudentProfileRepository studentProfileRepository;
 
-	@Autowired
-	private TranscriptCourseRepository transcriptCourseRepository;
+    @Autowired
+    private TranscriptCourseRepository transcriptCourseRepository;
 
-	private StudentProfile student;
-	private MockHttpSession session;
+    @Autowired
+    private UploadLimit uploadLimit;
 
-	@BeforeEach
-	void logInAsStudent() {
-		User user = userRepository.save(new User("priya@example.com", "hash", "Priya", Role.STUDENT));
-		student = studentProfileRepository.save(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
-		session = new MockHttpSession();
-		session.setAttribute(CurrentStudent.SESSION_USER, user);
-	}
+    // The table the review page should show for TestTranscripts.samplePdf()
+    private static final List<List<String>> SAMPLE_ROWS = List.of(
+            List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
+            List.of("2025 Fall", "MACM", "101", "Discrete Math I", "3.00", "A"),
+            List.of("2025 Fall", "MATH", "151", "Calculus I", "3.00", "B+"),
+            List.of("2026 Spring", "CMPT", "125", "Intro.Cmpt.Sci/Programming II", "3.00", "B"),
+            List.of("2026 Spring", "ENSC", "195", "Industrial Internship I", "3.00", "P"),
+            List.of("2026 Fall", "CMPT", "105W", "Social Issues&Comm Strategies", "3.00", "In progress"),
+            List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"),
+            List.of("2026 Fall", "CMPT", "419", "Special Topics in AI", "3.00", "In progress"));
 
-	private MockMultipartFile pdf(byte[] bytes) {
-		return new MockMultipartFile("file", "transcript.pdf", "application/pdf", bytes);
-	}
+    private StudentProfile student;
+    private MockHttpSession session;
 
-	private void uploadSample() throws Exception {
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session));
-	}
+    @BeforeEach
+    void logInAsStudent() {
+        User user = userRepository.save(new User("priya@example.com", "hash", "Priya", Role.STUDENT));
+        student = studentProfileRepository.save(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
+        session = new MockHttpSession();
+        session.setAttribute(CurrentStudent.SESSION_USER, user);
+    }
 
-	// Acceptance criterion: an upload page that accepts a PDF
-	@Test
-	void uploadPageAcceptsAPdf() throws Exception {
-		mockMvc.perform(get("/student/transcript").session(session))
-				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("enctype=\"multipart/form-data\"")))
-				.andExpect(content().string(containsString("accept=\"application/pdf,.pdf\"")));
-	}
+    private MockMultipartFile pdf(byte[] bytes) {
+        return new MockMultipartFile("file", "transcript.pdf", "application/pdf", bytes);
+    }
 
-	@Test
-	void transcriptPagesNeedALogin() throws Exception {
-		mockMvc.perform(get("/student/transcript")).andExpect(redirectedUrl("/login"));
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())))
-				.andExpect(redirectedUrl("/login"));
-		mockMvc.perform(post("/student/transcript/confirm")).andExpect(redirectedUrl("/login"));
-	}
+    private void uploadSample() throws Exception {
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session));
+    }
 
-	// Acceptance criteria: lists each course with subject, number, title, units,
-	// term and grade,
-	// and nothing is saved until the student confirms
-	@Test
-	void uploadListsEachCourseWithoutSavingIt() throws Exception {
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
-				.andExpect(status().isOk())
-				.andExpect(view().name("transcript-review"))
-				.andExpect(content().string(containsString("We found " + TestTranscripts.SAMPLE_COURSE_COUNT + " courses")))
-				.andExpect(content().string(containsString(">2025 Fall<")))
-				.andExpect(content().string(containsString(">CMPT<")))
-				.andExpect(content().string(containsString(">120<")))
-				.andExpect(content().string(containsString(">Intro.Cmpt.Sci/Programming I<")))
-				.andExpect(content().string(containsString(">3.00<")))
-				.andExpect(content().string(containsString(">A-<")))
-				.andExpect(content().string(containsString(">In progress<")));
+    // Acceptance criterion: an upload page that accepts a PDF
+    @Test
+    void uploadPageAcceptsAPdf() throws Exception {
+        mockMvc.perform(get("/student/transcript").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("enctype=\"multipart/form-data\"")))
+                .andExpect(content().string(containsString("accept=\"application/pdf,.pdf\"")));
+    }
 
-		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
-		assertThat(session.getAttribute(TranscriptController.PENDING_COURSES)).isNotNull();
-	}
+    // The browser-side size check reads the same limit as the server
+    @Test
+    void uploadPageGivesTheBrowserTheSizeLimit() throws Exception {
+        mockMvc.perform(get("/student/transcript").session(session))
+                .andExpect(content().string(containsString("data-max-bytes=\"" + uploadLimit.getBytes() + "\"")))
+                .andExpect(content().string(containsString("data-too-large=\"" + uploadLimit.getMessage() + "\"")));
+    }
 
-	@Test
-	void confirmSavesTheCourses() throws Exception {
-		uploadSample();
+    @Test
+    void transcriptPagesNeedALogin() throws Exception {
+        mockMvc.perform(get("/student/transcript")).andExpect(redirectedUrl("/login"));
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())))
+                .andExpect(redirectedUrl("/login"));
+        mockMvc.perform(post("/student/transcript/confirm")).andExpect(redirectedUrl("/login"));
+    }
 
-		mockMvc.perform(post("/student/transcript/confirm").session(session))
-				.andExpect(redirectedUrl("/student/home"))
-				.andExpect(flash().attribute("message",
-						"Saved " + TestTranscripts.SAMPLE_COURSE_COUNT + " courses from your transcript."));
+    // Acceptance criteria: lists each course with its subject, number, title, units, term and grade,
+    // and nothing is saved until the student confirms
+    @Test
+    void uploadListsEachCourseWithoutSavingIt() throws Exception {
+        String page = mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf()))
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("transcript-review"))
+                .andExpect(content().string(containsString("We found " + SAMPLE_ROWS.size() + " courses.")))
+                .andReturn().getResponse().getContentAsString();
 
-		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
-				.hasSize(TestTranscripts.SAMPLE_COURSE_COUNT)
-				.first()
-				.extracting(TranscriptCourse::getTerm, TranscriptCourse::getSubject, TranscriptCourse::getNumber,
-						TranscriptCourse::getGrade)
-				.containsExactly("2025 Fall", "CMPT", "120", "A-");
-		assertThat(session.getAttribute(TranscriptController.PENDING_COURSES)).isNull();
-	}
+        assertThat(CourseTableRows.in(page)).isEqualTo(SAMPLE_ROWS);
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
+        assertThat(session.getAttribute(TranscriptController.PENDING_COURSES)).isNotNull();
+    }
 
-	@Test
-	void uploadingAgainReplacesTheSavedCourses() throws Exception {
-		for (int i = 0; i < 2; i++) {
-			uploadSample();
-			mockMvc.perform(post("/student/transcript/confirm").session(session));
-		}
+    @Test
+    void confirmSavesTheCourses() throws Exception {
+        uploadSample();
 
-		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
-				.hasSize(TestTranscripts.SAMPLE_COURSE_COUNT);
-	}
+        mockMvc.perform(post("/student/transcript/confirm").session(session))
+                .andExpect(redirectedUrl("/student/home"))
+                .andExpect(flash().attribute("message",
+                        "Saved " + TestTranscripts.SAMPLE_COURSE_COUNT + " courses from your transcript."));
 
-	@Test
-	void firstUploadHasNoReplaceWarning() throws Exception {
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
-				.andExpect(content().string(not(containsString("Confirming replaces"))));
-	}
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
+                .hasSize(TestTranscripts.SAMPLE_COURSE_COUNT)
+                .first()
+                .extracting(TranscriptCourse::getTerm, TranscriptCourse::getSubject, TranscriptCourse::getNumber,
+                        TranscriptCourse::getGrade)
+                .containsExactly("2025 Fall", "CMPT", "120", "A-");
+        assertThat(session.getAttribute(TranscriptController.PENDING_COURSES)).isNull();
+    }
 
-	// Confirming deletes the earlier courses, so the review page has to say so first
-	@Test
-	void uploadAfterConfirmingWarnsThatSavedCoursesWillBeReplaced() throws Exception {
-		uploadSample();
-		mockMvc.perform(post("/student/transcript/confirm").session(session));
+    @Test
+    void uploadingAgainReplacesTheSavedCourses() throws Exception {
+        for (int i = 0; i < 2; i++) {
+            uploadSample();
+            mockMvc.perform(post("/student/transcript/confirm").session(session));
+        }
 
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
-				.andExpect(content().string(containsString("You already have " + TestTranscripts.SAMPLE_COURSE_COUNT
-						+ " saved courses. Confirming replaces them")));
-	}
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
+                .hasSize(TestTranscripts.SAMPLE_COURSE_COUNT);
+    }
 
-	@Test
-	void replaceWarningUsesSingularForOneCourse() throws Exception {
-		transcriptCourseRepository.save(new TranscriptCourse(student, "2025 Fall", "CMPT", "120",
-				"Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-"));
+    @Test
+    void firstUploadHasNoReplaceWarning() throws Exception {
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+                .andExpect(content().string(not(containsString("Confirming replaces"))));
+    }
 
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
-				.andExpect(content().string(containsString("You already have 1 saved course. Confirming")));
-	}
+    // Confirming deletes the earlier courses, so the review page has to say so first
+    @Test
+    void uploadAfterConfirmingWarnsThatSavedCoursesWillBeReplaced() throws Exception {
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
 
-	// e.g. the student clicks Confirm twice
-	@Test
-	void confirmWithNothingUploadedSavesNothing() throws Exception {
-		mockMvc.perform(post("/student/transcript/confirm").session(session))
-				.andExpect(redirectedUrl("/student/transcript"));
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+                .andExpect(content().string(containsString("You already have " + TestTranscripts.SAMPLE_COURSE_COUNT
+                        + " saved courses. Confirming replaces them")));
+    }
 
-		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
-	}
+    @Test
+    void replaceWarningUsesSingularForOneCourse() throws Exception {
+        transcriptCourseRepository.save(new TranscriptCourse(student, "2025 Fall", "CMPT", "120",
+                "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-"));
 
-	// Acceptance criterion: a non-PDF file shows an error instead of crashing
-	@Test
-	void nonPdfFileShowsAnError() throws Exception {
-		MockMultipartFile text = new MockMultipartFile("file", "transcript.txt", "text/plain",
-				"not a transcript".getBytes(StandardCharsets.UTF_8));
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+                .andExpect(content().string(containsString("You already have 1 saved course. Confirming")));
+    }
 
-		mockMvc.perform(multipart("/student/transcript").file(text).session(session))
-				.andExpect(status().isOk())
-				.andExpect(view().name("transcript-upload"))
-				.andExpect(content().string(containsString("isn&#39;t a PDF")));
-	}
+    // e.g. the student clicks Confirm twice
+    @Test
+    void confirmWithNothingUploadedSavesNothing() throws Exception {
+        mockMvc.perform(post("/student/transcript/confirm").session(session))
+                .andExpect(redirectedUrl("/student/transcript"));
 
-	// Acceptance criterion: a PDF with no courses found shows an error instead of
-	// crashing
-	@Test
-	void pdfWithNoCoursesShowsAnError() throws Exception {
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.blankPdf())).session(session))
-				.andExpect(status().isOk())
-				.andExpect(view().name("transcript-upload"))
-				.andExpect(content().string(containsString("No courses were found")));
-	}
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
+    }
 
-	@Test
-	void emptyUploadShowsAnError() throws Exception {
-		mockMvc.perform(multipart("/student/transcript").file(pdf(new byte[0])).session(session))
-				.andExpect(view().name("transcript-upload"))
-				.andExpect(content().string(containsString("Please choose your transcript PDF")));
-	}
+    // Acceptance criterion: a non-PDF file shows an error instead of crashing
+    @Test
+    void nonPdfFileShowsAnError() throws Exception {
+        MockMultipartFile text = new MockMultipartFile("file", "transcript.txt", "text/plain",
+                "not a transcript".getBytes(StandardCharsets.UTF_8));
 
-	// A failed upload clears the earlier one, so confirm can't save courses the
-	// student isn't looking at
-	@Test
-	void failedUploadDropsTheEarlierUnconfirmedCourses() throws Exception {
-		uploadSample();
-		mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.blankPdf())).session(session));
+        mockMvc.perform(multipart("/student/transcript").file(text).session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("transcript-upload"))
+                .andExpect(content().string(containsString("isn&#39;t a PDF")));
+    }
 
-		mockMvc.perform(post("/student/transcript/confirm").session(session));
+    // Acceptance criterion: a PDF with no courses found shows an error instead of crashing
+    @Test
+    void pdfWithNoCoursesShowsAnError() throws Exception {
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.blankPdf())).session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("transcript-upload"))
+                .andExpect(content().string(containsString("No courses were found")));
+    }
 
-		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
-	}
+    @Test
+    void emptyUploadShowsAnError() throws Exception {
+        mockMvc.perform(multipart("/student/transcript").file(pdf(new byte[0])).session(session))
+                .andExpect(view().name("transcript-upload"))
+                .andExpect(content().string(containsString("Please choose your transcript PDF")));
+    }
+
+    // A line that starts like a course but can't be read is shown to the student instead of being dropped
+    @Test
+    void reviewPageListsLinesThatCouldNotBeRead() throws Exception {
+        byte[] pdf = TestTranscripts.pdfWithLines(List.of(
+                "2025 Fall",
+                "CMPT 120 Intro.Cmpt.Sci/Programming I 3.00 3.00 A- 11.01 B 310",
+                "CMPT 307 Data Structures 3.00"));
+
+        String page = mockMvc.perform(multipart("/student/transcript").file(pdf(pdf)).session(session))
+                .andExpect(content().string(containsString("couldn't be read")))
+                .andExpect(content().string(containsString("<li>CMPT 307 Data Structures 3.00</li>")))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(CourseTableRows.in(page)).extracting(row -> row.get(2)).containsExactly("120");
+    }
+
+    @Test
+    void oneCourseIsNotCalledCourses() throws Exception {
+        byte[] pdf = TestTranscripts.pdfWithLines(List.of(
+                "2025 Fall",
+                "CMPT 120 Intro.Cmpt.Sci/Programming I 3.00 3.00 A- 11.01 B 310"));
+
+        mockMvc.perform(multipart("/student/transcript").file(pdf(pdf)).session(session))
+                .andExpect(content().string(containsString("We found 1 course.")));
+        mockMvc.perform(post("/student/transcript/confirm").session(session))
+                .andExpect(flash().attribute("message", "Saved 1 course from your transcript."));
+    }
+
+    // A failed upload clears the earlier one, so confirm can't save courses the student isn't looking at
+    @Test
+    void failedUploadDropsTheEarlierUnconfirmedCourses() throws Exception {
+        uploadSample();
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.blankPdf())).session(session));
+
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
+    }
 }

@@ -14,19 +14,19 @@ import jakarta.servlet.http.HttpSession;
 @Component
 public class CurrentStudent {
 
-	// Session key that login stores the User under
-	public static final String SESSION_USER = "user";
+    // Session key that login stores the User under
+    public static final String SESSION_USER = "user";
 
-	private final StudentProfileRepository studentProfileRepository;
+    private final StudentProfileRepository studentProfileRepository;
 
-	public CurrentStudent(StudentProfileRepository studentProfileRepository) {
-		this.studentProfileRepository = studentProfileRepository;
-	}
+    public CurrentStudent(StudentProfileRepository studentProfileRepository) {
+        this.studentProfileRepository = studentProfileRepository;
+    }
 
-	public Optional<StudentProfile> find(HttpSession session) {
-		if (!(session.getAttribute(SESSION_USER) instanceof User user) || user.getRole() != Role.STUDENT) {
-			return Optional.empty();
-		}
-		return studentProfileRepository.findById(user.getId());
-	}
+    public Optional<StudentProfile> find(HttpSession session) {
+        if (!(session.getAttribute(SESSION_USER) instanceof User user) || user.getRole() != Role.STUDENT) {
+            return Optional.empty();
+        }
+        return studentProfileRepository.findById(user.getId());
+    }
 }

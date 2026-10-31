@@ -1,31 +1,31 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
     <body>
-	<!-- Used by the home page (saved courses) and the review page (parsed courses) -->
-	<div th:fragment="courseTable(courses)" class="table-scroll">
-	    <table class="course-table">
-		<thead>
-		    <tr>
-			<th>Term</th>
-			<th>Subject</th>
-			<th>Number</th>
-			<th>Title</th>
-			<th class="number">Units</th>
-			<th>Grade</th>
-		    </tr>
-		</thead>
-		<tbody>
-		    <tr th:each="course : ${courses}">
-			<td th:text="${course.term}">2024 Fall</td>
-			<td th:text="${course.subject}">CMPT</td>
-			<td th:text="${course.number}">225</td>
-			<td th:text="${course.title}">Data Structures/Programming</td>
-			<td class="number" th:text="${course.units}">3.00</td>
-			<td th:if="${course.inProgress}" class="muted">In progress</td>
-			<td th:unless="${course.inProgress}" th:text="${course.grade}">A</td>
-		    </tr>
-		</tbody>
-	    </table>
-	</div>
+        <!-- Used by the home page (saved courses) and the review page (parsed courses) -->
+        <div th:fragment="courseTable(courses)" class="table-scroll">
+            <table class="course-table">
+                <thead>
+                    <tr>
+                        <th>Term</th>
+                        <th>Subject</th>
+                        <th>Number</th>
+                        <th>Title</th>
+                        <th class="number">Units</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="course : ${courses}">
+                        <td th:text="${course.term}">2024 Fall</td>
+                        <td th:text="${course.subject}">CMPT</td>
+                        <td th:text="${course.number}">225</td>
+                        <td th:text="${course.title}">Data Structures/Programming</td>
+                        <td class="number" th:text="${course.units}">3.00</td>
+                        <td th:if="${course.inProgress}" class="muted">In progress</td>
+                        <td th:unless="${course.inProgress}" th:text="${course.grade}">A</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </body>
 </html>

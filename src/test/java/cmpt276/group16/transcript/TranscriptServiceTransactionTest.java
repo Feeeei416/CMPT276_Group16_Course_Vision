@@ -1,13 +1,16 @@
 package cmpt276.group16.transcript;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Propagation;
@@ -29,45 +32,59 @@ import cmpt276.group16.models.UserRepository;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class TranscriptServiceTransactionTest {
 
-	@Autowired
-	private TranscriptService transcriptService;
+    @Autowired
+    private TranscriptService transcriptService;
 
-	@Autowired
-	private TranscriptCourseRepository transcriptCourseRepository;
+    @Autowired
+    private TranscriptCourseRepository transcriptCourseRepository;
 
-	@Autowired
-	private UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
 
-	@Autowired
-	private StudentProfileRepository studentProfileRepository;
+    @Autowired
+    private StudentProfileRepository studentProfileRepository;
 
-	private StudentProfile student;
+    private StudentProfile student;
 
-	private static final ParsedCourse COURSE = new ParsedCourse("2025 Fall", "CMPT", "120",
-			"Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-");
+    private static final ParsedCourse COURSE = new ParsedCourse("2025 Fall", "CMPT", "120",
+            "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-");
 
-	// Nothing is rolled back without a test transaction, so clean up for the other
-	// tests
-	@AfterEach
-	void deleteStudent() {
-		if (student != null) {
-			transcriptCourseRepository.deleteAll(transcriptCourseRepository.findByStudentOrderByIdAsc(student));
-			studentProfileRepository.delete(student);
-			userRepository.delete(student.getUser());
-		}
-	}
+    @BeforeEach
+    void saveStudent() {
+        User user = userRepository.save(new User("no.transaction@example.com", "hash", "Student", Role.STUDENT));
+        student = studentProfileRepository.save(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
+    }
 
-	// The second call has old courses to delete, which is the part that needs a
-	// transaction
-	@Test
-	void replacingWorksWithoutATestTransaction() {
-		User user = userRepository.save(new User("no.transaction@example.com", "hash", "Student", Role.STUDENT));
-		student = studentProfileRepository.save(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
+    // Nothing is rolled back without a test transaction, so clean up for the other tests
+    @AfterEach
+    void deleteStudent() {
+        if (student != null) {
+            transcriptCourseRepository.deleteAll(transcriptCourseRepository.findByStudentOrderByIdAsc(student));
+            studentProfileRepository.delete(student);
+            userRepository.delete(student.getUser());
+        }
+    }
 
-		transcriptService.replaceCourses(student, List.of(COURSE));
-		transcriptService.replaceCourses(student, List.of(COURSE));
+    // The second call has old courses to delete, which is the part that needs a transaction
+    @Test
+    void replacingWorksWithoutATestTransaction() {
+        transcriptService.replaceCourses(student, List.of(COURSE));
+        transcriptService.replaceCourses(student, List.of(COURSE));
 
-		assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
-				.extracting(TranscriptCourse::getNumber).containsExactly("120");
-	}
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
+                .extracting(TranscriptCourse::getNumber).containsExactly("120");
+    }
+
+    // The old courses are deleted before the new ones are saved, so a failed save has to undo the delete
+    @Test
+    void failedReplaceKeepsTheOldCourses() {
+        transcriptService.replaceCourses(student, List.of(COURSE));
+        ParsedCourse noTitle = new ParsedCourse("2026 Spring", "CMPT", "125", null, new BigDecimal("3.00"), "B");
+
+        assertThatThrownBy(() -> transcriptService.replaceCourses(student, List.of(noTitle)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
+                .extracting(TranscriptCourse::getNumber).containsExactly("120");
+    }
 }

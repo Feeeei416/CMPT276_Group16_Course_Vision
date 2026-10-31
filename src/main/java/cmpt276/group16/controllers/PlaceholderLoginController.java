@@ -18,42 +18,42 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 public class PlaceholderLoginController {
 
-	static final String DEMO_EMAIL = "demo.student@example.com";
+    static final String DEMO_EMAIL = "demo.student@example.com";
 
-	private final UserRepository userRepository;
-	private final StudentProfileRepository studentProfileRepository;
-	private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final StudentProfileRepository studentProfileRepository;
+    private final PasswordEncoder passwordEncoder;
 
-	public PlaceholderLoginController(UserRepository userRepository,
-			StudentProfileRepository studentProfileRepository,
-			PasswordEncoder passwordEncoder) {
-		this.userRepository = userRepository;
-		this.studentProfileRepository = studentProfileRepository;
-		this.passwordEncoder = passwordEncoder;
-	}
+    public PlaceholderLoginController(UserRepository userRepository,
+            StudentProfileRepository studentProfileRepository,
+            PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.studentProfileRepository = studentProfileRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
-	@GetMapping({ "/", "/login" })
-	public String loginPage() {
-		return "login";
-	}
+    @GetMapping({ "/", "/login" })
+    public String loginPage() {
+        return "login";
+    }
 
-	@PostMapping("/login")
-	public String logInAsDemoStudent(HttpSession session) {
-		User student = userRepository.findByNormalizedEmail(DEMO_EMAIL).orElseGet(this::createDemoStudent);
-		session.setAttribute(CurrentStudent.SESSION_USER, student);
-		return "redirect:/student/home";
-	}
+    @PostMapping("/login")
+    public String logInAsDemoStudent(HttpSession session) {
+        User student = userRepository.findByNormalizedEmail(DEMO_EMAIL).orElseGet(this::createDemoStudent);
+        session.setAttribute(CurrentStudent.SESSION_USER, student);
+        return "redirect:/student/home";
+    }
 
-	@PostMapping("/logout")
-	public String logOut(HttpSession session) {
-		session.invalidate();
-		return "redirect:/login";
-	}
+    @PostMapping("/logout")
+    public String logOut(HttpSession session) {
+        session.invalidate();
+        return "redirect:/login";
+    }
 
-	private User createDemoStudent() {
-		User student = userRepository.save(
-				new User(DEMO_EMAIL, passwordEncoder.encode("demo-password"), "Demo Student", Role.STUDENT));
-		studentProfileRepository.save(new StudentProfile(student, Program.COMPUTER_ENGINEERING, 2024));
-		return student;
-	}
+    private User createDemoStudent() {
+        User student = userRepository.save(
+                new User(DEMO_EMAIL, passwordEncoder.encode("demo-password"), "Demo Student", Role.STUDENT));
+        studentProfileRepository.save(new StudentProfile(student, Program.COMPUTER_ENGINEERING, 2024));
+        return student;
+    }
 }

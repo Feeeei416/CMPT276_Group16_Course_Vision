@@ -13,23 +13,23 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 public class StudentHomeController {
 
-	private final CurrentStudent currentStudent;
-	private final TranscriptCourseRepository transcriptCourseRepository;
+    private final CurrentStudent currentStudent;
+    private final TranscriptCourseRepository transcriptCourseRepository;
 
-	public StudentHomeController(CurrentStudent currentStudent,
-			TranscriptCourseRepository transcriptCourseRepository) {
-		this.currentStudent = currentStudent;
-		this.transcriptCourseRepository = transcriptCourseRepository;
-	}
+    public StudentHomeController(CurrentStudent currentStudent,
+            TranscriptCourseRepository transcriptCourseRepository) {
+        this.currentStudent = currentStudent;
+        this.transcriptCourseRepository = transcriptCourseRepository;
+    }
 
-	@GetMapping("/student/home")
-	public String home(HttpSession session, Model model) {
-		Optional<StudentProfile> student = currentStudent.find(session);
-		if (student.isEmpty()) {
-			return "redirect:/login";
-		}
-		model.addAttribute("displayName", student.get().getUser().getDisplayName());
-		model.addAttribute("courses", transcriptCourseRepository.findByStudentOrderByIdAsc(student.get()));
-		return "student-home";
-	}
+    @GetMapping("/student/home")
+    public String home(HttpSession session, Model model) {
+        Optional<StudentProfile> student = currentStudent.find(session);
+        if (student.isEmpty()) {
+            return "redirect:/login";
+        }
+        model.addAttribute("displayName", student.get().getUser().getDisplayName());
+        model.addAttribute("courses", transcriptCourseRepository.findByStudentOrderByIdAsc(student.get()));
+        return "student-home";
+    }
 }

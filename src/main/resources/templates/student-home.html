@@ -2,31 +2,31 @@
 <html xmlns:th="http://www.thymeleaf.org">
     <head th:replace="~{fragments/layout :: head('Home')}"></head>
     <body>
-	<div class="page">
-	    <header th:replace="~{fragments/layout :: header}"></header>
+        <div class="page">
+            <header th:replace="~{fragments/layout :: header}"></header>
 
-	    <main class="content">
-		<h1 th:text="'Welcome, ' + ${displayName}">Welcome, Student</h1>
+            <main class="content">
+                <h1 th:text="'Welcome, ' + ${displayName}">Welcome, Student</h1>
 
-		<!-- Set by TranscriptController after the student confirms -->
-		<p th:if="${message}" th:text="${message}" class="notice">Saved 8 courses from your transcript.</p>
+                <!-- Set by TranscriptController after the student confirms -->
+                <p th:if="${message}" th:text="${message}" class="notice">Saved 8 courses from your transcript.</p>
 
-		<section>
-		    <h2 class="label">Transcript</h2>
-		    <p>Upload your SFU unofficial transcript and we'll fill in the courses you've taken.</p>
-		    <a class="button" th:href="@{/student/transcript}">Upload transcript</a>
-		</section>
+                <section>
+                    <h2 class="label">Transcript</h2>
+                    <p>Upload your SFU unofficial transcript and we'll fill in the courses you've taken.</p>
+                    <a class="button" th:href="@{/student/transcript}">Upload transcript</a>
+                </section>
 
-		<hr>
+                <hr>
 
-		<section>
-		    <h2 class="label">Your courses</h2>
-		    <p th:if="${courses.isEmpty()}">No courses yet. Upload your transcript to add them.</p>
-		    <th:block th:unless="${courses.isEmpty()}">
-			<div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
-		    </th:block>
-		</section>
-	    </main>
-	</div>
+                <section>
+                    <h2 class="label">Your courses</h2>
+                    <p th:if="${courses.isEmpty()}">No courses yet. Upload your transcript to add them.</p>
+                    <th:block th:unless="${courses.isEmpty()}">
+                        <div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
+                    </th:block>
+                </section>
+            </main>
+        </div>
     </body>
 </html>

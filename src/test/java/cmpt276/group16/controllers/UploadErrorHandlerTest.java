@@ -3,7 +3,7 @@ package cmpt276.group16.controllers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.io.ByteArrayResource;
@@ -19,52 +19,52 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class UploadErrorHandlerTest {
 
-	@LocalServerPort
-	private int port;
+    @LocalServerPort
+    private int port;
 
-	@Value("${spring.servlet.multipart.max-file-size}")
-	private DataSize maxFileSize;
+    @Autowired
+    private UploadLimit uploadLimit;
 
-	private ResponseEntity<String> upload(byte[] bytes) {
-		MultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
-		form.add("file", new ByteArrayResource(bytes) {
-			@Override
-			public String getFilename() {
-				return "transcript.pdf";
-			}
-		});
-		return RestClient.create("http://localhost:" + port).post()
-				.uri("/student/transcript")
-				.contentType(MediaType.MULTIPART_FORM_DATA)
-				.body(form)
-				.retrieve()
-				.toEntity(String.class);
-	}
+    private ResponseEntity<String> upload(byte[] bytes) {
+        MultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
+        form.add("file", new ByteArrayResource(bytes) {
+            @Override
+            public String getFilename() {
+                return "transcript.pdf";
+            }
+        });
+        return RestClient.create("http://localhost:" + port).post()
+                .uri("/student/transcript")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(form)
+                .retrieve()
+                .toEntity(String.class);
+    }
 
-	@Test
-	void fileOverTheLimitShowsAnErrorInsteadOfCrashing() {
-		byte[] tooBig = new byte[(int) maxFileSize.toBytes() + 1];
+    @Test
+    void fileOverTheLimitShowsAnErrorInsteadOfCrashing() {
+        byte[] tooBig = new byte[(int) uploadLimit.getBytes() + 1];
 
-		ResponseEntity<String> response = upload(tooBig);
+        ResponseEntity<String> response = upload(tooBig);
 
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(response.getBody())
-				.contains("Upload your transcript")
-				.contains("Upload a file under " + UploadErrorHandler.readable(maxFileSize) + ".");
-	}
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .contains("Upload your transcript")
+                .contains("Upload a file under 1 MB.");
+    }
 
-	// Tomcat only reads 2 MB past the limit by default, then drops the connection before the page arrives
-	@Test
-	void muchLargerFileStillGetsTheErrorPage() {
-		ResponseEntity<String> response = upload(new byte[10 * 1024 * 1024]);
+    // Tomcat only reads 2 MB past the limit by default, then drops the connection before the page arrives
+    @Test
+    void muchLargerFileStillGetsTheErrorPage() {
+        ResponseEntity<String> response = upload(new byte[10 * 1024 * 1024]);
 
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(response.getBody()).contains("Upload a file under " + UploadErrorHandler.readable(maxFileSize) + ".");
-	}
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains(uploadLimit.getMessage());
+    }
 
-	@Test
-	void sizeIsShownInTheLargestWholeUnit() {
-		assertThat(UploadErrorHandler.readable(DataSize.ofMegabytes(1))).isEqualTo("1 MB");
-		assertThat(UploadErrorHandler.readable(DataSize.ofKilobytes(512))).isEqualTo("512 KB");
-	}
+    @Test
+    void sizeIsShownInTheLargestWholeUnit() {
+        assertThat(UploadLimit.readable(DataSize.ofMegabytes(1))).isEqualTo("1 MB");
+        assertThat(UploadLimit.readable(DataSize.ofKilobytes(512))).isEqualTo("512 KB");
+    }
 }

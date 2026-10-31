@@ -2,27 +2,40 @@
 <html xmlns:th="http://www.thymeleaf.org">
     <head th:replace="~{fragments/layout :: head('Upload transcript')}"></head>
     <body>
-	<div class="page">
-	    <header th:replace="~{fragments/layout :: header}"></header>
+        <div class="page">
+            <header th:replace="~{fragments/layout :: header}"></header>
 
-	    <main class="content">
-		<h1>Upload your transcript</h1>
-		<p>Download your unofficial transcript PDF from goSFU, then upload it here.
-		    You'll see the courses we found before anything is saved.</p>
+            <main class="content">
+                <h1>Upload your transcript</h1>
+                <p>Download your unofficial transcript PDF from goSFU, then upload it here.
+                    You'll see the courses we found before anything is saved.</p>
 
-		<p th:if="${error}" th:text="${error}" class="alert" role="alert">That file isn't a PDF.</p>
+                <p th:if="${error}" th:text="${error}" class="alert" role="alert">That file isn't a PDF.</p>
 
-		<form th:action="@{/student/transcript}" method="post" enctype="multipart/form-data">
-		    <div class="field">
-			<label class="label" for="file">Transcript PDF</label>
-			<input type="file" id="file" name="file" accept="application/pdf,.pdf" required>
-		    </div>
-		    <div class="actions">
-			<button type="submit" class="button">Upload</button>
-			<a th:href="@{/student/home}">Cancel</a>
-		    </div>
-		</form>
-	    </main>
-	</div>
+                <form th:action="@{/student/transcript}" method="post" enctype="multipart/form-data">
+                    <div class="field">
+                        <label class="label" for="file">Transcript PDF</label>
+                        <input type="file" id="file" name="file" accept="application/pdf,.pdf" required
+                               th:data-max-bytes="${uploadLimit.bytes}"
+                               th:data-too-large="${uploadLimit.message}">
+                    </div>
+                    <div class="actions">
+                        <button type="submit" class="button">Upload</button>
+                        <a th:href="@{/student/home}">Cancel</a>
+                    </div>
+                </form>
+            </main>
+        </div>
+
+        <!-- Stops a file that is too large before it's sent, the server still checks it too -->
+        <script>
+            const fileInput = document.getElementById("file");
+            fileInput.addEventListener("change", () => {
+                const file = fileInput.files[0];
+                const tooLarge = file && file.size > Number(fileInput.dataset.maxBytes);
+                fileInput.setCustomValidity(tooLarge ? fileInput.dataset.tooLarge : "");
+                fileInput.reportValidity();
+            });
+        </script>
     </body>
 </html>

@@ -63,7 +63,7 @@ public final class TestTranscripts {
         return pdfWithLines(List.of());
     }
 
-    static byte[] pdfWithLines(List<String> lines) throws IOException {
+    public static byte[] pdfWithLines(List<String> lines) throws IOException {
         PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
         try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             // Always at least one page even with no lines
