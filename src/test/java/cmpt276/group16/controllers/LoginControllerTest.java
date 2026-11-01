@@ -70,7 +70,7 @@ public class LoginControllerTest {
     // #4 POST /login with correct email and password redirects a student to the student home page
     @Test 
     void login_withCorrectPassword_redirectsToStudentHome() throws Exception {
-        User user = new User("student@test.com", encoder.encode("test123"), "Test Studnent", Role.STUDENT);
+        User user = new User("student@test.com", encoder.encode("test123"), "Test Student", Role.STUDENT);
         when(repo.findByNormalizedEmail("student@test.com")).thenReturn(Optional.of(user));
 
         mockMvc.perform(post("/login")
