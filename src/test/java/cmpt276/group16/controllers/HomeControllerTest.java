@@ -47,19 +47,19 @@ public class HomeControllerTest {
                .andExpect(model().attribute("user", itManager));
     }
 
-    // #11 A user cannot open another role's home page
+    // #11 A user who opens another role's page is sent to their own home page
     @Test
-    void advisorHome_asStudent_redirectsToLogin() throws Exception {
+    void advisorHome_asStudent_redirectsToOwnHome() throws Exception {
         mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, student))
                .andExpect(status().is3xxRedirection())
-               .andExpect(redirectedUrl("/login"));
+               .andExpect(redirectedUrl("/student/home"));
     }
 
     @Test
-    void itHome_asAdvisor_redirectsToLogin() throws Exception {
+    void itHome_asAdvisor_redirectsToOwnHome() throws Exception {
         mockMvc.perform(get("/it/home").sessionAttr(LoginController.SESSION_USER, advisor))
                .andExpect(status().is3xxRedirection())
-               .andExpect(redirectedUrl("/login"));
+               .andExpect(redirectedUrl("/advisor/home"));
     }
 
     // #12 Protected pages tell the browser not to cache them
