@@ -2,17 +2,20 @@ package cmpt276.group16.controllers;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import cmpt276.group16.models.*;
 
 // Loads only LoginController and the web layer
 @WebMvcTest (HomeController.class)
+// @WebMvcTest does not load regular @Component classes; a web-layer class depends on UploadLimit,
+// so import the real one (it only reads spring.servlet.multipart.max-file-size)
+@Import(UploadLimit.class)
 public class HomeControllerTest {
     @Autowired 
     private MockMvc mockMvc;
