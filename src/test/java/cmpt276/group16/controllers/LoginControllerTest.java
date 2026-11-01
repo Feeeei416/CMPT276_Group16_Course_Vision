@@ -25,8 +25,9 @@ import cmpt276.group16.models.*;
 
 // Loads only LoginController and the web layer
 @WebMvcTest (LoginController.class)
-// @WebMvcTest does not load PasswordConfig by itself, so import the real encoder
-@Import(PasswordConfig.class)
+// @WebMvcTest does not load regular @Component/@Configuration classes, so import the ones the web layer needs:
+// PasswordConfig for the real encoder, UploadLimit because a web-layer class depends on it
+@Import({PasswordConfig.class, UploadLimit.class})
 public class LoginControllerTest {
 
     // Same text as LOGIN_ERROR in LoginController

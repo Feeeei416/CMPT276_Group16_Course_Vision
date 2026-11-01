@@ -9,7 +9,7 @@
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title" th:text="'Welcome, ' + ${displayName}">Welcome, Student</h1>
+        <h1 class="page-title" th:text="'Welcome, ' + ${displayName}"></h1>
 
         <!-- Set by TranscriptController after the student confirms -->
         <div th:if="${message}" th:text="${message}" class="notice-message" role="status">Saved 8 courses from your transcript.</div>
