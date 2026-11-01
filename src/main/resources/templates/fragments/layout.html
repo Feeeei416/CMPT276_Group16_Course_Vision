@@ -12,9 +12,9 @@
     <body>
         <header th:fragment="header" class="site-header">
             <a class="brand" th:href="@{/student/home}">Course Vision</a>
-            <!-- session.user is set by login -->
-            <div class="account" th:if="${session.user}">
-                <span th:text="${session.user.displayName}">Demo Student</span>
+            <!-- session.session_user is set by login -->
+            <div class="account" th:if="${session.session_user}">
+                <span th:text="${session.session_user.displayName}">Demo Student</span>
                 <form th:action="@{/logout}" method="post">
                     <button type="submit" class="link-button">Log out</button>
                 </form>

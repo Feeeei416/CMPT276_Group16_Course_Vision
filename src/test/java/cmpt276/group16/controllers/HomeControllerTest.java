@@ -24,21 +24,14 @@ public class HomeControllerTest {
 
     // #9 A home page redirects to /login when not logged in
     @Test
-    void studentHome_whenNotLoggedIn_redirectsToLogin() throws Exception {
-        mockMvc.perform(get("/student/home"))
+    void advisorHome_whenNotLoggedIn_redirectsToLogin() throws Exception {
+        mockMvc.perform(get("/advisor/home"))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/login"));
     }
 
     // #10 Each role can open its own home page, and the page receives the user
-    @Test
-    void studentHome_asStudent_showsPage() throws Exception {
-        mockMvc.perform(get("/student/home").sessionAttr(LoginController.SESSION_USER, student))
-               .andExpect(status().isOk())
-               .andExpect(view().name("student/home"))
-               .andExpect(model().attribute("user", student));
-    }
-
+    // (the student home is StudentHomeController, tested in StudentHomeControllerTest)
     @Test
     void advisorHome_asAdvisor_showsPage() throws Exception {
         mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, advisor))
@@ -72,8 +65,8 @@ public class HomeControllerTest {
 
     // #12 Protected pages tell the browser not to cache them
     @Test
-    void studentHome_asStudent_setsNoCacheHeaders() throws Exception {
-        mockMvc.perform(get("/student/home").sessionAttr(LoginController.SESSION_USER, student))
+    void advisorHome_asAdvisor_setsNoCacheHeaders() throws Exception {
+        mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, advisor))
                .andExpect(header().string("Cache-Control", "no-cache, no-store, must-revalidate"))
                .andExpect(header().string("Pragma", "no-cache"))
                .andExpect(header().string("Expires", "0"));
