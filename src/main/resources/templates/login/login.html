@@ -18,7 +18,11 @@
                     </div>
                     <!-- Logout notice -->
                     <div class="notice-message" th:if="${param.logout}" role="status">
-                        You have been signed out.
+                        You have been successfully signed out.
+                    </div>
+                    <!-- Register notice -->
+                    <div class="notice-message" th:if="${param.registered}" role="status">
+                        You have been successfully signed up. Please sign in.
                     </div>
 
                     <!-- Input -->
