@@ -1,6 +1,8 @@
 package cmpt276.group16.controllers;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ui.Model;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -12,8 +14,10 @@ public class UploadErrorHandler {
 
     private final UploadLimit uploadLimit;
 
-    public UploadErrorHandler(UploadLimit uploadLimit) {
-        this.uploadLimit = uploadLimit;
+    // Makes its own UploadLimit instead of injecting the bean. Every @WebMvcTest loads this class but not
+    // our @Components, so injecting it would break every controller's @WebMvcTest
+    public UploadErrorHandler(@Value("${spring.servlet.multipart.max-file-size}") DataSize maxFileSize) {
+        this.uploadLimit = new UploadLimit(maxFileSize);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
