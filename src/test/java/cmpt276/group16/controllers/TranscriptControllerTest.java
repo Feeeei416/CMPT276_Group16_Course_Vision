@@ -1,6 +1,7 @@
 package cmpt276.group16.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -111,6 +112,7 @@ class TranscriptControllerTest {
         mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())))
                 .andExpect(redirectedUrl("/login"));
         mockMvc.perform(post("/student/transcript/confirm")).andExpect(redirectedUrl("/login"));
+        mockMvc.perform(post("/student/transcript/cancel")).andExpect(redirectedUrl("/login"));
     }
 
     // Acceptance criteria: lists each course with its subject, number, title, units, term and grade,
@@ -147,6 +149,57 @@ class TranscriptControllerTest {
         assertThat(session.getAttribute(TranscriptController.PENDING_COURSES)).isNull();
     }
 
+    // Acceptance criterion: confirm saves to the signed-in student's own record
+    @Test
+    void confirmLeavesOtherStudentsCoursesAlone() throws Exception {
+        User otherUser = userRepository.save(new User("sam@example.com", "hash", "Sam", Role.STUDENT));
+        StudentProfile other = studentProfileRepository.save(
+                new StudentProfile(otherUser, Program.COMPUTING_SCIENCE, 2023));
+        transcriptCourseRepository.save(new TranscriptCourse(other, "2024 Fall", "MATH", "152", "Calculus II",
+                new BigDecimal("3.00"), "B"));
+
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(other))
+                .extracting(TranscriptCourse::getSubject, TranscriptCourse::getNumber)
+                .containsExactly(tuple("MATH", "152"));
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
+                .hasSize(TestTranscripts.SAMPLE_COURSE_COUNT);
+    }
+
+    @Test
+    void reviewPageHasACancelButton() throws Exception {
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+                .andExpect(content().string(containsString("formaction=\"/student/transcript/cancel\"")));
+    }
+
+    // Acceptance criterion: cancel discards the courses and saves nothing
+    @Test
+    void cancelDiscardsTheCoursesWithoutSaving() throws Exception {
+        uploadSample();
+
+        mockMvc.perform(post("/student/transcript/cancel").session(session))
+                .andExpect(redirectedUrl("/student/home"))
+                .andExpect(flash().attribute("message", "Nothing was saved from your transcript."));
+
+        assertThat(session.getAttribute(TranscriptController.PENDING_COURSES)).isNull();
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
+    }
+
+    // e.g. the student cancels, goes back to the review page, and clicks Confirm
+    @Test
+    void confirmAfterCancelSavesNothing() throws Exception {
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/cancel").session(session));
+
+        mockMvc.perform(post("/student/transcript/confirm").session(session))
+                .andExpect(redirectedUrl("/student/transcript"));
+
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
+    }
+
+    // Acceptance criterion: uploading the same transcript again doesn't create duplicate courses
     @Test
     void uploadingAgainReplacesTheSavedCourses() throws Exception {
         for (int i = 0; i < 2; i++) {
