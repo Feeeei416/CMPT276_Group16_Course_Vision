@@ -15,15 +15,6 @@ import jakarta.servlet.http.HttpSession;
 @Controller 
 public class HomeController {
     
-    /** GET /student/home : home page for students. */
-    @GetMapping("/student/home") 
-    public String getStudentHome(Model model, HttpSession session) {
-        User user = (User) session.getAttribute(LoginController.SESSION_USER);
-
-        model.addAttribute("user", user);
-        return "student/home";
-    }
-
     /** GET /advisor/home : home page for course advisors. */
     @GetMapping("/advisor/home") 
     public String getAdvisorHome(Model model, HttpSession session) {

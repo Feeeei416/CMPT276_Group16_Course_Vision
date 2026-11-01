@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>Review courses</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">Review your courses</h1>
+        <p th:text="|We found ${courses.size()} ${courses.size() == 1 ? 'course' : 'courses'}. Check them, then confirm to save them. Nothing is saved until you confirm.|">
+            We found 8 courses.</p>
+
+        <div th:if="${savedCourseCount > 0}" class="error-message" role="alert">
+            <p th:text="|You already have ${savedCourseCount} saved ${savedCourseCount == 1 ? 'course' : 'courses'}. Confirming replaces them with the courses below.|">
+                You already have 8 saved courses. Confirming replaces them with the courses below.</p>
+        </div>
+
+        <div th:unless="${skippedLines.isEmpty()}" class="error-message" role="alert">
+            <p>These lines looked like courses but couldn't be read, so they aren't in the list:</p>
+            <ul>
+                <li th:each="line : ${skippedLines}" th:text="${line}">CMPT 999 ...</li>
+            </ul>
+        </div>
+
+        <div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
+
+        <form th:action="@{/student/transcript/confirm}" method="post" class="actions">
+            <button type="submit" class="btn btn-primary">Confirm and save</button>
+            <a th:href="@{/student/transcript}" class="link">Upload a different file</a>
+        </form>
+    </main>
+</body>
+</html>

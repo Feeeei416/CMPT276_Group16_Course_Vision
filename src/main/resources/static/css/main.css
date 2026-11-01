@@ -175,3 +175,71 @@ body {
     font-weight: bold;
     font-size: 32px;
 }
+
+/* Page content (white area under the header) */
+.page-content {
+    background-color: var(--color-surface);
+    padding: var(--space-xl);
+}
+
+.section-label {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 var(--space-sm);
+}
+
+/* A row of buttons and links under a form or table */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
+}
+
+/* Lets a link look like a button */
+a.btn {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.error-message p,
+.error-message ul {
+    margin: 0;
+}
+
+/* Course table */
+.table-scroll {
+    overflow-x: auto;
+}
+
+.course-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.course-table th {
+    background-color: var(--color-bg);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.course-table th,
+.course-table td {
+    padding: var(--space-sm) 12px;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.course-table .number {
+    text-align: right;
+}
+
+.muted {
+    color: var(--color-text-muted);
+}

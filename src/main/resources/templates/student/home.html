@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +9,26 @@
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}">Welcome</h1>
+        <h1 class="page-title" th:text="'Welcome, ' + ${displayName}"></h1>
+
+        <!-- Set by TranscriptController after the student confirms -->
+        <div th:if="${message}" th:text="${message}" class="notice-message" role="status">Saved 8 courses from your transcript.</div>
+
+        <section>
+            <h2 class="section-label">Transcript</h2>
+            <p>Upload your SFU unofficial transcript and we'll fill in the courses you've taken.</p>
+            <a class="btn btn-primary" th:href="@{/student/transcript}">Upload transcript</a>
+        </section>
+
+        <hr>
+
+        <section>
+            <h2 class="section-label">Your courses</h2>
+            <p th:if="${courses.isEmpty()}">No courses yet. Upload your transcript to add them.</p>
+            <th:block th:unless="${courses.isEmpty()}">
+                <div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
+            </th:block>
+        </section>
     </main>
 </body>
 </html>
