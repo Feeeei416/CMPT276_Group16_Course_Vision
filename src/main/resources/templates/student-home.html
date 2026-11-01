@@ -8,7 +8,7 @@
             <main class="content">
                 <h1 th:text="'Welcome, ' + ${displayName}">Welcome, Student</h1>
 
-                <!-- Set by TranscriptController after the student confirms -->
+                <!-- Set by TranscriptController after the student confirms or cancels -->
                 <p th:if="${message}" th:text="${message}" class="notice">Saved 8 courses from your transcript.</p>
 
                 <section>

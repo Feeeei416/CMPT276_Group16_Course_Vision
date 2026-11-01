@@ -113,4 +113,16 @@ public class TranscriptController {
                 "Saved " + courses.size() + (courses.size() == 1 ? " course" : " courses") + " from your transcript.");
         return "redirect:/student/home";
     }
+
+    // Throws the parsed courses away, so going back to the review page and confirming saves nothing
+    @PostMapping("/cancel")
+    public String cancel(HttpSession session, RedirectAttributes redirectAttributes) {
+        if (currentStudent.find(session).isEmpty()) {
+            return "redirect:/login";
+        }
+        session.removeAttribute(PENDING_COURSES);
+
+        redirectAttributes.addFlashAttribute("message", "Nothing was saved from your transcript.");
+        return "redirect:/student/home";
+    }
 }
