@@ -45,7 +45,7 @@
                             <option value="">-- Choose --</option>
                             <option th:each="p : ${programs}"
                                     th:value="${p.name()}"
-                                    th:text="${p}"
+                                    th:text="${p.showName}"
                                     th:selected="${form['program'] == p.name()}"></option>
                         </select>
                     </div>
