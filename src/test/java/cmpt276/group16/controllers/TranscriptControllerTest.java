@@ -120,7 +120,7 @@ class TranscriptControllerTest {
         String page = mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf()))
                         .session(session))
                 .andExpect(status().isOk())
-                .andExpect(view().name("transcript-review"))
+                .andExpect(view().name("student/transcript-review"))
                 .andExpect(content().string(containsString("We found " + SAMPLE_ROWS.size() + " courses.")))
                 .andReturn().getResponse().getContentAsString();
 
@@ -201,7 +201,7 @@ class TranscriptControllerTest {
 
         mockMvc.perform(multipart("/student/transcript").file(text).session(session))
                 .andExpect(status().isOk())
-                .andExpect(view().name("transcript-upload"))
+                .andExpect(view().name("student/transcript-upload"))
                 .andExpect(content().string(containsString("isn&#39;t a PDF")));
     }
 
@@ -210,14 +210,14 @@ class TranscriptControllerTest {
     void pdfWithNoCoursesShowsAnError() throws Exception {
         mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.blankPdf())).session(session))
                 .andExpect(status().isOk())
-                .andExpect(view().name("transcript-upload"))
+                .andExpect(view().name("student/transcript-upload"))
                 .andExpect(content().string(containsString("No courses were found")));
     }
 
     @Test
     void emptyUploadShowsAnError() throws Exception {
         mockMvc.perform(multipart("/student/transcript").file(pdf(new byte[0])).session(session))
-                .andExpect(view().name("transcript-upload"))
+                .andExpect(view().name("student/transcript-upload"))
                 .andExpect(content().string(containsString("Please choose your transcript PDF")));
     }
 

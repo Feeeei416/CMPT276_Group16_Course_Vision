@@ -59,7 +59,7 @@ public class TranscriptController {
         if (currentStudent.find(session).isEmpty()) {
             return "redirect:/login";
         }
-        return "transcript-upload";
+        return "student/transcript-upload";
     }
 
     @PostMapping
@@ -74,7 +74,7 @@ public class TranscriptController {
 
         if (file == null || file.isEmpty()) {
             model.addAttribute("error", "Please choose your transcript PDF to upload.");
-            return "transcript-upload";
+            return "student/transcript-upload";
         }
 
         try {
@@ -84,13 +84,13 @@ public class TranscriptController {
             model.addAttribute("skippedLines", result.skippedLines());
             // Confirming replaces these, so the review page warns about them
             model.addAttribute("savedCourseCount", transcriptCourseRepository.countByStudent(student.get()));
-            return "transcript-review";
+            return "student/transcript-review";
         } catch (TranscriptParseException e) {
             model.addAttribute("error", e.getMessage());
         } catch (IOException e) {
             model.addAttribute("error", "The upload didn't finish. Please try again.");
         }
-        return "transcript-upload";
+        return "student/transcript-upload";
     }
 
     @PostMapping("/confirm")

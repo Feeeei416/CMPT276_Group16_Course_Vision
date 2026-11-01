@@ -71,6 +71,15 @@ class StudentHomeControllerTest {
                 .andExpect(redirectedUrl("/login"));
     }
 
+    // Redirecting to /login here would loop, since /login sends a logged-in student back to /student/home
+    @Test
+    void studentWithoutAProfileGetsAnErrorInsteadOfARedirect() throws Exception {
+        User student = userRepository.save(new User("no.profile@example.com", "hash", "Sam", Role.STUDENT));
+
+        mockMvc.perform(get("/student/home").session(sessionFor(student)))
+                .andExpect(status().isForbidden());
+    }
+
     // Acceptance criterion: the student home page links to the upload page
     @Test
     void homeGreetsTheStudentAndLinksToTheUploadPage() throws Exception {

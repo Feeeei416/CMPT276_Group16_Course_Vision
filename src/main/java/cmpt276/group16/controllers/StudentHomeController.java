@@ -30,6 +30,6 @@ public class StudentHomeController {
         }
         model.addAttribute("displayName", student.get().getUser().getDisplayName());
         model.addAttribute("courses", transcriptCourseRepository.findByStudentOrderByIdAsc(student.get()));
-        return "student-home";
+        return "student/home";
     }
 }
