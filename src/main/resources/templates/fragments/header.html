@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>header</title>
+</head>
+<body>
+    <header th:fragment="header" class="site-header">
+        <span class="site-title">Course Vision</span>
+        <div class="nav-actions">
+            <a href="#" class="link">Profile</a>
+            <form method="post" th:action="@{/logout}" >
+                <button type="submit" class="btn btn-secondary">Sign out</button>
+            </form>
+        </div>
+    </header>
+</body>
+</html>
