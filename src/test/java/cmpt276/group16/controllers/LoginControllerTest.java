@@ -25,9 +25,8 @@ import cmpt276.group16.models.*;
 
 // Loads only LoginController and the web layer
 @WebMvcTest (LoginController.class)
-// @WebMvcTest does not load regular @Component/@Configuration classes, so import the ones the web layer needs:
-// PasswordConfig for the real encoder, UploadLimit because a web-layer class depends on it
-@Import({PasswordConfig.class, UploadLimit.class})
+// @WebMvcTest does not load PasswordConfig by itself, so import the real encoder
+@Import(PasswordConfig.class)
 public class LoginControllerTest {
 
     // Same text as LOGIN_ERROR in LoginController
@@ -71,7 +70,7 @@ public class LoginControllerTest {
     // #4 POST /login with correct email and password redirects a student to the student home page
     @Test 
     void login_withCorrectPassword_redirectsToStudentHome() throws Exception {
-        User user = new User("student@test.com", encoder.encode("test123"), "Test Studnent", Role.STUDENT);
+        User user = new User("student@test.com", encoder.encode("test123"), "Test Student", Role.STUDENT);
         when(repo.findByNormalizedEmail("student@test.com")).thenReturn(Optional.of(user));
 
         mockMvc.perform(post("/login")

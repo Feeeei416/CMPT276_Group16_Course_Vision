@@ -29,6 +29,7 @@
 
         <form th:action="@{/student/transcript/confirm}" method="post" class="actions">
             <button type="submit" class="btn btn-primary">Confirm and save</button>
+            <button type="submit" th:formaction="@{/student/transcript/cancel}" class="btn btn-secondary">Cancel</button>
             <a th:href="@{/student/transcript}" class="link">Upload a different file</a>
         </form>
     </main>

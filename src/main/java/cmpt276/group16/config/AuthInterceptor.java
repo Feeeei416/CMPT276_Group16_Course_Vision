@@ -44,10 +44,9 @@ public class AuthInterceptor implements HandlerInterceptor{
             case IT_MANAGER -> path.startsWith("/it/");
         };
         
-        // Send to /login; GET /login sees the user is logged in
-        // and redirects them to their own home page.
+        // Logged in, but the page belongs to another role: send them to their own home page
         if (!allowed) {
-            response.sendRedirect("/login");
+            response.sendRedirect(LoginController.homePath(user.getRole()));
             return false;
         }
 

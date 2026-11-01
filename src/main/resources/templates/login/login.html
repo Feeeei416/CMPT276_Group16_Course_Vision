@@ -13,7 +13,7 @@
                 <h1 class="login-title">Login</h1>
                 <form method="post" th:action="@{/login}" >
                     <!-- Error -->
-                    <div class="error-message" th:if="${error}">
+                    <div class="error-message" th:if="${error}" role="alert">
                         <span th:text="${error}"></span>
                     </div>
                     <!-- Logout notice -->

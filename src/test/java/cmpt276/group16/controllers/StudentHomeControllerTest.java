@@ -68,7 +68,7 @@ class StudentHomeControllerTest {
         User advisor = userRepository.save(new User("test.advisor@example.com", "hash", "Advisor", Role.ADVISOR));
 
         mockMvc.perform(get("/student/home").session(sessionFor(advisor)))
-                .andExpect(redirectedUrl("/login"));
+                .andExpect(redirectedUrl("/advisor/home"));
     }
 
     // Redirecting to /login here would loop, since /login sends a logged-in student back to /student/home
