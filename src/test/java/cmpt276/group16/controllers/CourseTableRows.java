@@ -20,10 +20,8 @@ final class CourseTableRows {
     // One list of cell texts per row: term, subject, number, title, units, grade
     static List<List<String>> in(String html) {
         Matcher table = TABLE.matcher(html);
-        if (!table.find()) {
-            return List.of();
-        }
         List<List<String>> rows = new ArrayList<>();
+        while (table.find()){
         Matcher row = BODY_ROW.matcher(table.group(1));
         while (row.find()) {
             List<String> cells = new ArrayList<>();
@@ -33,6 +31,7 @@ final class CourseTableRows {
             }
             rows.add(cells);
         }
+    }
         return rows;
     }
 }
