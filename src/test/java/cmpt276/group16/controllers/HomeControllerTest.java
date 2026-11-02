@@ -1,19 +1,24 @@
 package cmpt276.group16.controllers;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-import cmpt276.group16.models.*;
+import cmpt276.group16.models.Role;
+import cmpt276.group16.models.User;
 
 // Loads only HomeController and the web layer
-@WebMvcTest (HomeController.class)
+@WebMvcTest(HomeController.class)
 public class HomeControllerTest {
-    @Autowired 
+
+    @Autowired
     private MockMvc mockMvc;
 
     // The password hash is never checked on these pages, so any text works
@@ -49,14 +54,14 @@ public class HomeControllerTest {
 
     // #11 A user who opens another role's page is sent to their own home page
     @Test
-    void advisorHome_asStudent_redirectsToOwnHome() throws Exception {
+    void advisorHome_asStudent_redirectsToStudentHome() throws Exception {
         mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, student))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/student/home"));
     }
 
     @Test
-    void itHome_asAdvisor_redirectsToOwnHome() throws Exception {
+    void itHome_asAdvisor_redirectsToAdvisorHome() throws Exception {
         mockMvc.perform(get("/it/home").sessionAttr(LoginController.SESSION_USER, advisor))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/advisor/home"));
