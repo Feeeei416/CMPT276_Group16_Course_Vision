@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,17 +18,17 @@
                     </div>
                     <!-- Logout notice -->
                     <div class="notice-message" th:if="${param.logout}" role="status">
-                        You have been signed out.
+                        You have been successfully signed out.
                     </div>
 
                     <!-- Input -->
                     <div class="form-field">
                         <label class="form-label" for="email">Email</label>
-                        <input type="email" id="email" name="email" class="input" autocomplete="email" placeholder="Email" th:value="${email}">
+                        <input type="email" id="email" name="email" class="input" autocomplete="email" placeholder="Email" th:value="${email}" required>
                     </div>
                     <div class="form-field">
                         <label class="form-label" for="password">Password</label>
-                        <input type="password" id="password" name="password" class="input" autocomplete="current-password" placeholder="Password">
+                        <input type="password" id="password" name="password" class="input" autocomplete="current-password" placeholder="Password" required>
                     </div>
 
                     <!-- Submit button -->
@@ -37,7 +37,7 @@
                     </div>
                 </form>
                 <div class="form-actions">
-                        <a th:href="@{/create}" class="link">Sign up</a>
+                        <a th:href="@{/register}" class="link">Sign up</a>
                 </div>
             </div>
         </div>
