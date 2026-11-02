@@ -1,15 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" th:href="@{/css/main.css}">
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
     <title>Home</title>
-</head>
-<body class="page">
+  </head>
+  <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}">Welcome</h1>
+      <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}">
+        Welcome
+      </h1>
+      <section>
+        <h2 class="section-label">All accounts</h2>
+        <p
+          th:text="|${users.size()} ${users.size() == 1 ? 'account' : 'accounts'}|"
+        >
+          5 accounts
+        </p>
+        <div class="table-scroll">
+          <table class="course-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="account : ${users}">
+                <td th:text="${account.displayName}">Priya</td>
+                <td th:text="${account.email}">priya@example.com</td>
+                <td th:switch="${account.role.name()}">
+                  <span th:case="'STUDENT'">Student</span>
+                  <span th:case="'ADVISOR'">Advisor</span>
+                  <span th:case="'IT_MANAGER'">IT manager</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </main>
-</body>
+  </body>
 </html>

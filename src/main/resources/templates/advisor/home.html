@@ -1,15 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" th:href="@{/css/main.css}">
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
     <title>Home</title>
-</head>
-<body class="page">
+  </head>
+  <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}">Welcome</h1>
+      <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}">
+        Welcome
+      </h1>
+      <section>
+        <h2 class="section-label">Your students</h2>
+        <p th:if="${students.isEmpty()}">
+          No students are assigned to you yet.
+        </p>
+        <div th:unless="${students.isEmpty()}" class="table-scroll">
+          <table class="course-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Program</th>
+                <th>Cohort</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="student : ${students}">
+                <td th:text="${student.user.displayName}">Priya</td>
+                <td th:text="${student.user.email}">priya@example.com</td>
+                <td th:switch="${student.program.name()}">
+                  <span th:case="'COMPUTING_SCIENCE'">Computing Science</span>
+                  <span th:case="'COMPUTER_ENGINEERING'"
+                    >Computer Engineering</span
+                  >
+                </td>
+                <td th:text="${student.cohortYear}">2024</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </main>
-</body>
+  </body>
 </html>

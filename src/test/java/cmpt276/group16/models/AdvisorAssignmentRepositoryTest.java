@@ -2,7 +2,6 @@ package cmpt276.group16.models;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -31,10 +30,31 @@ class AdvisorAssignmentRepositoryTest {
     }
 
     private StudentProfile saveStudent(String email) {
-        User user = userRepository.saveAndFlush(new User(email, "hash", "Student", Role.STUDENT));
+        return saveStudent(email, "Student");
+    }
+
+    private StudentProfile saveStudent(String email, String displayName) {
+        User user = userRepository.saveAndFlush(new User(email, "hash", displayName, Role.STUDENT));
         return studentProfileRepository.saveAndFlush(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
     }
 
+    // The advisor home page lists only this advisor's students, sorted by name
+    @Test
+    void findsOnlyThisAdvisorsStudentsSortedByName() {
+        User advisor = saveAdvisor("advisor@example.com");
+        User otherAdvisor = saveAdvisor("other@example.com");
+        StudentProfile priya = saveStudent("priya@example.com", "Priya");
+        StudentProfile marcus = saveStudent("marcus@example.com", "Marcus");
+        StudentProfile sam = saveStudent("sam@example.com", "Sam");
+        advisorAssignmentRepository.saveAndFlush(new AdvisorAssignment(advisor, priya));
+        advisorAssignmentRepository.saveAndFlush(new AdvisorAssignment(advisor, marcus));
+        advisorAssignmentRepository.saveAndFlush(new AdvisorAssignment(otherAdvisor, sam));
+        entityManager.clear();
+
+        assertThat(advisorAssignmentRepository.findByAdvisorIdOrderByStudentUserDisplayNameAsc(advisor.getId()))
+            .extracting(assignment -> assignment.getStudent().getUser().getDisplayName())
+            .containsExactly("Marcus", "Priya");
+    }
     @Test
     void assignmentIsSavedAndFound() {
         User advisor = saveAdvisor("advisor@example.com");

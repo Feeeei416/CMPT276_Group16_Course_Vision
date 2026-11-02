@@ -1,10 +1,9 @@
 package cmpt276.group16.models;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -34,7 +33,19 @@ class UserRepositoryTest {
         assertThat(found.get().getDisplayName()).isEqualTo("Madden");
         assertThat(found.get().getCreatedAt()).isNotNull();
     }
+    // The IT manager home page lists every account, grouped by role and sorted by name
+    @Test
+    void listsAllUsersByRoleThenName() {
+        userRepository.saveAndFlush(new User("zoe@example.com", "hash", "Zoe", Role.STUDENT));
+        userRepository.saveAndFlush(new User("faye@example.com", "hash", "Faye", Role.IT_MANAGER));
+        userRepository.saveAndFlush(new User("amir@example.com", "hash", "Amir", Role.STUDENT));
+        userRepository.saveAndFlush(new User("dana@example.com", "hash", "Dana", Role.ADVISOR));
+        entityManager.clear();
 
+        assertThat(userRepository.findAllByOrderByRoleAscDisplayNameAsc())
+            .extracting(User::getDisplayName)
+            .containsExactly("Dana", "Faye", "Amir", "Zoe");
+    }
     @Test
     void unknownEmailNotFound() {
         assertThat(userRepository.findByEmail("nobody@example.com")).isEmpty();
