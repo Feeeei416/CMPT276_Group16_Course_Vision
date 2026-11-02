@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 @Controller 
@@ -36,7 +37,7 @@ public class RegisterController {
     }
 
     @PostMapping("/register")
-    public String register(@RequestParam Map<String, String> form, Model model) {
+    public String register(@RequestParam Map<String, String> form, Model model, HttpServletRequest request, HttpSession session) {
         List<String> errors = registrationService.validate(form);
         if (!errors.isEmpty()){
             return showRegisterForm(model, errors, form);
@@ -46,13 +47,20 @@ public class RegisterController {
         String newPassword = form.get("password");
         Program newProgram = RegistrationService.parseProgram(form.get("program"));
         Integer newCohortYear = RegistrationService.parseCohortYear(form.get("cohortYear"));
+
+        User user;
         try {
-            registrationService.createUserAndStudentProfile(newEmail, newDisplayName, newPassword, newProgram, newCohortYear);
+            user = registrationService.createUserAndStudentProfile(newEmail, newDisplayName, newPassword, newProgram, newCohortYear);
         } catch (DataIntegrityViolationException e) {
             // Someone registered the same email between validate and save
             return showRegisterForm(model, List.of("An account with this email already exists."), form);
         }
-        return "redirect:/login?registered";
+
+        // Sign the new student in
+        session.invalidate();
+        request.getSession().setAttribute(LoginController.SESSION_USER, user);
+
+        return LoginController.homeFor(user.getRole());
     }
 
     /** Shows the register page with the given errors and the typed values (passwords removed). */

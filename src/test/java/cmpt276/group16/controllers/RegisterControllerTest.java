@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 import java.util.List;
 
@@ -55,10 +56,12 @@ public class RegisterControllerTest {
                .andExpect(redirectedUrl("/advisor/home"));
     }
 
-    // #3 POST /register with valid input saves the student and redirects to the login page
+    // #3 POST /register with valid input saves the student, signs them in and redirects to the student home page
     @Test
     void postRegister_valid_savesStudentAndRedirects() throws Exception {
         when(registrationService.validate(any())).thenReturn(List.of());
+        User student = new User("newstudent@test.com", "hash", "New Student", Role.STUDENT);
+        when(registrationService.createUserAndStudentProfile(anyString(), anyString(), anyString(), any(), anyInt())).thenReturn(student);
 
         mockMvc.perform(post("/register")
                         .param("email", "newstudent@test.com")
@@ -68,7 +71,8 @@ public class RegisterControllerTest {
                         .param("program", "COMPUTING_SCIENCE")
                         .param("cohortYear", "2024"))
                .andExpect(status().is3xxRedirection())
-               .andExpect(redirectedUrl("/login?registered"));
+               .andExpect(redirectedUrl("/student/home"))
+               .andExpect(request().sessionAttribute(LoginController.SESSION_USER, student));
 
         // The form values were converted and passed to the service
         verify(registrationService).createUserAndStudentProfile(
@@ -125,6 +129,8 @@ public class RegisterControllerTest {
     @Test
     void postRegister_withRoleParam_stillRegistersStudent() throws Exception {
         when(registrationService.validate(any())).thenReturn(List.of());
+        User student = new User("newstudent@test.com", "hash", "New Student", Role.STUDENT);
+        when(registrationService.createUserAndStudentProfile(anyString(), anyString(), anyString(), any(), anyInt())).thenReturn(student);
 
         mockMvc.perform(post("/register")
                         .param("email", "newstudent@test.com")
@@ -135,7 +141,8 @@ public class RegisterControllerTest {
                         .param("cohortYear", "2024")
                         .param("role", "IT_MANAGER"))
                .andExpect(status().is3xxRedirection())
-               .andExpect(redirectedUrl("/login?registered"));
+               .andExpect(redirectedUrl("/student/home"))
+               .andExpect(request().sessionAttribute(LoginController.SESSION_USER, student));
 
         // The save method has no role parameter; RegistrationService always uses Role.STUDENT
         verify(registrationService).createUserAndStudentProfile(
