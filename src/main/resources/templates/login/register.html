@@ -24,7 +24,7 @@
                     <!-- Display Name -->
                     <div class="form-field">
                         <label for="displayName" class="form-label">Display Name</label>
-                        <input type="text" class="input" id="displayName" name="displayName" th:value="${form['displayName']}">
+                        <input type="text" class="input" id="displayName" name="displayName" required maxlength="255" th:value="${form['displayName']}">
                     </div>
                     <!-- Password -->
                     <div class="form-field">
