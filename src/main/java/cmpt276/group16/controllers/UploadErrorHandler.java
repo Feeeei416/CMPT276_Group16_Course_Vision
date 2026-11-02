@@ -24,6 +24,6 @@ public class UploadErrorHandler {
     public String fileTooLarge(Model model) {
         model.addAttribute("error", uploadLimit.getMessage());
         model.addAttribute("uploadLimit", uploadLimit);
-        return "transcript-upload";
+        return "student/transcript-upload";
     }
 }
