@@ -1,0 +1,243 @@
+:root {
+    /* Color */
+    --color-primary: rgb(166, 25, 46);
+    --color-primary-hover: rgb(119, 17, 34);
+    --color-shadow: rgb(119, 119, 119);
+    --color-bg:rgb(233, 239, 241);
+    --color-surface: rgb(255, 255, 255); 
+    --color-text: rgb(33, 37, 41);
+    --color-text-muted: rgb(136, 136, 136);
+    --color-border: rgb(187, 187, 187);
+    --color-error:rgb(114, 28, 36);
+    --color-error-bg: rgb(248, 215, 218);
+    --color-error-border: rgb(245, 198, 203);
+    --color-notice: rgb(21, 87, 36);
+    --color-notice-bg: rgb(212, 237, 218);
+    --color-notice-border: rgb(195, 230, 203);
+
+    /* Font */
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    /* Space & Radius */
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --radius: 4px;
+
+    /* Height */
+    --height-input: 40px;
+}
+
+/* Make width and height include padding and border, so width: 100% never overflows */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Header */
+.site-header {
+    background-color: var(--color-bg);
+    padding: var(--space-md) var(--space-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap:var(--space-md);
+}
+
+.site-title {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+/* Basic Element Sytles */
+.input {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    width: 100%;
+    height: var(--height-input);
+    padding-left: var(--space-sm);
+    margin: 0;
+    font: inherit;
+}
+
+.btn {
+    border-radius: var(--radius);
+    height: var(--height-input);
+    padding: 4px var(--space-md);
+    margin: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.btn-primary {
+    border: none;
+    background-color: var(--color-primary);
+    box-shadow: var(--color-shadow) 1px 1px 2px 0px;
+    color: var(--color-surface);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+    border: 1px solid var(--color-primary);
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-primary);
+    color: var(--color-surface);
+}
+
+.link {
+    color: var(--color-primary);
+    margin: 0;
+    font: inherit;
+}
+
+.link:hover {
+    color: var(--color-primary-hover);
+}
+
+.error-message {
+    color: var(--color-error);
+    background-color: var(--color-error-bg);
+    border: 1px solid var(--color-error-border);
+    border-radius: var(--radius);
+    width: 100%;
+    padding: 12px 20px;
+    margin-bottom: var(--space-md);
+    font: inherit;
+}
+
+.notice-message {
+    color: var(--color-notice);
+    background-color: var(--color-notice-bg);
+    border: 1px solid var(--color-notice-border);
+    border-radius: var(--radius);
+    width: 100%;
+    padding: 12px 20px;
+    margin-bottom: var(--space-md);
+    font: inherit;
+}
+
+body {
+    background-color: var(--color-primary);
+    color: var(--color-text);
+    font-family:var(--font-body);
+    line-height: 1.5;
+    padding: 20px;
+    margin: 0;
+}
+
+.form-field {
+    margin-bottom: var(--space-md);
+}
+
+.form-label {
+    display: block;
+    margin-bottom: var(--space-sm);
+}
+
+.form-actions {
+    margin-top: var(--space-sm);
+}
+
+/* Login Section */
+.page {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.login-card {
+    background-color: var(--color-bg);
+    margin-bottom: var(--space-xl);
+    border: none;
+    padding: var(--space-xl);
+}
+
+.login-content {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.login-title {
+    color: var(--color-text);
+    margin-bottom: var(--space-sm);
+    font-weight: bold;
+    font-size: 32px;
+}
+
+/* Page content (white area under the header) */
+.page-content {
+    background-color: var(--color-surface);
+    padding: var(--space-xl);
+}
+
+.section-label {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 var(--space-sm);
+}
+
+/* A row of buttons and links under a form or table */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
+}
+
+/* Lets a link look like a button */
+a.btn {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.error-message p,
+.error-message ul {
+    margin: 0;
+}
+
+/* Course table */
+.table-scroll {
+    overflow-x: auto;
+}
+
+.course-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.course-table th {
+    background-color: var(--color-bg);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.course-table th,
+.course-table td {
+    padding: var(--space-sm) 12px;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.course-table .number {
+    text-align: right;
+}
+
+.muted {
+    color: var(--color-text-muted);
+}
