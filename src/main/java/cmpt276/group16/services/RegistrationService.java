@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RegistrationService {
 
     // Entry years we support (the 2023 and 2024 cohorts);
-    public static final List<Integer> COHORT_YEARS = List.of(2023, 2024);
+    public static final List<Integer> COHORT_YEARS = StudentProfile.SUPPORTED_COHORT_YEARS;
 
     // At least 8 characters; BCrypt only uses the first 72 bytes, so longer passwords are rejected
     public static final int MIN_PASSWORD_LENGTH = 8;
