@@ -98,4 +98,15 @@ class StudentProfileRepositoryTest {
         assertThatThrownBy(() -> new StudentProfile(student, Program.COMPUTING_SCIENCE, year))
             .isInstanceOf(IllegalArgumentException.class);
     }
+
+    // Changing the year later uses the same check as the constructor
+    @ParameterizedTest
+    @ValueSource(ints = {2022, 2025})
+    void setCohortYearRejectsUnsupportedYears(int year) {
+        StudentProfile profile = new StudentProfile(saveStudent(), Program.COMPUTING_SCIENCE, 2024);
+
+        assertThatThrownBy(() -> profile.setCohortYear(year))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThat(profile.getCohortYear()).isEqualTo(2024);
+    }
 }
