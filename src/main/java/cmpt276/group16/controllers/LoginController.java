@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpSession;
 
 import java.util.*;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,11 +24,14 @@ public class LoginController {
     // Error message for both "unknown email" and "wrong password"
     private static final String LOGIN_ERROR = "Invalid email or password.";
 
-    @Autowired 
-    private UserRepository repo;
+    private final UserRepository repo;
 
-    @Autowired 
-    private PasswordEncoder encoder;
+    private final PasswordEncoder encoder;
+
+    public LoginController(UserRepository repo, PasswordEncoder encoder) {
+        this.repo = repo;
+        this.encoder = encoder;
+    }
 
     /** GET / : redirects to the login page. */
     @GetMapping("/")
@@ -109,12 +111,20 @@ public class LoginController {
         return "login/login";
     }
 
+    /** 
+     * Returns the home page path for a role, e.g. "/student/home". 
+     * Used by AuthInterceptor's sendRedirect. 
+     */
+    public static String homePath(Role role) {
+        return switch (role) {
+            case STUDENT -> "/student/home";
+            case ADVISOR -> "/advisor/home";
+            case IT_MANAGER -> "/it/home";
+        };
+    }
+
     /** Returns the redirect to the home page for a role. */
     public static String homeFor(Role role) {
-        return switch (role) {
-            case STUDENT -> "redirect:/student/home";
-            case ADVISOR -> "redirect:/advisor/home";
-            case IT_MANAGER -> "redirect:/it/home";
-        };
+        return "redirect:" + homePath(role);
     }
 }
