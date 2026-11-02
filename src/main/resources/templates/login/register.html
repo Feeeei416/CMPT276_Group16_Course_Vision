@@ -19,29 +19,29 @@
                     <!-- Email -->
                     <div class="form-field">
                         <label for="email" class="form-label">Email</label>
-                        <input type="email" class="input" id="email" name="email" autocomplete="email" required maxlength="255" th:value="${form['email']}"> 
+                        <input type="email" class="input" id="email" name="email" autocomplete="email" maxlength="255" th:value="${form['email']}" required> 
                     </div>
                     <!-- Display Name -->
                     <div class="form-field">
                         <label for="displayName" class="form-label">Display Name</label>
-                        <input type="text" class="input" id="displayName" name="displayName" required maxlength="255" th:value="${form['displayName']}">
+                        <input type="text" class="input" id="displayName" name="displayName" maxlength="255" th:value="${form['displayName']}" required>
                     </div>
                     <!-- Password -->
                     <div class="form-field">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" class="input" id="password" name="password" autocomplete="new-password" required minlength="8">
+                        <input type="password" class="input" id="password" name="password" autocomplete="new-password" minlength="8" required>
                     </div>
 
                     <!-- Confirm Password -->
                     <div class="form-field">
                         <label for="confirmPassword" class="form-label">Confirm Password</label>
-                        <input type="password" class="input" id="confirmPassword" name="confirmPassword" autocomplete="new-password">
+                        <input type="password" class="input" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
                     </div>
 
                     <!-- Program -->
                     <div class="form-field">
                         <label for="program" class="form-label">Program</label>
-                        <select name="program" id="program" class="input">
+                        <select name="program" id="program" class="input" required>
                             <option value="">-- Choose --</option>
                             <option th:each="p : ${programs}"
                                     th:value="${p.name()}"
@@ -53,7 +53,7 @@
                     <!-- Entry Year -->
                     <div class="form-field">
                         <label for="cohortYear" class="form-label">Entry Year</label>
-                        <select name="cohortYear" id="cohortYear" class="input">
+                        <select name="cohortYear" id="cohortYear" class="input" required>
                             <option value="">-- Choose --</option>
                             <option th:each="y : ${cohortYears}"
                                     th:value="${y}"
