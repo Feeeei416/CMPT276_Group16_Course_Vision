@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>Register</title>
+</head>
+<body>
+    <main class="page">
+        <div class="login-card">
+            <div class="login-content">
+                <h1 class="login-title">Register</h1>
+                <form th:action="@{/register}" method="post">
+                    <!-- Error -->
+                     <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+                        <div th:each="e : ${errors}" th:text="${e}"></div>
+                    </div>
+                    <!-- Email -->
+                    <div class="form-field">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="input" id="email" name="email" autocomplete="email" th:value="${form['email']}"> 
+                    </div>
+                    <!-- Display Name -->
+                    <div class="form-field">
+                        <label for="displayName" class="form-label">Display Name</label>
+                        <input type="text" class="input" id="displayName" name="displayName" th:value="${form['displayName']}">
+                    </div>
+                    <!-- Password -->
+                    <div class="form-field">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="input" id="password" name="password" autocomplete="new-password">
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="form-field">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <input type="password" class="input" id="confirmPassword" name="confirmPassword" autocomplete="new-password">
+                    </div>
+
+                    <!-- Program -->
+                    <div class="form-field">
+                        <label for="program" class="form-label">Program</label>
+                        <select name="program" id="program" class="input">
+                            <option value="">-- Choose --</option>
+                            <option th:each="p : ${programs}"
+                                    th:value="${p.name()}"
+                                    th:text="${p.showName}"
+                                    th:selected="${form['program'] == p.name()}"></option>
+                        </select>
+                    </div>
+
+                    <!-- Entry Year -->
+                    <div class="form-field">
+                        <label for="cohortYear" class="form-label">Entry Year</label>
+                        <select name="cohortYear" id="cohortYear" class="input">
+                            <option value="">-- Choose --</option>
+                            <option th:each="y : ${cohortYears}"
+                                    th:value="${y}"
+                                    th:text="${y}"
+                                    th:selected="${form['cohortYear'] == y.toString()}"></option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Sign up</button>
+                    </div>
+                </form>
+                <div class="form-actions">
+                        <a th:href="@{/login}" class="link">Cancel</a>
+                </div>
+            </div>    
+        </div>
+    </main>
+</body>
+</html>
