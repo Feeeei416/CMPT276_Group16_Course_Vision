@@ -73,6 +73,16 @@ public class RegistrationServiceTest {
     }
 
     @Test
+    void emailOver255Characters_isRejected() {
+        Map<String, String> form = validForm();
+        form.put("email", "a".repeat(250)+ "@test.com");
+
+        List<String> errors = registrationService.validate(form);
+
+        assertTrue(errors.contains("Email must be at most 255 characters."));
+    }
+
+    @Test
     void emailWithoutDotAfterAt_isRejected() {
         Map<String, String> form = validForm();
         form.put("email", "newstudent@test");
@@ -124,7 +134,7 @@ public class RegistrationServiceTest {
 
         List<String> errors = registrationService.validate(form);
 
-        assertTrue(errors.contains("Password must be 8 to 72 characters."));
+        assertTrue(errors.contains("Password must be at least 8 characters.")); 
     }
 
     @Test
@@ -136,7 +146,7 @@ public class RegistrationServiceTest {
 
         List<String> errors = registrationService.validate(form);
 
-        assertTrue(errors.contains("Password must be 8 to 72 characters."));
+        assertTrue(errors.contains("Password is too long (at most 72 characters, fewer if it uses accented or non-English letters)."));
     }
 
     @Test

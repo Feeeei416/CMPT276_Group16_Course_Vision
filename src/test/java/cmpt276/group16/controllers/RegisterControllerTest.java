@@ -125,27 +125,25 @@ public class RegisterControllerTest {
                .andExpect(model().attribute("form", not(hasKey("password"))));
     }
 
-    // #6 POST /register ignores a role sent in the form: only students can register
+    // #6 POST /register when already logged in does not register anyone and sends the user home
     @Test
-    void postRegister_withRoleParam_stillRegistersStudent() throws Exception {
-        when(registrationService.validate(any())).thenReturn(List.of());
-        User student = new User("newstudent@test.com", "hash", "New Student", Role.STUDENT);
-        when(registrationService.createUserAndStudentProfile(anyString(), anyString(), anyString(), any(), anyInt())).thenReturn(student);
+    void postRegister_whenLoggedIn_redirectsWithoutRegistering() throws Exception {
+        User advisor = new User("advisor@test.com", "hash", "Test Advisor", Role.ADVISOR);
 
         mockMvc.perform(post("/register")
+                        .sessionAttr(LoginController.SESSION_USER, advisor)
                         .param("email", "newstudent@test.com")
                         .param("displayName", "New Student")
                         .param("password", "password123")
                         .param("confirmPassword", "password123")
                         .param("program", "COMPUTING_SCIENCE")
-                        .param("cohortYear", "2024")
-                        .param("role", "IT_MANAGER"))
-               .andExpect(status().is3xxRedirection())
-               .andExpect(redirectedUrl("/student/home"))
-               .andExpect(request().sessionAttribute(LoginController.SESSION_USER, student));
+                        .param("cohortYear", "2024"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/advisor/home"))
+            .andExpect(request().sessionAttribute(LoginController.SESSION_USER, advisor));
 
-        // The save method has no role parameter; RegistrationService always uses Role.STUDENT
-        verify(registrationService).createUserAndStudentProfile(
-                "newstudent@test.com", "New Student", "password123", Program.COMPUTING_SCIENCE, 2024);
+        verify(registrationService, never()).validate(any());
+        verify(registrationService, never())
+                .createUserAndStudentProfile(anyString(), anyString(), anyString(), any(), anyInt());
     }
 }

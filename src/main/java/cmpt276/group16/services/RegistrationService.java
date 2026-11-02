@@ -48,6 +48,9 @@ public class RegistrationService {
         if (email.isEmpty()){
             errors.add("Email is required.");
         }
+        else if (email.length() > 255) {
+            errors.add("Email must be at most 255 characters.");
+        }
         else if (!EMAIL_PATTERN.matcher(email).matches()){
             errors.add("Email format is not valid.");
         }
@@ -73,9 +76,11 @@ public class RegistrationService {
         if (password.isEmpty()) {
             errors.add("Password is required.");
         } else {
-            if (password.length() < MIN_PASSWORD_LENGTH
-                    || password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
-                errors.add("Password must be 8 to 72 characters.");
+            if (password.length() < MIN_PASSWORD_LENGTH) {
+                errors.add("Password must be at least 8 characters.");
+            }
+            if (password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
+                errors.add("Password is too long (at most 72 characters, fewer if it uses accented or non-English letters).");
             }
             if (!password.equals(confirmPassword)) {
                 errors.add("Passwords do not match.");

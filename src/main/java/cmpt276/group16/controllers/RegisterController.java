@@ -38,6 +38,12 @@ public class RegisterController {
 
     @PostMapping("/register")
     public String register(@RequestParam Map<String, String> form, Model model, HttpServletRequest request, HttpSession session) {
+        User current = (User) session.getAttribute(LoginController.SESSION_USER);
+
+        if (current != null){
+            return LoginController.homeFor(current.getRole());
+        }
+
         List<String> errors = registrationService.validate(form);
         if (!errors.isEmpty()){
             return showRegisterForm(model, errors, form);
