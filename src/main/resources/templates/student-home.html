@@ -21,6 +21,7 @@
 
                 <section>
                     <h2 class="label">Your courses</h2>
+                    <p><a class="button" th:href="@{/student/courses}">View My Courses</a></p>
                     <p th:if="${courses.isEmpty()}">No courses yet. Upload your transcript to add them.</p>
                     <th:block th:unless="${courses.isEmpty()}">
                         <div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
