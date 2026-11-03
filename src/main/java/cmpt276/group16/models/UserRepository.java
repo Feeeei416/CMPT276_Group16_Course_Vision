@@ -1,6 +1,8 @@
 package cmpt276.group16.models;
 
+import java.util.List;
 import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -21,5 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         return existsByEmail(User.normalizeEmail(email));
     }
 
-}
+    // Every account, grouped by role and then sorted by name, for the IT manager home page
+    List<User> findAllByOrderByRoleAscDisplayNameAsc();
 
+}
