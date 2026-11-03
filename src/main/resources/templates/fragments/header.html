@@ -10,7 +10,7 @@
     <header th:fragment="header" class="site-header">
         <span class="site-title">Course Vision</span>
         <div class="nav-actions">
-            <a href="#" class="link">Profile</a>
+            <a th:href="@{/profile}" class="link">Profile</a>
             <form method="post" th:action="@{/logout}" >
                 <button type="submit" class="btn btn-secondary">Sign out</button>
             </form>

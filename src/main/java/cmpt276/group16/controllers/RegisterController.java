@@ -80,6 +80,7 @@ public class RegisterController {
         model.addAttribute("form", safeForm);
         model.addAttribute("programs", Program.values());
         model.addAttribute("cohortYears", RegistrationService.COHORT_YEARS);
+        model.addAttribute("minPasswordLength", PasswordRules.MIN_LENGTH);
         return "login/register";
     }
 }

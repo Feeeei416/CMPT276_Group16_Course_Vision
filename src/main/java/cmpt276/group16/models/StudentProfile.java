@@ -34,11 +34,24 @@ public class StudentProfile {
         if (user.getRole() != Role.STUDENT) {
             throw new IllegalArgumentException("Only students can have student profile");
         }
+        checkCohortYear(cohortYear);
+        this.user = user;
+        this.program = program;
+        this.cohortYear = cohortYear;
+    }
+
+    private static void checkCohortYear(int cohortYear) {
         if (!SUPPORTED_COHORT_YEARS.contains(cohortYear)) {
             throw new IllegalArgumentException("Unsupported cohort year:" + cohortYear);
         }
-        this.user = user;
+    }
+
+    public void setProgram(Program program) {
         this.program = program;
+    }
+
+    public void setCohortYear(int cohortYear) {
+        checkCohortYear(cohortYear);
         this.cohortYear = cohortYear;
     }
 

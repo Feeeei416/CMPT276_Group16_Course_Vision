@@ -2,7 +2,6 @@ package cmpt276.group16.services;
 
 import cmpt276.group16.models.*;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -15,10 +14,6 @@ public class RegistrationService {
 
     // Entry years we support (the 2023 and 2024 cohorts);
     public static final List<Integer> COHORT_YEARS = StudentProfile.SUPPORTED_COHORT_YEARS;
-
-    // At least 8 characters; BCrypt only uses the first 72 bytes, so longer passwords are rejected
-    public static final int MIN_PASSWORD_LENGTH = 8;
-    public static final int MAX_PASSWORD_BYTES = 72;
 
     // Simple check: something@something.something with no spaces
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
@@ -76,12 +71,8 @@ public class RegistrationService {
         if (password.isEmpty()) {
             errors.add("Password is required.");
         } else {
-            if (password.length() < MIN_PASSWORD_LENGTH) {
-                errors.add("Password must be at least 8 characters.");
-            }
-            if (password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
-                errors.add("Password is too long (at most 72 characters, fewer if it uses accented or non-English letters).");
-            }
+            // Length rules live in PasswordRules, so the profile page uses the same ones
+            errors.addAll(PasswordRules.problems(password));
             if (!password.equals(confirmPassword)) {
                 errors.add("Passwords do not match.");
             }

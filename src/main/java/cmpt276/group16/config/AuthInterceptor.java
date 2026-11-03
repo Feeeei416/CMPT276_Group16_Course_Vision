@@ -10,7 +10,7 @@ import jakarta.servlet.http.HttpSession;
 
 /**
  * Checks login and role before a request reaches a controller.
- * Registered in WebConfig for /student/**, /advisor/** and /it/**.
+ * Registered in WebConfig for /student/**, /advisor/**, /it/** and /profile.
  */
 public class AuthInterceptor implements HandlerInterceptor {
 
@@ -43,9 +43,13 @@ public class AuthInterceptor implements HandlerInterceptor {
             case IT_MANAGER -> "/it/";
         };
 
+        // Every role has a profile page, so /profile is open to anyone logged in
+        String path = request.getRequestURI();
+        boolean profilePage = path.equals("/profile") || path.startsWith("/profile/");
+
         // Logged in, but the URL belongs to another role:
         // send them straight to their own home page.
-        if (!request.getRequestURI().startsWith(prefix)) {
+        if (!profilePage && !path.startsWith(prefix)) {
             response.sendRedirect(prefix + "home");
             return false;
         }
