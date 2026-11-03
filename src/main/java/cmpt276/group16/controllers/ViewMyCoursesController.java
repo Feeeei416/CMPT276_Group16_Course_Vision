@@ -35,7 +35,7 @@ public class ViewMyCoursesController {
         List<TranscriptCourse> courses = transcriptCourseRepository.findByStudentOrderByIdAsc(student.get());
         Map<String, List<TranscriptCourse>> coursesByTerm = courses.stream().collect(Collectors.groupingBy(TranscriptCourse::getTerm, LinkedHashMap::new, Collectors.toList()));
         model.addAttribute("coursesByTerm", coursesByTerm);
-        return "view-my-courses";
+        return "student/view-courses";
     }
 }
 

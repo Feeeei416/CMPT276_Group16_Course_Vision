@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+    <html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" th:href="@{/css/main.css}">
+        <title>My courses</title>
+    </head>
+    <body class="page">
+        <header th:replace="~{fragments/header :: header}"></header>
+        <main class="page-content">
+            <h1 class="page-title">My courses</h1>
+            <p th:if="${coursesByTerm.isEmpty()}">You don't have any saved courses yet.
+                <a th:href="@{/student/transcript}" class="link">Upload your transcript</a> to add them.</p>
+            <section th:each="entry : ${coursesByTerm}">
+                <h2 class="section-label" th:text="${entry.key}">2025 Fall</h2>
+                <div th:replace="~{fragments/course-table :: courseTable(${entry.value})}"></div>
+            </section>
+        </main>
+    </body>
+    </html>

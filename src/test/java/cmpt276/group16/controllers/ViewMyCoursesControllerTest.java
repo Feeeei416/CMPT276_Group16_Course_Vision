@@ -46,7 +46,7 @@ class ViewMyCoursesControllerTest {
 
     private MockHttpSession sessionFor(User user) {
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute(CurrentStudent.SESSION_USER, user);
+        session.setAttribute(LoginController.SESSION_USER, user);
         return session;
     }
 
@@ -72,7 +72,7 @@ class ViewMyCoursesControllerTest {
     void advisorsCantSeeMyCourses() throws Exception {
         User advisor = userRepository.save(new User("test.advisor@example.com", "hash", "Advisor", Role.ADVISOR));
         mockMvc.perform(get("/student/courses").session(sessionFor(advisor)))
-        .andExpect(redirectedUrl("/login"));
+        .andExpect(redirectedUrl("/advisor/home"));
     }
 
     @Test 
@@ -86,9 +86,9 @@ class ViewMyCoursesControllerTest {
         String page = mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser()))).andReturn()
         .getResponse().getContentAsString();
 
-        assertThat(page).containsSubsequence("<h2 class=\"label\">2025 Fall</h2>", "<h2 class=\"label\">2026 Spring</h2>");
+        assertThat(page).containsSubsequence("<h2 class=\"section-label\">2025 Fall</h2>", "<h2 class=\"section-label\">2026 Spring</h2>");
 
-        assertThat(CourseTableRows.in(page)).containsExactly(
+        assertThat(CourseTableRows.tableRows(page)).containsExactly(
             List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
             List.of("2025 Fall", "MATH", "151", "Calculus I", "3.00", "B+"),
             List.of("2026 Spring", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
@@ -108,6 +108,8 @@ class ViewMyCoursesControllerTest {
     @Test
     void homeLinksToMyCourses() throws Exception {
         StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-")));
         mockMvc.perform(get("/student/home").session(sessionFor(student.getUser())))
         .andExpect(content().string(containsString("href=\"/student/courses\"")));
     }
