@@ -19,6 +19,10 @@ import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.services.RegistrationService;
 import jakarta.servlet.http.HttpSession;
 
+import java.nio.charset.StandardCharsets;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+
 // Lets any logged-in user view and edit their own profile.
 // AuthInterceptor runs first, so there is always a logged-in user here
 @Controller
@@ -26,15 +30,17 @@ public class ProfileController {
 
     private final UserRepository userRepository;
     private final StudentProfileRepository studentProfileRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public ProfileController(UserRepository userRepository, StudentProfileRepository studentProfileRepository) {
+    public ProfileController(UserRepository userRepository, StudentProfileRepository studentProfileRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.studentProfileRepository = studentProfileRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("/profile")
     public String showProfile(HttpSession session, Model model) {
-        return showProfilePage(model, currentUser(session), List.of());
+        return showProfilePage(model, currentUser(session), List.of(), List.of());
     }
 
     // Only these three fields are read, so email and role can't be changed by editing the form
@@ -66,7 +72,7 @@ public class ProfileController {
 
         // Nothing is saved unless every field is valid
         if (!errors.isEmpty()) {
-            return showProfilePage(model, user, errors);
+            return showProfilePage(model, user, errors, List.of());
         }
 
         user.setDisplayName(newName);
@@ -84,13 +90,49 @@ public class ProfileController {
         return "redirect:/profile";
     }
 
+    // Passwords aren't trimmed, since spaces can be part of a password
+    @PostMapping("/profile/password")
+    public String changePassword(@RequestParam(defaultValue = "") String currentPassword,
+                                 @RequestParam(defaultValue = "") String newPassword,
+                                 @RequestParam(defaultValue = "") String confirmPassword,
+                                 HttpSession session, Model model, RedirectAttributes redirectAttributes) {
+        User user = currentUser(session);
+        List<String> errors = new ArrayList<>();
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            errors.add("Current password is incorrect.");
+        }
+        // Same length rules as registration
+        if (newPassword.length() < RegistrationService.MIN_PASSWORD_LENGTH) {
+            errors.add("New password must be at least " + RegistrationService.MIN_PASSWORD_LENGTH + " characters.");
+        } else if (newPassword.getBytes(StandardCharsets.UTF_8).length > RegistrationService.MAX_PASSWORD_BYTES) {
+            errors.add("New password is too long (at most 72 characters, fewer if it uses accented or non-English letters).");
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            errors.add("New passwords do not match.");
+        }
+
+        // The old password keeps working unless every check passes
+        if (!errors.isEmpty()) {
+            return showProfilePage(model, user, List.of(), errors);
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        session.setAttribute(LoginController.SESSION_USER, user);
+
+        redirectAttributes.addFlashAttribute("message", "Your password was changed.");
+        return "redirect:/profile";
+    }
+
     // Loads the user from the database, since the session copy can be out of date
     private User currentUser(HttpSession session) {
         User sessionUser = (User) session.getAttribute(LoginController.SESSION_USER);
         return userRepository.findById(sessionUser.getId()).orElseThrow();
     }
 
-    private String showProfilePage(Model model, User user, List<String> errors) {
+    // errors belong to the details form and passwordErrors to the password form, so each shows next to its own form
+    private String showProfilePage(Model model, User user, List<String> errors, List<String> passwordErrors) {
         model.addAttribute("user", user);
         model.addAttribute("roleName", roleName(user.getRole()));
         model.addAttribute("homePath", LoginController.homePath(user.getRole()));
@@ -98,6 +140,7 @@ public class ProfileController {
         model.addAttribute("programs", Program.values());
         model.addAttribute("cohortYears", StudentProfile.SUPPORTED_COHORT_YEARS);
         model.addAttribute("errors", errors);
+        model.addAttribute("passwordErrors", passwordErrors);
         return "profile/profile";
     }
 

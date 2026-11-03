@@ -15,12 +15,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +52,9 @@ class ProfileControllerTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     private User saveUser(String email, Role role) {
         return userRepository.save(new User(email, "hash", "Original Name", role));
@@ -192,5 +197,60 @@ class ProfileControllerTest {
         User saved = userRepository.findById(advisor.getId()).orElseThrow();
         assertThat(saved.getEmail()).isEqualTo("advisor@example.com");
         assertThat(saved.getRole()).isEqualTo(Role.ADVISOR);
+    }
+
+    // -- Password change --
+
+    private User saveUserWithPassword(String password) {
+        return userRepository.save(new User("advisor@example.com", passwordEncoder.encode(password), "Original Name", Role.ADVISOR));
+    }
+
+    private String savedPasswordHash(User user) {
+        reloadFromDatabase();
+        return userRepository.findById(user.getId()).orElseThrow().getPasswordHash();
+    }
+
+    @Test
+    void signedOutVisitorCantChangePassword() throws Exception {
+        mockMvc.perform(post("/profile/password"))
+               .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void changesPasswordWhenCurrentOneIsRight() throws Exception {
+        User advisor = saveUserWithPassword("old-password");
+
+        mockMvc.perform(post("/profile/password").session(sessionFor(advisor))
+                        .param("currentPassword", "old-password")
+                        .param("newPassword", "new-password")
+                        .param("confirmPassword", "new-password"))
+               .andExpect(redirectedUrl("/profile"))
+               .andExpect(flash().attribute("message", "Your password was changed."));
+
+        String hash = savedPasswordHash(advisor);
+        assertThat(hash).isNotEqualTo("new-password");
+        assertThat(passwordEncoder.matches("new-password", hash)).isTrue();
+        assertThat(passwordEncoder.matches("old-password", hash)).isFalse();
+    }
+
+    // Each row is one bad form: it shows its own error and the old password still works
+    @ParameterizedTest
+    @CsvSource({
+        "wrong-password, new-password, new-password,   Current password is incorrect.",
+        "old-password,   new-password, other-password, New passwords do not match.",
+        "old-password,   short,        short,          New password must be at least 8 characters."
+    })
+    void badPasswordFormShowsErrorAndChangesNothing(String current, String newPassword, String confirm,
+                                                    String error) throws Exception {
+        User advisor = saveUserWithPassword("old-password");
+
+        mockMvc.perform(post("/profile/password").session(sessionFor(advisor))
+                        .param("currentPassword", current)
+                        .param("newPassword", newPassword)
+                        .param("confirmPassword", confirm))
+               .andExpect(status().isOk())
+               .andExpect(model().attribute("passwordErrors", contains(error)));
+
+        assertThat(passwordEncoder.matches("old-password", savedPasswordHash(advisor))).isTrue();
     }
 }
