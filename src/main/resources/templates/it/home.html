@@ -9,9 +9,7 @@
   <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-      <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}">
-        Welcome
-      </h1>
+      <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}"></h1>
       <section>
         <h2 class="section-label">All accounts</h2>
         <p
@@ -36,6 +34,9 @@
                   <span th:case="'STUDENT'">Student</span>
                   <span th:case="'ADVISOR'">Advisor</span>
                   <span th:case="'IT_MANAGER'">IT manager</span>
+                  <span th:case="*" th:text="${account.role.name()}"
+                    >Other</span
+                  >
                 </td>
               </tr>
             </tbody>

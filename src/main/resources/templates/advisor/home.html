@@ -9,9 +9,7 @@
   <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-      <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}">
-        Welcome
-      </h1>
+      <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}"></h1>
       <section>
         <h2 class="section-label">Your students</h2>
         <p th:if="${students.isEmpty()}">
@@ -31,12 +29,7 @@
               <tr th:each="student : ${students}">
                 <td th:text="${student.user.displayName}">Priya</td>
                 <td th:text="${student.user.email}">priya@example.com</td>
-                <td th:switch="${student.program.name()}">
-                  <span th:case="'COMPUTING_SCIENCE'">Computing Science</span>
-                  <span th:case="'COMPUTER_ENGINEERING'"
-                    >Computer Engineering</span
-                  >
-                </td>
+                <td th:text="${student.program.showName}">Computing Science</td>
                 <td th:text="${student.cohortYear}">2024</td>
               </tr>
             </tbody>
