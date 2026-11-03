@@ -16,10 +16,10 @@ import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
+import cmpt276.group16.services.PasswordRules;
 import cmpt276.group16.services.RegistrationService;
 import jakarta.servlet.http.HttpSession;
 
-import java.nio.charset.StandardCharsets;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 
@@ -102,12 +102,8 @@ public class ProfileController {
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             errors.add("Current password is incorrect.");
         }
-        // Same length rules as registration
-        if (newPassword.length() < RegistrationService.MIN_PASSWORD_LENGTH) {
-            errors.add("New password must be at least " + RegistrationService.MIN_PASSWORD_LENGTH + " characters.");
-        } else if (newPassword.getBytes(StandardCharsets.UTF_8).length > RegistrationService.MAX_PASSWORD_BYTES) {
-            errors.add("New password is too long (at most 72 characters, fewer if it uses accented or non-English letters).");
-        }
+        // The same rules registration uses, so the two can't drift apart
+        errors.addAll(PasswordRules.problems(newPassword));
         if (!newPassword.equals(confirmPassword)) {
             errors.add("New passwords do not match.");
         }
@@ -141,6 +137,7 @@ public class ProfileController {
         model.addAttribute("cohortYears", StudentProfile.SUPPORTED_COHORT_YEARS);
         model.addAttribute("errors", errors);
         model.addAttribute("passwordErrors", passwordErrors);
+        model.addAttribute("minPasswordLength", PasswordRules.MIN_LENGTH);
         return "profile/profile";
     }
 

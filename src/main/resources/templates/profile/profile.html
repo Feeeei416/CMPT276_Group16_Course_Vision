@@ -73,7 +73,7 @@
                 </div>
                 <div class="form-field">
                     <label for="newPassword" class="form-label">New Password</label>
-                    <input type="password" class="input" id="newPassword" name="newPassword" autocomplete="new-password" minlength="8" required>
+                    <input type="password" class="input" id="newPassword" name="newPassword" autocomplete="new-password" th:minlength="${minPasswordLength}" required>
                 </div>
                 <div class="form-field">
                     <label for="confirmPassword" class="form-label">Confirm New Password</label>

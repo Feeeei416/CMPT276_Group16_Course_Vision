@@ -29,7 +29,7 @@
                     <!-- Password -->
                     <div class="form-field">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" class="input" id="password" name="password" autocomplete="new-password" minlength="8" required>
+                        <input type="password" class="input" id="password" name="password" autocomplete="new-password" th:minlength="${minPasswordLength}" required>
                     </div>
 
                     <!-- Confirm Password -->

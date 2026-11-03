@@ -32,6 +32,7 @@ import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
+import cmpt276.group16.services.PasswordRules;
 import jakarta.persistence.EntityManager;
 
 // Uses the whole app, so AuthInterceptor and the real database are part of every test.
@@ -97,6 +98,15 @@ class ProfileControllerTest {
                .andExpect(status().isOk())
                .andExpect(view().name("profile/profile"))
                .andExpect(content().string(containsString("someone@example.com")));
+    }
+
+    // The browser's length check uses the same minimum as the server
+    @Test
+    void newPasswordFieldUsesSharedMinimumLength() throws Exception {
+        User advisor = saveUser("advisor@example.com", Role.ADVISOR);
+
+        mockMvc.perform(get("/profile").session(sessionFor(advisor)))
+               .andExpect(content().string(containsString("minlength=\"" + PasswordRules.MIN_LENGTH + "\"")));
     }
 
     // The Profile link in the shared header points to this page
@@ -238,7 +248,7 @@ class ProfileControllerTest {
     @CsvSource({
         "wrong-password, new-password, new-password,   Current password is incorrect.",
         "old-password,   new-password, other-password, New passwords do not match.",
-        "old-password,   short,        short,          New password must be at least 8 characters."
+        "old-password,   short,        short,          Password must be at least 8 characters."
     })
     void badPasswordFormShowsErrorAndChangesNothing(String current, String newPassword, String confirm,
                                                     String error) throws Exception {
