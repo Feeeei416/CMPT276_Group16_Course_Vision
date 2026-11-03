@@ -243,3 +243,23 @@ a.btn {
 .muted {
     color: var(--color-text-muted);
 }
+
+/* A section that opens and closes, like Change password on the profile page */
+.collapsible {
+    margin-top: var(--space-xl);
+}
+
+.collapsible summary {
+    display: inline-flex;
+    align-items: center;
+    list-style: none;
+}
+
+/* Hides the default triangle in Safari */
+.collapsible summary::-webkit-details-marker {
+    display: none;
+}
+
+.collapsible[open] summary {
+    margin-bottom: var(--space-md);
+}

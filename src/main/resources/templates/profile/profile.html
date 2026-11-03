@@ -54,33 +54,36 @@
                 </div>
             </th:block>
 
-            <div class="form-actions">
+            <div class="actions">
                 <button type="submit" class="btn btn-primary">Save</button>
                 <a th:href="@{${homePath}}" class="link">Back to home</a>
             </div>
         </form>
 
-        <h2 class="section-label">Change password</h2>
-        <div class="error-message" th:if="${!passwordErrors.isEmpty()}" role="alert">
-            <div th:each="e : ${passwordErrors}" th:text="${e}"></div>
-        </div>
-        <form th:action="@{/profile/password}" method="post">
-            <div class="form-field">
-                <label for="currentPassword" class="form-label">Current Password</label>
-                <input type="password" class="input" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+        <!-- Collapsed until clicked; opens by itself when there are password errors to show -->
+        <details class="collapsible" th:open="${!passwordErrors.isEmpty()}">
+            <summary class="btn btn-secondary">Change password</summary>
+            <div class="error-message" th:if="${!passwordErrors.isEmpty()}" role="alert">
+                <div th:each="e : ${passwordErrors}" th:text="${e}"></div>
             </div>
-            <div class="form-field">
-                <label for="newPassword" class="form-label">New Password</label>
-                <input type="password" class="input" id="newPassword" name="newPassword" autocomplete="new-password" minlength="8" required>
-            </div>
-            <div class="form-field">
-                <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                <input type="password" class="input" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Change password</button>
-            </div>
-        </form>
+            <form th:action="@{/profile/password}" method="post">
+                <div class="form-field">
+                    <label for="currentPassword" class="form-label">Current Password</label>
+                    <input type="password" class="input" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+                </div>
+                <div class="form-field">
+                    <label for="newPassword" class="form-label">New Password</label>
+                    <input type="password" class="input" id="newPassword" name="newPassword" autocomplete="new-password" minlength="8" required>
+                </div>
+                <div class="form-field">
+                    <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                    <input type="password" class="input" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Change password</button>
+                </div>
+            </form>
+        </details>
     </main>
 </body>
 </html>
