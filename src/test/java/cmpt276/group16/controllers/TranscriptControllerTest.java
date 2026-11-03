@@ -126,7 +126,7 @@ class TranscriptControllerTest {
                 .andExpect(content().string(containsString("We found " + SAMPLE_ROWS.size() + " courses.")))
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(CourseTableRows.in(page)).isEqualTo(SAMPLE_ROWS);
+        assertThat(CourseTableRows.tableRows(page)).isEqualTo(SAMPLE_ROWS);
         assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student)).isEmpty();
         assertThat(session.getAttribute(TranscriptController.PENDING_COURSES)).isNotNull();
     }
@@ -287,7 +287,7 @@ class TranscriptControllerTest {
                 .andExpect(content().string(containsString("<li>CMPT 307 Data Structures 3.00</li>")))
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(CourseTableRows.in(page)).extracting(row -> row.get(2)).containsExactly("120");
+        assertThat(CourseTableRows.tableRows(page)).extracting(row -> row.get(2)).containsExactly("120");
     }
 
     @Test

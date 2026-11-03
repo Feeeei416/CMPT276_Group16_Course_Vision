@@ -103,7 +103,7 @@ class StudentHomeControllerTest {
         String page = mockMvc.perform(get("/student/home").session(sessionFor(student.getUser())))
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(CourseTableRows.in(page)).containsExactly(
+        assertThat(CourseTableRows.tableRows(page)).containsExactly(
                 List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
                 List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
     }
