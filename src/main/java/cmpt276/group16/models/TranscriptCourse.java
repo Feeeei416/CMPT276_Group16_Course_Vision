@@ -10,7 +10,7 @@ import jakarta.persistence.*;
 @Table(name = "transcript_courses")
 public class TranscriptCourse {
 
-    // Where a row came from, which confirms a new transcript only replaces TRANSCRIPT rows
+    // Where a row came from. Confirming a new transcript only replaces TRANSCRIPT rows
     public enum Source {
         TRANSCRIPT,
         // added or edited by the student
