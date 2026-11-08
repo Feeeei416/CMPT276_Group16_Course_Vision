@@ -44,7 +44,7 @@ public class TranscriptCourse {
     @Column(nullable = false, precision = 4, scale = 2)
     private BigDecimal units;
 
-    // This is Null while the course is in progress
+    // This is Null while the course is in progress, and Grades.TRANSFER for transfer credit
     private String grade;
 
     // The default fills in rows saved before this column existed, which all came from transcripts
@@ -112,5 +112,9 @@ public class TranscriptCourse {
 
     public boolean isInProgress() {
         return grade == null;
+    }
+
+    public boolean isTransferCredit() {
+        return Grades.TRANSFER.equals(grade);
     }
 }

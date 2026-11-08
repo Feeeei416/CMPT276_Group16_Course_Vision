@@ -22,7 +22,8 @@
                         <td th:text="${course.title}">Data Structures/Programming</td>
                         <td class="number" th:text="${course.units}">3.00</td>
                         <td th:if="${course.inProgress}" class="muted">In progress</td>
-                        <td th:unless="${course.inProgress}" th:text="${course.grade}">A</td>
+                        <td th:if="${course.transferCredit}" class="muted">Transfer credit</td>
+                        <td th:unless="${course.inProgress or course.transferCredit}" th:text="${course.grade}">A</td>
                     </tr>
                 </tbody>
             </table>
