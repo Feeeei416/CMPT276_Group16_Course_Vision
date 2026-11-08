@@ -22,7 +22,7 @@ public class TranscriptService {
     // This is one transaction, so a failed save leaves the old courses in place
     @Transactional
     public void replaceCourses(StudentProfile student, List<ParsedCourse> courses) {
-        transcriptCourseRepository.deleteByStudent(student);
+        transcriptCourseRepository.deleteByStudentAndSource(student, TranscriptCourse.Source.TRANSCRIPT);
         transcriptCourseRepository.saveAll(courses.stream()
                 .map(c -> new TranscriptCourse(student, c.term(), c.subject(), c.number(),
                         c.title(), c.units(), c.grade()))

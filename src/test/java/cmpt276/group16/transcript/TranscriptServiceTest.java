@@ -116,4 +116,18 @@ class TranscriptServiceTest {
         assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(other))
                 .extracting(TranscriptCourse::getNumber).containsExactly("120");
     }
+
+    // Uploading a newer transcript should not overwrite/remove manually entered courses
+    @Test
+    void replacingKeepsManualCourses() {
+        replaceAndReload(student, List.of(GRADED, IN_PROGRESS));
+
+        transcriptCourseRepository
+                .saveAndFlush(new TranscriptCourse(student, "2025 Fall", "CMPT", "130", "Intro.Cmpt.Sci/Programming I",
+                        new BigDecimal("3.00"), "A-", TranscriptCourse.Source.MANUAL));
+
+        List<TranscriptCourse> saved = replaceAndReload(student, List.of(GRADED));
+
+        assertThat(saved).extracting(TranscriptCourse::getNumber).containsExactlyInAnyOrder("120", "130");
+    }
 }

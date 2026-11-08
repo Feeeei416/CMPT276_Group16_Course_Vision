@@ -237,6 +237,20 @@ class TranscriptControllerTest {
                 .andExpect(content().string(containsString("You already have 1 saved course. Confirming")));
     }
 
+    // #45: confirming a new transcript must not delete courses the student added by hand
+    @Test
+    void confirmingKeepsCoursesAddedByHand() throws Exception {
+        transcriptCourseRepository.save(new TranscriptCourse(student, "2024 Summer", "MATH", "100",
+                "Precalculus", new BigDecimal("3.00"), "TR", TranscriptCourse.Source.MANUAL));
+
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
+                .hasSize(TestTranscripts.SAMPLE_COURSE_COUNT + 1)
+                .extracting(TranscriptCourse::getNumber).contains("100");
+    }
+
     // e.g. the student clicks Confirm twice
     @Test
     void confirmWithNothingUploadedSavesNothing() throws Exception {
