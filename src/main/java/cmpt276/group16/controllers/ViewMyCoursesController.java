@@ -1,9 +1,9 @@
 package cmpt276.group16.controllers;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Controller;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
+import cmpt276.group16.transcript.Terms;
 import jakarta.servlet.http.HttpSession;
 
 
@@ -33,7 +34,9 @@ public class ViewMyCoursesController {
             return "redirect:/login";
         }
         List<TranscriptCourse> courses = transcriptCourseRepository.findByStudentOrderByIdAsc(student.get());
-        Map<String, List<TranscriptCourse>> coursesByTerm = courses.stream().collect(Collectors.groupingBy(TranscriptCourse::getTerm, LinkedHashMap::new, Collectors.toList()));
+        // Terms oldest first. courses within a term stay in the order they were saved
+        Map<String, List<TranscriptCourse>> coursesByTerm = courses.stream().collect(
+                Collectors.groupingBy(TranscriptCourse::getTerm, () -> new TreeMap<>(Terms.OLDEST_FIRST), Collectors.toList()));
         model.addAttribute("coursesByTerm", coursesByTerm);
         return "student/view-courses";
     }

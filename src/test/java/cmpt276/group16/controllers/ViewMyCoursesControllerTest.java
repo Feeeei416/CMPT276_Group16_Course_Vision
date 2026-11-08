@@ -94,6 +94,22 @@ class ViewMyCoursesControllerTest {
             List.of("2026 Spring", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
     }
 
+    // A course added by hand can be from a term older than the ones already saved
+    @Test
+    void termsAreShownOldestFirst() throws Exception {
+        StudentProfile student = saveStudent("bob@example.com", "Bob");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2026 Spring", "CMPT", "225", "Data Structures/Programming", new BigDecimal("3.00"), "B"),
+            new ParsedCourse("2025 Summer", "MATH", "100", "Precalculus", new BigDecimal("3.00"), "A"),
+            new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-")));
+
+        String page = mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser()))).andReturn()
+        .getResponse().getContentAsString();
+
+        assertThat(page).containsSubsequence("<h2 class=\"section-label\">2025 Summer</h2>",
+            "<h2 class=\"section-label\">2025 Fall</h2>", "<h2 class=\"section-label\">2026 Spring</h2>");
+    }
+
     @Test
     void studentsOnlySeeTheirOwnCourses() throws Exception {
         StudentProfile emma = saveStudent("emma@example.com", "Emma");
