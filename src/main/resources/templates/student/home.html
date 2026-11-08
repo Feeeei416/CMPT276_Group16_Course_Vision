@@ -24,9 +24,10 @@
 
         <section>
             <h2 class="section-label">Your courses</h2>
-            <p th:if="${courses.isEmpty()}">No courses yet. Upload your transcript to add them.</p>
+            <p th:if="${courses.isEmpty()}">No courses yet. Upload your transcript to add them, or add them by hand.</p>
+            <!-- Shown even with no courses, since My courses is where courses are added by hand -->
+            <p><a th:href="@{/student/courses}" class="btn btn-primary">View My Courses</a></p>
             <th:block th:unless="${courses.isEmpty()}">
-                <p><a th:href="@{/student/courses}" class="btn btn-primary">View My Courses</a></p>
                 <div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
             </th:block>
         </section>

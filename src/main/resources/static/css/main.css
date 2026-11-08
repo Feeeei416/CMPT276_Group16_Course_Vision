@@ -263,3 +263,14 @@ a.btn {
 .collapsible[open] summary {
     margin-bottom: var(--space-md);
 }
+
+/* Fields that sit side by side, like Year and Season on the course form */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.form-row .form-field {
+    flex: 1 1 140px;
+}
