@@ -274,3 +274,22 @@ a.btn {
 .form-row .form-field {
     flex: 1 1 140px;
 }
+
+/* Edit and Remove in each row of the My courses table */
+.row-actions {
+    display: flex;
+    gap: var(--space-md);
+}
+
+.row-actions form {
+    margin: 0;
+}
+
+/* A button that looks like a link */
+button.link {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+}

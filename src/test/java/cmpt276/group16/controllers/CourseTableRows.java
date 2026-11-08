@@ -12,7 +12,8 @@ final class CourseTableRows {
 
     private static final Pattern TABLE = Pattern.compile("<table class=\"course-table\">(.*?)</table>", Pattern.DOTALL);
     private static final Pattern BODY_ROW = Pattern.compile("<tr>\\s*(<td.*?)</tr>", Pattern.DOTALL);
-    private static final Pattern CELL = Pattern.compile("<td[^>]*>(.*?)</td>", Pattern.DOTALL);
+    // Skips the Edit/Remove cell on My courses so that rows read the same on every page
+    private static final Pattern CELL = Pattern.compile("<td(?![^>]*class=\"row-actions\")[^>]*>(.*?)</td>", Pattern.DOTALL);
 
     private CourseTableRows() {
     }

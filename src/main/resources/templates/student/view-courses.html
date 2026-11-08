@@ -19,7 +19,9 @@
             <a th:href="@{/student/transcript}" class="link">Upload your transcript</a> or add a course below.</p>
         <section th:each="entry : ${coursesByTerm}">
             <h2 class="section-label" th:text="${entry.key}"></h2>
-            <div th:replace="~{fragments/course-table :: courseTable(${entry.value})}"></div>
+            <th:block th:with="editable=true">
+                <div th:replace="~{fragments/course-table :: courseTable(${entry.value})}"></div>
+            </th:block>
         </section>
 
         <!-- Opens by itself when the form has errors to show -->

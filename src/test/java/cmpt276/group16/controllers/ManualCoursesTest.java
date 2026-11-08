@@ -2,6 +2,7 @@ package cmpt276.group16.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -34,7 +35,7 @@ import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
 
-// Adding (#45) courses on the My courses page
+// Adding (#45), editing and removing (#46) courses on the My courses page
 // Similar setup as the other controller tests: a MockHttpSession + each test's changes are rolled back
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
@@ -201,5 +202,124 @@ class ManualCoursesTest {
         User advisor = userRepository.save(new User("advisor@example.com", "hash", "Advisor", Role.ADVISOR));
         mockMvc.perform(courseForm(post("/student/courses")).session(sessionFor(advisor)))
                 .andExpect(redirectedUrl("/advisor/home"));
+    }
+
+    // Edit or remove a course in my record
+
+    @Test
+    void eachCourseHasEditAndRemove() throws Exception {
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(get("/student/courses").session(session))
+                .andExpect(content().string(containsString("href=\"/student/courses/" + course.getId() + "/edit\"")))
+                .andExpect(content().string(containsString("action=\"/student/courses/" + course.getId() + "/remove\"")))
+                .andExpect(content().string(containsString("data-confirm=\"Remove CMPT 120 (2025 Fall) from your record?\"")))
+                .andExpect(content().string(containsString("onsubmit=\"return confirm(this.dataset.confirm)\"")));
+    }
+
+    // Only My courses can change courses. The home page and transcript review show the table without them
+    @Test
+    void homePageHasNoEditButtons() throws Exception {
+        saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(get("/student/home").session(session))
+                .andExpect(content().string(not(containsString("/edit\""))));
+    }
+
+    @Test
+    void editFormStartsWithTheCoursesValues() throws Exception {
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(get("/student/courses/" + course.getId() + "/edit").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("student/edit-course"))
+                .andExpect(content().string(containsString("value=\"2025\"")))
+                .andExpect(content().string(containsString("<option value=\"Fall\" selected=\"selected\">")))
+                .andExpect(content().string(containsString("<option value=\"A-\" selected=\"selected\">")))
+                .andExpect(content().string(containsString("value=\"Some Course\"")));
+    }
+
+    // An edit is the student's fix, so it becomes MANUAL and a newer transcript won't undo it
+    @Test
+    void editingSavesTheChangesAsManual() throws Exception {
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"), "grade", "A")
+                        .session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("message", "Saved MATH 151."));
+
+        TranscriptCourse saved = transcriptCourseRepository.findById(course.getId()).orElseThrow();
+        assertThat(saved.getTerm()).isEqualTo("2024 Summer");
+        assertThat(saved.getNumber()).isEqualTo("151");
+        assertThat(saved.getGrade()).isEqualTo("A");
+        assertThat(saved.getSource()).isEqualTo(TranscriptCourse.Source.MANUAL);
+    }
+
+    // editing uses the same checks as adding
+    @Test
+    void invalidEditShowsErrorsAndChangesNothing() throws Exception {
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"), "units", "-3")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("student/edit-course"))
+                .andExpect(content().string(containsString("Units must be a number")));
+
+        TranscriptCourse unchanged = transcriptCourseRepository.findById(course.getId()).orElseThrow();
+        assertThat(unchanged.getNumber()).isEqualTo("120");
+        assertThat(unchanged.getSource()).isEqualTo(TranscriptCourse.Source.TRANSCRIPT);
+    }
+
+    @Test
+    void removeDeletesTheCourse() throws Exception {
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+        TranscriptCourse other = saveCourse(jack, "2025 Fall", "125", "B");
+
+        mockMvc.perform(post("/student/courses/" + course.getId() + "/remove").session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("message", "Removed CMPT 120 from your record."));
+
+        assertThat(coursesOf(jack)).extracting(TranscriptCourse::getId).containsExactly(other.getId());
+    }
+
+    // a student can't edit or remove another student's course, even by changing the course id in the request
+    @Test
+    void cantEditOrRemoveAnotherStudentsCourse() throws Exception {
+        StudentProfile sam = saveStudent("sam@example.com", "Sam");
+        TranscriptCourse samsCourse = saveCourse(sam, "2025 Fall", "120", "A-");
+        String base = "/student/courses/" + samsCourse.getId();
+
+        mockMvc.perform(get(base + "/edit").session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("error", EditCourseController.NOT_FOUND));
+        mockMvc.perform(courseForm(post(base + "/edit"), "grade", "F").session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("error", EditCourseController.NOT_FOUND));
+        mockMvc.perform(post(base + "/remove").session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("error", EditCourseController.NOT_FOUND));
+
+        TranscriptCourse unchanged = transcriptCourseRepository.findById(samsCourse.getId()).orElseThrow();
+        assertThat(unchanged.getGrade()).isEqualTo("A-");
+        assertThat(unchanged.getNumber()).isEqualTo("120");
+    }
+
+    // A missing course should get the same answer as someone else's so ids can't be probed
+    @Test
+    void missingCourseGetsTheSameAnswer() throws Exception {
+        mockMvc.perform(post("/student/courses/999999/remove").session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("error", EditCourseController.NOT_FOUND));
+    }
+
+    @Test
+    void editAndRemoveNeedAStudentLogin() throws Exception {
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(get("/student/courses/" + course.getId() + "/edit")).andExpect(redirectedUrl("/login"));
+        mockMvc.perform(post("/student/courses/" + course.getId() + "/remove")).andExpect(redirectedUrl("/login"));
+        assertThat(coursesOf(jack)).hasSize(1);
     }
 }

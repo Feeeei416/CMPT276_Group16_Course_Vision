@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
     <body>
-        <!-- Used by the home page (saved courses) and the review page (parsed courses) -->
+        <!-- Used by the home page (saved courses), the review page (parsed courses) and My courses.
+             My courses sets editable=true to add Edit and Remove to each row -->
         <div th:fragment="courseTable(courses)" class="table-scroll">
             <table class="course-table">
                 <thead>
@@ -12,6 +13,7 @@
                         <th>Title</th>
                         <th class="number">Units</th>
                         <th>Grade</th>
+                        <th th:if="${editable}">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,6 +26,15 @@
                         <td th:if="${course.inProgress}" class="muted">In progress</td>
                         <td th:if="${course.transferCredit}" class="muted">Transfer credit</td>
                         <td th:unless="${course.inProgress or course.transferCredit}" th:text="${course.grade}">A</td>
+                        <td th:if="${editable}" class="row-actions">
+                            <a th:href="@{/student/courses/{id}/edit(id=${course.id})}" class="link">Edit</a>
+                            <!-- The confirm text is in a data attribute, so course names never end up inside the script -->
+                            <form th:action="@{/student/courses/{id}/remove(id=${course.id})}" method="post"
+                                  th:data-confirm="|Remove ${course.subject} ${course.number} (${course.term}) from your record?|"
+                                  onsubmit="return confirm(this.dataset.confirm)">
+                                <button type="submit" class="link">Remove</button>
+                            </form>
+                        </td>
                     </tr>
                 </tbody>
             </table>

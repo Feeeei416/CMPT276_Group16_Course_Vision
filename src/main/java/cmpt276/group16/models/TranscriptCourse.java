@@ -74,6 +74,18 @@ public class TranscriptCourse {
         this.source = source;
     }
 
+    // An edited course becomes MANUAL, so a newer transcript won't undo the student's fix
+    public void editByHand(String term, String subject, String number, String title, BigDecimal units,
+            String grade) {
+        this.term = term;
+        this.subject = subject;
+        this.number = number;
+        this.title = title;
+        this.units = units;
+        this.grade = grade;
+        this.source = Source.MANUAL;
+    }
+
     public Long getId() {
         return id;
     }
