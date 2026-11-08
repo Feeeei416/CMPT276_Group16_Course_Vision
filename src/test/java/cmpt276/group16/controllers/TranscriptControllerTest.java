@@ -225,7 +225,7 @@ class TranscriptControllerTest {
 
         mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
                 .andExpect(content().string(containsString("You already have " + TestTranscripts.SAMPLE_COURSE_COUNT
-                        + " saved courses. Confirming replaces them")));
+                        + " saved courses from a transcript. Confirming replaces them")));
     }
 
     @Test
@@ -234,7 +234,17 @@ class TranscriptControllerTest {
                 "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-"));
 
         mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
-                .andExpect(content().string(containsString("You already have 1 saved course. Confirming")));
+                .andExpect(content().string(containsString("You already have 1 saved course from a transcript. Confirming")));
+    }
+
+    // Courses added by hand are kept when confirming, so they aren't part of the "replaces" count
+    @Test
+    void replaceWarningOnlyCountsTranscriptCourses() throws Exception {
+        transcriptCourseRepository.save(new TranscriptCourse(student, "2025 Fall", "CMPT", "120",
+                "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-", TranscriptCourse.Source.MANUAL));
+
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+                .andExpect(content().string(not(containsString("Confirming replaces"))));
     }
 
     // #45: confirming a new transcript must not delete courses the student added by hand

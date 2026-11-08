@@ -9,7 +9,7 @@ public interface TranscriptCourseRepository extends JpaRepository<TranscriptCour
     // In the order they were saved, which is the order they appear on the transcript
     List<TranscriptCourse> findByStudentOrderByIdAsc(StudentProfile student);
 
-    long countByStudent(StudentProfile student);
+    long countByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
 
     long deleteByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
 }

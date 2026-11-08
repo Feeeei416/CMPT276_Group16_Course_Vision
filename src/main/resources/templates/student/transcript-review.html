@@ -13,9 +13,10 @@
         <p th:text="|We found ${courses.size()} ${courses.size() == 1 ? 'course' : 'courses'}. Check them, then confirm to save them. Nothing is saved until you confirm.|">
             We found 8 courses.</p>
 
-        <div th:if="${savedCourseCount > 0}" class="error-message" role="alert">
-            <p th:text="|You already have ${savedCourseCount} saved ${savedCourseCount == 1 ? 'course' : 'courses'}. Confirming replaces them with the courses below.|">
-                You already have 8 saved courses. Confirming replaces them with the courses below.</p>
+        <div th:if="${transcriptCourseCount > 0}" class="error-message" role="alert">
+            <p th:text="|You already have ${transcriptCourseCount} saved ${transcriptCourseCount == 1 ? 'course' : 'courses'} from a transcript. Confirming replaces them with the courses below. Courses you added or edited by hand are kept.|">
+                You already have 8 saved courses from a transcript. Confirming replaces them with the courses below.
+                Courses you added or edited by hand are kept.</p>
         </div>
 
         <div th:unless="${skippedLines.isEmpty()}" class="error-message" role="alert">
