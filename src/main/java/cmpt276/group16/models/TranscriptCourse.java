@@ -2,11 +2,20 @@ package cmpt276.group16.models;
 
 import java.math.BigDecimal;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "transcript_courses")
 public class TranscriptCourse {
+
+    // Where a row came from, which confirms a new transcript only replaces TRANSCRIPT rows
+    public enum Source {
+        TRANSCRIPT,
+        // added or edited by the student
+        MANUAL
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,11 +47,23 @@ public class TranscriptCourse {
     // This is Null while the course is in progress
     private String grade;
 
+    // The default fills in rows saved before this column existed, which all came from transcripts
+    @Enumerated(EnumType.STRING)
+    @ColumnDefault("'TRANSCRIPT'")
+    @Column(nullable = false)
+    private Source source;
+
     protected TranscriptCourse() {
     }
 
+    // A course read from a transcript
     public TranscriptCourse(StudentProfile student, String term, String subject, String number,
             String title, BigDecimal units, String grade) {
+        this(student, term, subject, number, title, units, grade, Source.TRANSCRIPT);
+    }
+
+    public TranscriptCourse(StudentProfile student, String term, String subject, String number,
+            String title, BigDecimal units, String grade, Source source) {
         this.student = student;
         this.term = term;
         this.subject = subject;
@@ -50,6 +71,7 @@ public class TranscriptCourse {
         this.title = title;
         this.units = units;
         this.grade = grade;
+        this.source = source;
     }
 
     public Long getId() {
@@ -82,6 +104,10 @@ public class TranscriptCourse {
 
     public String getGrade() {
         return grade;
+    }
+
+    public Source getSource() {
+        return source;
     }
 
     public boolean isInProgress() {
