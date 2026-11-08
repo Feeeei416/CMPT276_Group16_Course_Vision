@@ -16,4 +16,6 @@ public interface TranscriptCourseRepository extends JpaRepository<TranscriptCour
     long countByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
 
     long deleteByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
+
+    List<TranscriptCourse> findByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
 }

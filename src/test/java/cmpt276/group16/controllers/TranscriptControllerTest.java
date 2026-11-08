@@ -261,6 +261,25 @@ class TranscriptControllerTest {
                 .extracting(TranscriptCourse::getNumber).contains("100");
     }
 
+    // an edited course is MANUAL, and the transcript's copy of it (same term, subject and number)
+    // is skipped, so the edit survives and there's no duplicate
+    @Test
+    void confirmingSkipsTranscriptCoursesTheStudentEdited() throws Exception {
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+        TranscriptCourse cmpt120 = transcriptCourseRepository.findByStudentOrderByIdAsc(student).get(0);
+        cmpt120.editByHand("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A");
+        transcriptCourseRepository.save(cmpt120);
+
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+
+        List<TranscriptCourse> saved = transcriptCourseRepository.findByStudentOrderByIdAsc(student);
+        assertThat(saved).hasSize(TestTranscripts.SAMPLE_COURSE_COUNT);
+        assertThat(saved).filteredOn(c -> c.getNumber().equals("120"))
+                .extracting(TranscriptCourse::getGrade).containsExactly("A");
+    }
+
     // e.g. the student clicks Confirm twice
     @Test
     void confirmWithNothingUploadedSavesNothing() throws Exception {
