@@ -162,6 +162,20 @@ class PlanControllerTest {
                .andExpect(content().string(not(containsString("No terms yet"))));
     }
 
+    // Remove term asks in a dialog on the page, naming the courses that go with it, not in a browser pop-up
+    @Test
+    void removeTermAsksFirstInADialog() throws Exception {
+        planService.addTerm(priya, 2027, "Fall");
+        planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
+        planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 295");
+
+        mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
+               .andExpect(content().string(containsString("<dialog")))
+               .andExpect(content().string(containsString("Remove 2027 Fall?")))
+               .andExpect(content().string(containsString("This also removes CMPT 276, CMPT 295 from your plan.")))
+               .andExpect(content().string(not(containsString("confirm("))));
+    }
+
     // Each student only sees their own plan
     @Test
     void doesntShowAnotherStudentsPlan() throws Exception {

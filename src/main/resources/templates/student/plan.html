@@ -24,11 +24,29 @@
         <section class="plan-term" th:each="entry : ${coursesByTerm}">
             <div class="plan-term-header">
                 <h2 class="section-label" th:text="${entry.key.name}">2027 Fall</h2>
+                <!-- The script below opens the dialog instead of sending this form -->
                 <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${entry.key.id})}"
-                      onsubmit="return confirm('Remove this term and every course in it?')">
+                      th:data-dialog="|remove-term-${entry.key.id}|">
                     <button type="submit" class="btn btn-secondary">Remove term</button>
                 </form>
             </div>
+
+            <!-- Asks before removing, since the term's courses are removed with it -->
+            <dialog class="dialog" th:id="|remove-term-${entry.key.id}|">
+                <h2 class="dialog-title" th:text="|Remove ${entry.key.name}?|">Remove 2027 Fall?</h2>
+                <p th:if="${entry.value.isEmpty()}">This term has no courses in it.</p>
+                <p th:unless="${entry.value.isEmpty()}"
+                   th:text="|This also removes ${#strings.listJoin(entry.value.![code], ', ')} from your plan.|">
+                    This also removes CMPT 225 from your plan.</p>
+                <div class="dialog-actions">
+                    <form method="dialog">
+                        <button class="btn btn-secondary" autofocus>Cancel</button>
+                    </form>
+                    <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${entry.key.id})}">
+                        <button type="submit" class="btn btn-primary">Remove term</button>
+                    </form>
+                </div>
+            </dialog>
 
             <p th:if="${entry.value.isEmpty()}" class="muted">No courses yet.</p>
             <ul class="plan-courses" th:unless="${entry.value.isEmpty()}">
@@ -66,5 +84,16 @@
             <a th:href="@{/student/home}" class="link">Back to home</a>
         </div>
     </main>
+
+    <script>
+        // Remove term opens its dialog instead of removing straight away.
+        // Without JavaScript the form still works, it just doesn't ask first
+        document.querySelectorAll('form[data-dialog]').forEach(form => {
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                document.getElementById(form.dataset.dialog).showModal();
+            });
+        });
+    </script>
 </body>
 </html>

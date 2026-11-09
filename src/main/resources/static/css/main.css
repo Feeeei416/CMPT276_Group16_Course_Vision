@@ -292,6 +292,39 @@ a.btn {
     width: auto;
 }
 
+/* A confirmation box over the page, like Remove term on My plan */
+.dialog {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border: none;
+    border-radius: var(--radius);
+    padding: var(--space-lg) var(--space-xl);
+    width: calc(100% - 2 * var(--space-md));
+    max-width: 440px;
+    box-shadow: var(--color-shadow) 0 4px 16px;
+}
+
+/* Leaves the page behind the dialog as it is; browsers dim it slightly by default */
+.dialog::backdrop {
+    background-color: transparent;
+}
+
+.dialog-title {
+    font-size: 20px;
+    margin: 0 0 var(--space-sm);
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+}
+
+.dialog-actions form {
+    margin: 0;
+}
+
 .muted {
     color: var(--color-text-muted);
 }
