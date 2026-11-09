@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>My plan</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">My plan</h1>
+        <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
+
+        <!-- Set by the last change, before redirecting back here -->
+        <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Your plan was saved.</div>
+        <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+            <div th:each="e : ${errors}" th:text="${e}"></div>
+        </div>
+
+        <p th:if="${coursesByTerm.isEmpty()}" class="muted">No terms yet. Add your first term below.</p>
+
+        <!-- One box per term, oldest first -->
+        <section class="plan-term" th:each="entry : ${coursesByTerm}">
+            <div class="plan-term-header">
+                <h2 class="section-label" th:text="${entry.key.name}">2027 Fall</h2>
+                <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${entry.key.id})}"
+                      onsubmit="return confirm('Remove this term and every course in it?')">
+                    <button type="submit" class="btn btn-secondary">Remove term</button>
+                </form>
+            </div>
+
+            <p th:if="${entry.value.isEmpty()}" class="muted">No courses yet.</p>
+            <ul class="plan-courses" th:unless="${entry.value.isEmpty()}">
+                <li th:each="course : ${entry.value}">
+                    <span th:text="${course.code}">CMPT 225</span>
+                    <form method="post" th:action="@{/student/plan/courses/{id}/remove(id=${course.id})}">
+                        <button type="submit" class="link">Remove</button>
+                    </form>
+                </li>
+            </ul>
+
+            <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${entry.key.id})}">
+                <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
+                       th:aria-label="|Course code for ${entry.key.name}|" required>
+                <button type="submit" class="btn btn-primary">Add course</button>
+            </form>
+        </section>
+
+        <section>
+            <h2 class="section-label">Add a term</h2>
+            <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
+                <select name="year" class="input" aria-label="Year" required>
+                    <option value="">-- Year --</option>
+                    <option th:each="y : ${years}" th:value="${y}" th:text="${y}">2027</option>
+                </select>
+                <select name="season" class="input" aria-label="Term" required>
+                    <option value="">-- Term --</option>
+                    <option th:each="s : ${seasons}" th:value="${s}" th:text="${s}">Fall</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Add term</button>
+            </form>
+        </section>
+
+        <div class="actions">
+            <a th:href="@{/student/home}" class="link">Back to home</a>
+        </div>
+    </main>
+</body>
+</html>
