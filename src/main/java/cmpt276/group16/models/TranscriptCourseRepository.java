@@ -18,4 +18,13 @@ public interface TranscriptCourseRepository extends JpaRepository<TranscriptCour
     long deleteByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
 
     List<TranscriptCourse> findByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
+
+    // A course can only be taken once per term, so term, subject and number name one course in a record.
+    // A retake is in a different term and doesn't count as a duplicate
+    boolean existsByStudentAndTermAndSubjectAndNumber(StudentProfile student, String term, String subject,
+            String number);
+
+    // The same check for an edit, leaving out the course being edited
+    boolean existsByStudentAndTermAndSubjectAndNumberAndIdNot(StudentProfile student, String term, String subject,
+            String number, Long id);
 }

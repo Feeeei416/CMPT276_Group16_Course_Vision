@@ -69,6 +69,10 @@ public class EditCourseController {
         }
 
         CourseInput edited = CourseInput.from(form);
+        if (transcriptCourseRepository.existsByStudentAndTermAndSubjectAndNumberAndIdNot(student.get(),
+                edited.term(), edited.subject(), edited.number(), id)) {
+            return showEditPage(model, course.get(), form, List.of(CourseForms.alreadyInRecord(edited)));
+        }
         course.get().editByHand(edited.term(), edited.subject(), edited.number(), edited.title(), edited.units(),
                 edited.grade());
         transcriptCourseRepository.save(course.get());

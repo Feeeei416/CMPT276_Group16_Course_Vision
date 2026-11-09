@@ -55,6 +55,10 @@ public class ViewMyCoursesController {
         }
 
         CourseInput course = CourseInput.from(form);
+        if (transcriptCourseRepository.existsByStudentAndTermAndSubjectAndNumber(student.get(), course.term(),
+                course.subject(), course.number())) {
+            return showMyCourses(model, student.get(), form, List.of(CourseForms.alreadyInRecord(course)));
+        }
         transcriptCourseRepository.save(new TranscriptCourse(student.get(), course.term(), course.subject(),
                 course.number(), course.title(), course.units(), course.grade(), TranscriptCourse.Source.MANUAL));
 

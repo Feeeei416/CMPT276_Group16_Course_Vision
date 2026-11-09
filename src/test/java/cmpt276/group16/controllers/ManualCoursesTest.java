@@ -175,6 +175,30 @@ class ManualCoursesTest {
         assertThat(coursesOf(jack)).isEmpty();
     }
 
+    // A second copy of a course would count its units twice
+    @Test
+    void addingACourseAlreadyInTheRecordSavesNothing() throws Exception {
+        saveCourse(jack, "2024 Summer", "225", "B");
+
+        mockMvc.perform(courseForm(post("/student/courses"), "subject", "cmpt", "number", "225").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("student/view-courses"))
+                .andExpect(content().string(containsString("CMPT 225 in 2024 Summer is already in your record.")));
+
+        assertThat(coursesOf(jack)).hasSize(1);
+    }
+
+    // A retake is in a later term, so it's a different course in the record
+    @Test
+    void sameCourseInAnotherTermCanBeAdded() throws Exception {
+        saveCourse(jack, "2024 Spring", "225", "F");
+
+        mockMvc.perform(courseForm(post("/student/courses"), "subject", "CMPT", "number", "225").session(session))
+                .andExpect(redirectedUrl("/student/courses"));
+
+        assertThat(coursesOf(jack)).extracting(TranscriptCourse::getTerm).containsExactly("2024 Spring", "2024 Summer");
+    }
+
     // students can only add courses to their own record
     @Test
     void addAlwaysGoesToTheSignedInStudent() throws Exception {
@@ -270,6 +294,33 @@ class ManualCoursesTest {
         TranscriptCourse unchanged = transcriptCourseRepository.findById(course.getId()).orElseThrow();
         assertThat(unchanged.getNumber()).isEqualTo("120");
         assertThat(unchanged.getSource()).isEqualTo(TranscriptCourse.Source.TRANSCRIPT);
+    }
+
+    @Test
+    void editingIntoAnotherCourseInTheRecordChangesNothing() throws Exception {
+        saveCourse(jack, "2025 Fall", "120", "A-");
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "125", "B");
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"),
+                        "year", "2025", "season", "Fall", "subject", "CMPT", "number", "120").session(session))
+                .andExpect(status().isOk())
+                .andExpect(view().name("student/edit-course"))
+                .andExpect(content().string(containsString("CMPT 120 in 2025 Fall is already in your record.")));
+
+        assertThat(transcriptCourseRepository.findById(course.getId()).orElseThrow().getNumber()).isEqualTo("125");
+    }
+
+    // The course being edited isn't a duplicate of itself
+    @Test
+    void editingOnlyTheGradeStillSaves() throws Exception {
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"),
+                        "year", "2025", "season", "Fall", "subject", "CMPT", "number", "120", "grade", "A")
+                        .session(session))
+                .andExpect(redirectedUrl("/student/courses"));
+
+        assertThat(transcriptCourseRepository.findById(course.getId()).orElseThrow().getGrade()).isEqualTo("A");
     }
 
     @Test

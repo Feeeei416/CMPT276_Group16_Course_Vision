@@ -31,4 +31,9 @@ final class CourseForms {
     static String name(CourseInput course) {
         return course.subject() + " " + course.number();
     }
+
+    // Shown when the course would be a second copy of one already in the record
+    static String alreadyInRecord(CourseInput course) {
+        return name(course) + " in " + course.term() + " is already in your record.";
+    }
 }
