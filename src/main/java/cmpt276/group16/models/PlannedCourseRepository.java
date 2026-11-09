@@ -13,8 +13,8 @@ public interface PlannedCourseRepository extends JpaRepository<PlannedCourse, Lo
     // Empty when the course is in another student's plan, so changing the id in a request finds nothing
     Optional<PlannedCourse> findByIdAndTermPlanStudent(Long id, StudentProfile student);
 
-    // True if the course is already in any term of the plan
-    boolean existsByTermPlanAndSubjectAndNumber(Plan plan, String subject, String number);
+    // The course if it's already in any term of the plan, so the error can say which term
+    Optional<PlannedCourse> findByTermPlanAndSubjectAndNumber(Plan plan, String subject, String number);
 
     // Used when a term is removed, so its courses go with it
     long deleteByTerm(PlanTerm term);

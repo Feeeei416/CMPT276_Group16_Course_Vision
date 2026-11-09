@@ -210,10 +210,22 @@ class PlanServiceTest {
         planService.addCourse(priya, termId(priya, "2027 Summer"), "CMPT 225");
 
         assertThat(planService.addCourse(priya, termId(priya, "2027 Fall"), "cmpt 225"))
-            .containsExactly("CMPT 225 is already in your plan.");
+            .containsExactly("CMPT 225 is already planned for 2027 Summer. "
+                    + "To move it to 2027 Fall, remove it from 2027 Summer first.");
         assertThat(planOf(priya)).containsExactly(
             entry("2027 Summer", List.of("CMPT 225")),
             entry("2027 Fall", List.of()));
+    }
+
+    @Test
+    void rejectsACourseAlreadyInTheSameTerm() {
+        planService.addTerm(priya, 2027, "Fall");
+        Long fall = termId(priya, "2027 Fall");
+        planService.addCourse(priya, fall, "CMPT 225");
+
+        assertThat(planService.addCourse(priya, fall, "CMPT 225"))
+            .containsExactly("CMPT 225 is already in 2027 Fall.");
+        assertThat(planOf(priya)).containsExactly(entry("2027 Fall", List.of("CMPT 225")));
     }
 
     @Test

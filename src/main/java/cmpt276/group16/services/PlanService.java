@@ -97,11 +97,24 @@ public class PlanService {
         String subject = course.get().subject();
         String number = course.get().number();
         // Checks the whole plan, not just this term, since a course only needs to be taken once
-        if (plannedCourseRepository.existsByTermPlanAndSubjectAndNumber(term.get().getPlan(), subject, number)) {
-            return List.of(subject + " " + number + " is already in your plan.");
+        Optional<PlannedCourse> alreadyPlanned = plannedCourseRepository
+                .findByTermPlanAndSubjectAndNumber(term.get().getPlan(), subject, number);
+        if (alreadyPlanned.isPresent()) {
+            return List.of(alreadyPlannedMessage(alreadyPlanned.get(), term.get()));
         }
         plannedCourseRepository.save(new PlannedCourse(term.get(), subject, number));
         return List.of();
+    }
+
+    // Says which term the course is already in, and how to move it when that's a different term
+    private static String alreadyPlannedMessage(PlannedCourse existing, PlanTerm wanted) {
+        String code = existing.getCode();
+        String existingTerm = existing.getTerm().getName();
+        if (existing.getTerm().getId().equals(wanted.getId())) {
+            return code + " is already in " + existingTerm + ".";
+        }
+        return code + " is already planned for " + existingTerm + ". To move it to " + wanted.getName()
+                + ", remove it from " + existingTerm + " first.";
     }
 
     @Transactional

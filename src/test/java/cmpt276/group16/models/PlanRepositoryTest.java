@@ -129,8 +129,10 @@ class PlanRepositoryTest {
         PlanTerm fall = saveTerm(plan, 2027, "Fall");
         saveCourse(fall, "CMPT", "225");
 
-        assertThat(plannedCourseRepository.existsByTermPlanAndSubjectAndNumber(plan, "CMPT", "225")).isTrue();
-        assertThat(plannedCourseRepository.existsByTermPlanAndSubjectAndNumber(plan, "CMPT", "276")).isFalse();
+        assertThat(plannedCourseRepository.findByTermPlanAndSubjectAndNumber(plan, "CMPT", "225"))
+            .map(course -> course.getTerm().getName())
+            .contains("2027 Fall");
+        assertThat(plannedCourseRepository.findByTermPlanAndSubjectAndNumber(plan, "CMPT", "276")).isEmpty();
     }
 
     @Test
