@@ -46,7 +46,7 @@ class CourseInputTest {
     void emptyFormReportsEveryRequiredField() {
         assertThat(CourseInput.validate(Map.of())).containsExactly(
                 "Year is required.",
-                "Choose a season.",
+                "Choose a term.",
                 "Subject is required.",
                 "Course number is required.",
                 "Title is required.",
@@ -128,7 +128,7 @@ class CourseInputTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "fall", "Winter"})
     void seasonMustBeFromTheList(String season) {
-        assertThat(CourseInput.validate(validFormWith("season", season))).containsExactly("Choose a season.");
+        assertThat(CourseInput.validate(validFormWith("season", season))).containsExactly("Choose a term.");
     }
 
     @ParameterizedTest

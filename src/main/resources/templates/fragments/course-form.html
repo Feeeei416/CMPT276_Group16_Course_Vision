@@ -15,7 +15,7 @@
                            th:value="${form['year']}" required>
                 </div>
                 <div class="form-field">
-                    <label for="season" class="form-label">Season</label>
+                    <label for="season" class="form-label">Term</label>
                     <select name="season" id="season" class="input" required>
                         <option value="">-- Choose --</option>
                         <option th:each="s : ${seasons}" th:value="${s}" th:text="${s}"

@@ -47,7 +47,7 @@ public record CourseInput(String term, String subject, String number, String tit
         }
 
         if (!Terms.SEASONS.contains(clean(form, "season"))) {
-            errors.add("Choose a season.");
+            errors.add("Choose a term.");
         }
 
         String subject = upper(form, "subject");
