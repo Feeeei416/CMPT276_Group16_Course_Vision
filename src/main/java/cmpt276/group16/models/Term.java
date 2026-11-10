@@ -27,9 +27,8 @@ public class Term {
         this.season = season;
     }
 
-    /** No setters: a term like "2024 Fall" never changes once created
-     *  a different year or season is a different term
-     */
+    // No setters: a term like "2024 Fall" never changes once created
+    // a different year or season is a different term
     public Long getId() {
         return id;
     }
