@@ -36,8 +36,9 @@ public class Section {
     @Column(nullable = false)
     private boolean primarySection;
 
-    // Only for non-primary sections: which primary section they go with, as the API gives it.
-    // A schedule uses this to pair a lecture with its tutorials and labs; null for primary sections
+    // Which group the section belongs to, as the API gives it, for example "1".
+    // Every section has one: a lecture and its labs share the same value within an offering,
+    // so a schedule pairs them by matching it. Some, like open labs, match no lecture
     private String associatedClass;
 
     // Empty when the section has no times, for example online or TBA.
