@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import cmpt276.group16.models.CourseSource;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
@@ -25,7 +26,7 @@ public class TranscriptService {
         transcriptCourseRepository.deleteByStudent(student);
         transcriptCourseRepository.saveAll(courses.stream()
                 .map(c -> new TranscriptCourse(student, c.term(), c.subject(), c.number(),
-                        c.title(), c.units(), c.grade()))
+                        c.title(), c.units(), c.grade(), CourseSource.PDF))
                 .toList());
     }
 }

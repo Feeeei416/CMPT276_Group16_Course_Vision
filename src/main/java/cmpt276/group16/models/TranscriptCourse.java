@@ -38,11 +38,24 @@ public class TranscriptCourse {
     // This is Null while the course is in progress
     private String grade;
 
+    // The matching course in the courses table.
+    // Null when that course hasn't been fetched yet, 
+    // or for courses that aren't in the catalogue (for example transfer credit).
+    @ManyToOne 
+    @JoinColumn(name = "course_id")
+    private Course course;
+
+    // Where this row came from: PDF for an uploaded transcript, MANUAL for one added by hand.
+    // Nullable because rows saved before Iteration 2 have no source
+    @Enumerated(EnumType.STRING)
+    private CourseSource source;
+
     protected TranscriptCourse() {
     }
 
+    // course is not set here: when a transcript is read we don't know the matching course yet, use setCourse later
     public TranscriptCourse(StudentProfile student, String term, String subject, String number,
-            String title, BigDecimal units, String grade) {
+            String title, BigDecimal units, String grade, CourseSource source) {
         this.student = student;
         this.term = term;
         this.subject = subject;
@@ -50,6 +63,7 @@ public class TranscriptCourse {
         this.title = title;
         this.units = units;
         this.grade = grade;
+        this.source = source;
     }
 
     public Long getId() {
@@ -86,5 +100,18 @@ public class TranscriptCourse {
 
     public boolean isInProgress() {
         return grade == null;
+    }
+
+    public Course getCourse() {
+        return course;
+    }
+
+    // Links this row to its course once that course is in the courses table
+    public void setCourse(Course course) {
+        this.course = course;
+    }
+
+    public CourseSource getSource() {
+        return source;
     }
 }
