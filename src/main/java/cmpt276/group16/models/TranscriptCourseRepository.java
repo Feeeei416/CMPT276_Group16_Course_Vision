@@ -1,6 +1,7 @@
 package cmpt276.group16.models;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -9,7 +10,21 @@ public interface TranscriptCourseRepository extends JpaRepository<TranscriptCour
     // In the order they were saved, which is the order they appear on the transcript
     List<TranscriptCourse> findByStudentOrderByIdAsc(StudentProfile student);
 
-    long countByStudent(StudentProfile student);
+    // Empty when the course belongs to another student, so changing the id in a request finds nothing
+    Optional<TranscriptCourse> findByIdAndStudent(Long id, StudentProfile student);
 
-    void deleteByStudent(StudentProfile student);
+    long countByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
+
+    long deleteByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
+
+    List<TranscriptCourse> findByStudentAndSource(StudentProfile student, TranscriptCourse.Source source);
+
+    // A course can only be taken once per term, so term, subject and number name one course in a record.
+    // A retake is in a different term and doesn't count as a duplicate
+    boolean existsByStudentAndTermAndSubjectAndNumber(StudentProfile student, String term, String subject,
+            String number);
+
+    // The same check for an edit, leaving out the course being edited
+    boolean existsByStudentAndTermAndSubjectAndNumberAndIdNot(StudentProfile student, String term, String subject,
+            String number, Long id);
 }

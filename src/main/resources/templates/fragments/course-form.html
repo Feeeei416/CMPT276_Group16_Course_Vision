@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <body>
+        <!-- The fields of the Add course and Edit course forms. Reads form, formErrors and the option
+             lists that CourseForms.addTo puts on the model -->
+        <th:block th:fragment="courseFields">
+            <div class="error-message" th:if="${!formErrors.isEmpty()}" role="alert">
+                <div th:each="e : ${formErrors}" th:text="${e}"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="year" class="form-label">Year</label>
+                    <input type="number" class="input" id="year" name="year" th:min="${minYear}" th:max="${maxYear}"
+                           th:value="${form['year']}" required>
+                </div>
+                <div class="form-field">
+                    <label for="season" class="form-label">Term</label>
+                    <select name="season" id="season" class="input" required>
+                        <option value="">-- Choose --</option>
+                        <option th:each="s : ${seasons}" th:value="${s}" th:text="${s}"
+                                th:selected="${form['season'] == s}"></option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="subject" class="form-label">Subject</label>
+                    <input type="text" class="input" id="subject" name="subject" maxlength="4" placeholder="CMPT"
+                           th:value="${form['subject']}" required>
+                </div>
+                <div class="form-field">
+                    <label for="number" class="form-label">Number</label>
+                    <input type="text" class="input" id="number" name="number" maxlength="4" placeholder="225"
+                           th:value="${form['number']}" required>
+                </div>
+                <div class="form-field">
+                    <label for="units" class="form-label">Units</label>
+                    <input type="number" class="input" id="units" name="units" min="0" max="99.99" step="0.01"
+                           placeholder="3.00" th:value="${form['units']}" required>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" class="input" id="title" name="title" maxlength="255"
+                       th:value="${form['title']}" required>
+            </div>
+
+            <div class="form-field">
+                <label for="grade" class="form-label">Grade</label>
+                <select name="grade" id="grade" class="input">
+                    <option value="" th:selected="${form['grade'] == null || form['grade'] == ''}">In progress (no grade yet)</option>
+                    <option th:value="${transferGrade}" th:selected="${form['grade'] == transferGrade}">Transfer credit</option>
+                    <optgroup label="Letter grades">
+                        <option th:each="g : ${letterGrades}" th:value="${g}" th:text="${g}"
+                                th:selected="${form['grade'] == g}"></option>
+                    </optgroup>
+                    <optgroup label="Other grades and notations">
+                        <option th:each="g : ${otherGrades}" th:value="${g}" th:text="${g}"
+                                th:selected="${form['grade'] == g}"></option>
+                    </optgroup>
+                </select>
+            </div>
+        </th:block>
+    </body>
+</html>
