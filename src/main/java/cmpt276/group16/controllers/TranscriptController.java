@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import cmpt276.group16.models.StudentProfile;
+import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.transcript.ParsedCourse;
 import cmpt276.group16.transcript.TranscriptParseException;
@@ -82,8 +83,10 @@ public class TranscriptController {
             session.setAttribute(PENDING_COURSES, result.courses());
             model.addAttribute("courses", result.courses());
             model.addAttribute("skippedLines", result.skippedLines());
-            // Confirming replaces these, so the review page warns about them
-            model.addAttribute("savedCourseCount", transcriptCourseRepository.countByStudent(student.get()));
+            // Confirming replaces the courses from the last transcript, so the review page warns about them
+            // Courses added or edited by hand are kept, so they aren't counted
+            model.addAttribute("transcriptCourseCount", transcriptCourseRepository.countByStudentAndSource(
+                    student.get(), TranscriptCourse.Source.TRANSCRIPT));
             return "student/transcript-review";
         } catch (TranscriptParseException e) {
             model.addAttribute("error", e.getMessage());

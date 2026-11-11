@@ -21,6 +21,8 @@ import cmpt276.group16.models.Program;
 import cmpt276.group16.models.Role;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
+import cmpt276.group16.models.TranscriptCourse;
+import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.transcript.ParsedCourse;
@@ -44,6 +46,9 @@ class StudentHomeControllerTest {
 
     @Autowired
     private TranscriptService transcriptService;
+
+    @Autowired
+    private TranscriptCourseRepository transcriptCourseRepository;
 
     private MockHttpSession sessionFor(User user) {
         MockHttpSession session = new MockHttpSession();
@@ -106,5 +111,19 @@ class StudentHomeControllerTest {
         assertThat(CourseTableRows.tableRows(page)).containsExactly(
                 List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
                 List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
+    }
+
+    // TR is our marker for transfer credit, so the table spells it out instead of showing it as a grade
+    @Test
+    void transferCreditIsShownInWords() throws Exception {
+        StudentProfile student = saveStudent();
+        transcriptCourseRepository.save(new TranscriptCourse(student, "2024 Summer", "MATH", "1XX",
+                "Calculus (transfer)", new BigDecimal("3.00"), "TR", TranscriptCourse.Source.MANUAL));
+
+        String page = mockMvc.perform(get("/student/home").session(sessionFor(student.getUser())))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(CourseTableRows.tableRows(page)).containsExactly(
+                List.of("2024 Summer", "MATH", "1XX", "Calculus (transfer)", "3.00", "Transfer credit"));
     }
 }

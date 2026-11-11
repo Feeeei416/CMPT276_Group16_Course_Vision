@@ -225,7 +225,7 @@ class TranscriptControllerTest {
 
         mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
                 .andExpect(content().string(containsString("You already have " + TestTranscripts.SAMPLE_COURSE_COUNT
-                        + " saved courses. Confirming replaces them")));
+                        + " saved courses from a transcript. Confirming replaces them")));
     }
 
     @Test
@@ -234,7 +234,50 @@ class TranscriptControllerTest {
                 "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-"));
 
         mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
-                .andExpect(content().string(containsString("You already have 1 saved course. Confirming")));
+                .andExpect(content().string(containsString("You already have 1 saved course from a transcript. Confirming")));
+    }
+
+    // Courses added by hand are kept when confirming, so they aren't part of the "replaces" count
+    @Test
+    void replaceWarningOnlyCountsTranscriptCourses() throws Exception {
+        transcriptCourseRepository.save(new TranscriptCourse(student, "2025 Fall", "CMPT", "120",
+                "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-", TranscriptCourse.Source.MANUAL));
+
+        mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
+                .andExpect(content().string(not(containsString("Confirming replaces"))));
+    }
+
+    // #45: confirming a new transcript must not delete courses the student added by hand
+    @Test
+    void confirmingKeepsCoursesAddedByHand() throws Exception {
+        transcriptCourseRepository.save(new TranscriptCourse(student, "2024 Summer", "MATH", "100",
+                "Precalculus", new BigDecimal("3.00"), "TR", TranscriptCourse.Source.MANUAL));
+
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+
+        assertThat(transcriptCourseRepository.findByStudentOrderByIdAsc(student))
+                .hasSize(TestTranscripts.SAMPLE_COURSE_COUNT + 1)
+                .extracting(TranscriptCourse::getNumber).contains("100");
+    }
+
+    // an edited course is MANUAL, and the transcript's copy of it (same term, subject and number)
+    // is skipped, so the edit survives and there's no duplicate
+    @Test
+    void confirmingSkipsTranscriptCoursesTheStudentEdited() throws Exception {
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+        TranscriptCourse cmpt120 = transcriptCourseRepository.findByStudentOrderByIdAsc(student).get(0);
+        cmpt120.editByHand("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A");
+        transcriptCourseRepository.save(cmpt120);
+
+        uploadSample();
+        mockMvc.perform(post("/student/transcript/confirm").session(session));
+
+        List<TranscriptCourse> saved = transcriptCourseRepository.findByStudentOrderByIdAsc(student);
+        assertThat(saved).hasSize(TestTranscripts.SAMPLE_COURSE_COUNT);
+        assertThat(saved).filteredOn(c -> c.getNumber().equals("120"))
+                .extracting(TranscriptCourse::getGrade).containsExactly("A");
     }
 
     // e.g. the student clicks Confirm twice

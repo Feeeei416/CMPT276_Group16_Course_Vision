@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>Edit course</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">Edit course</h1>
+        <p>Your changes are kept when you upload a new transcript.</p>
+
+        <form th:action="@{/student/courses/{id}/edit(id=${courseId})}" method="post">
+            <th:block th:replace="~{fragments/course-form :: courseFields}"></th:block>
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a th:href="@{/student/courses}" class="link">Cancel</a>
+            </div>
+        </form>
+    </main>
+</body>
+</html>
