@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import cmpt276.group16.models.PlanTerm;
+import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.services.PlanService;
 import jakarta.servlet.http.HttpSession;
@@ -35,10 +35,10 @@ public class PlanController {
         if (student.isEmpty()) {
             return "redirect:/login";
         }
-        model.addAttribute("coursesByTerm", planService.coursesByTerm(student.get()));
+        model.addAttribute("termPlans", planService.termPlans(student.get()));
         model.addAttribute("nextSemester", planService.nextSemester());
         model.addAttribute("years", planService.plannableYears());
-        model.addAttribute("seasons", PlanTerm.SEASONS);
+        model.addAttribute("seasons", Season.values());
         // Already set when the change before the redirect had problems
         if (!model.containsAttribute("errors")) {
             model.addAttribute("errors", List.of());

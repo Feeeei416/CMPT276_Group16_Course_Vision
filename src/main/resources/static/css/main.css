@@ -271,15 +271,6 @@ a.btn {
     border-bottom: 1px solid var(--color-border);
 }
 
-/* Remove next to each planned course looks like a link, not a button */
-.plan-courses button {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    text-decoration: underline;
-}
-
 /* A text box or dropdowns and a button on one line, like Add course */
 .inline-form {
     display: flex;

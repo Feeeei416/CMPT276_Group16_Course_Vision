@@ -1,11 +1,13 @@
 package cmpt276.group16.models;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 
 // A course placed in one term of a plan. No section is chosen, since later terms have no times yet
 @Entity
 @Table(name = "planned_courses",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"plan_term_id", "subject", "course_number"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"plan_term_id", "course_id"}))
 public class PlannedCourse {
 
     @Id
@@ -17,20 +19,16 @@ public class PlannedCourse {
     @JoinColumn(name = "plan_term_id", nullable = false)
     private PlanTerm term;
 
-    // for example "CMPT"
-    @Column(nullable = false)
-    private String subject;
-
-    // for example "225" or "105W"
-    @Column(name = "course_number", nullable = false)
-    private String number;
+    // The course from the courses table, so the code, title and units always match SFU's data
+    @ManyToOne
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
 
     protected PlannedCourse() {}
 
-    public PlannedCourse(PlanTerm term, String subject, String number) {
+    public PlannedCourse(PlanTerm term, Course course) {
         this.term = term;
-        this.subject = subject;
-        this.number = number;
+        this.course = course;
     }
 
     public Long getId() {
@@ -41,16 +39,20 @@ public class PlannedCourse {
         return term;
     }
 
-    public String getSubject() {
-        return subject;
-    }
-
-    public String getNumber() {
-        return number;
+    public Course getCourse() {
+        return course;
     }
 
     // For example "CMPT 225"
     public String getCode() {
-        return subject + " " + number;
+        return course.getSubject() + " " + course.getNumber();
+    }
+
+    public String getTitle() {
+        return course.getTitle();
+    }
+
+    public BigDecimal getUnits() {
+        return course.getUnits();
     }
 }

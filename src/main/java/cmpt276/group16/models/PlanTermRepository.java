@@ -7,11 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PlanTermRepository extends JpaRepository<PlanTerm, Long> {
 
-    // Not sorted; use PlanTerm.OLDEST_FIRST, since the database would sort seasons alphabetically
+    // Not sorted; use PlanTerm.OLDEST_FIRST
     List<PlanTerm> findByPlan(Plan plan);
 
     // Empty when the term is in another student's plan, so changing the id in a request finds nothing
     Optional<PlanTerm> findByIdAndPlanStudent(Long id, StudentProfile student);
 
-    boolean existsByPlanAndYearAndSeason(Plan plan, int year, String season);
+    boolean existsByPlanAndTerm(Plan plan, Term term);
 }

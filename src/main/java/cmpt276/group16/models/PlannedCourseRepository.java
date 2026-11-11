@@ -14,7 +14,7 @@ public interface PlannedCourseRepository extends JpaRepository<PlannedCourse, Lo
     Optional<PlannedCourse> findByIdAndTermPlanStudent(Long id, StudentProfile student);
 
     // The course if it's already in any term of the plan, so the error can say which term
-    Optional<PlannedCourse> findByTermPlanAndSubjectAndNumber(Plan plan, String subject, String number);
+    Optional<PlannedCourse> findByTermPlanAndCourse(Plan plan, Course course);
 
     // Used when a term is removed, so its courses go with it
     long deleteByTerm(PlanTerm term);

@@ -3,12 +3,14 @@ package cmpt276.group16.services;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import cmpt276.group16.models.PlanTerm;
+import cmpt276.group16.models.Season;
 
 // What can go in a plan: which terms can be planned and what a course code looks like
 public final class PlanRules {
@@ -20,7 +22,10 @@ public final class PlanRules {
     // Spaces between them are optional, so "cmpt225" works too
     private static final Pattern COURSE_CODE = Pattern.compile("^([A-Za-z]{2,4})\\s*(\\d{3}[A-Za-z]?)$");
 
-    private static final int TERMS_PER_YEAR = PlanTerm.SEASONS.size();
+    // Season lists them in the order they happen within a year
+    private static final Season[] SEASONS = Season.values();
+
+    private static final int TERMS_PER_YEAR = SEASONS.length;
 
     private PlanRules() {}
 
@@ -36,6 +41,15 @@ public final class PlanRules {
         return Optional.of(new CourseCode(m.group(1).toUpperCase(), m.group(2).toUpperCase()));
     }
 
+    // Empty when the text isn't Spring, Summer or Fall. The form sends FALL, but any case works
+    public static Optional<Season> parseSeason(String text) {
+        try {
+            return Optional.of(Season.valueOf(text.trim().toUpperCase(Locale.ROOT)));
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
+    }
+
     // For example "2027 Spring" in November 2026
     public static String nextSemester(LocalDate today) {
         return termName(currentTerm(today) + 1);
@@ -48,35 +62,30 @@ public final class PlanRules {
     }
 
     // Returns every rule the term breaks; an empty list means it can be added to a plan
-    public static List<String> problemsWithTerm(int year, String season, LocalDate today) {
+    public static List<String> problemsWithTerm(int year, Season season, LocalDate today) {
         List<String> problems = new ArrayList<>();
-        if (!PlanTerm.SEASONS.contains(season)) {
-            problems.add("Choose Spring, Summer or Fall.");
-            return problems;
-        }
-        int term = termNumber(year, season);
         int nextSemester = currentTerm(today) + 1;
-        if (term <= nextSemester) {
+        if (termNumber(year, season) <= nextSemester) {
             problems.add("Choose a term after next semester (" + termName(nextSemester) + ").");
         }
         if (year > lastYear(today)) {
-            problems.add("Choose a term no later than " + lastYear(today) + " Fall.");
+            problems.add("Choose a term no later than " + PlanTerm.nameOf(lastYear(today), Season.FALL) + ".");
         }
         return problems;
     }
 
     // Terms are numbered three a year, so the term after any term is one more
-    private static int termNumber(int year, String season) {
-        return year * TERMS_PER_YEAR + PlanTerm.SEASONS.indexOf(season);
+    private static int termNumber(int year, Season season) {
+        return year * TERMS_PER_YEAR + season.ordinal();
     }
 
     private static String termName(int termNumber) {
-        return termNumber / TERMS_PER_YEAR + " " + PlanTerm.SEASONS.get(termNumber % TERMS_PER_YEAR);
+        return PlanTerm.nameOf(termNumber / TERMS_PER_YEAR, SEASONS[termNumber % TERMS_PER_YEAR]);
     }
 
     // Spring is January to April, Summer is May to August, and Fall is September to December
     private static int currentTerm(LocalDate today) {
-        return termNumber(today.getYear(), PlanTerm.SEASONS.get((today.getMonthValue() - 1) / 4));
+        return termNumber(today.getYear(), SEASONS[(today.getMonthValue() - 1) / 4]);
     }
 
     private static int lastYear(LocalDate today) {

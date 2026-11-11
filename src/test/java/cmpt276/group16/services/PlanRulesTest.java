@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import cmpt276.group16.models.Season;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
 // Plain unit tests: no Spring or database, just the rules
@@ -52,30 +53,36 @@ class PlanRulesTest {
 
     // The first term after next semester, the last term allowed, and one in between
     @ParameterizedTest
-    @CsvSource({"2027, Summer", "2027, Fall", "2030, Spring", "2033, Fall"})
-    void acceptsTermsAfterNextSemester(int year, String season) {
+    @CsvSource({"2027, SUMMER", "2027, FALL", "2030, SPRING", "2033, FALL"})
+    void acceptsTermsAfterNextSemester(int year, Season season) {
         assertThat(PlanRules.problemsWithTerm(year, season, TODAY)).isEmpty();
     }
 
     // Next semester is planned on its own schedule page (#40), and earlier terms are already on the transcript
     @ParameterizedTest
-    @CsvSource({"2027, Spring", "2026, Fall", "2020, Fall"})
-    void rejectsNextSemesterAndEarlier(int year, String season) {
+    @CsvSource({"2027, SPRING", "2026, FALL", "2020, FALL"})
+    void rejectsNextSemesterAndEarlier(int year, Season season) {
         assertThat(PlanRules.problemsWithTerm(year, season, TODAY))
             .containsExactly("Choose a term after next semester (2027 Spring).");
     }
 
     @Test
     void rejectsTermsTooFarAhead() {
-        assertThat(PlanRules.problemsWithTerm(2034, "Spring", TODAY))
+        assertThat(PlanRules.problemsWithTerm(2034, Season.SPRING, TODAY))
             .containsExactly("Choose a term no later than 2033 Fall.");
     }
 
+    // The form sends FALL, but any case is read the same way
     @ParameterizedTest
-    @ValueSource(strings = {"Winter", "fall", ""})
-    void rejectsUnknownSeasons(String season) {
-        assertThat(PlanRules.problemsWithTerm(2027, season, TODAY))
-            .containsExactly("Choose Spring, Summer or Fall.");
+    @ValueSource(strings = {"FALL", "Fall", " fall "})
+    void readsSeasonsInAnyCase(String text) {
+        assertThat(PlanRules.parseSeason(text)).contains(Season.FALL);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Winter", "Autumn", ""})
+    void rejectsUnknownSeasons(String text) {
+        assertThat(PlanRules.parseSeason(text)).isEmpty();
     }
 
     @Test

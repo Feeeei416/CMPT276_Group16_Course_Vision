@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -31,6 +32,8 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import cmpt276.group16.models.Course;
+import cmpt276.group16.models.CourseRepository;
 import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.Program;
@@ -40,6 +43,7 @@ import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.services.PlanService;
+import cmpt276.group16.services.PlanService.TermPlan;
 
 // Uses the whole app, so AuthInterceptor and the real database are part of every test.
 // addFilters = false: Spring Session's filter would swap the test's session for a database one
@@ -68,6 +72,9 @@ class PlanControllerTest {
     private StudentProfileRepository studentProfileRepository;
 
     @Autowired
+    private CourseRepository courseRepository;
+
+    @Autowired
     private PlanService planService;
 
     private StudentProfile priya;
@@ -77,6 +84,11 @@ class PlanControllerTest {
     void setUp() {
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
+        // The courses the tests plan; anything else isn't in the course list
+        for (String number : List.of("225", "276", "295")) {
+            courseRepository.save(new Course("CMPT", number, "Title of CMPT " + number, new BigDecimal("3.00"),
+                    null, null, null));
+        }
     }
 
     private StudentProfile saveStudent(String email) {
@@ -95,27 +107,28 @@ class PlanControllerTest {
     }
 
     private Long termId(StudentProfile student, String termName) {
-        return planService.coursesByTerm(student).keySet().stream()
+        return planService.termPlans(student).stream()
+                .map(TermPlan::term)
                 .filter(term -> term.getName().equals(termName))
                 .map(PlanTerm::getId)
                 .findFirst().orElseThrow();
     }
 
     private Long courseId(StudentProfile student, String code) {
-        return planService.coursesByTerm(student).values().stream()
-                .flatMap(List::stream)
+        return planService.termPlans(student).stream()
+                .flatMap(termPlan -> termPlan.courses().stream())
                 .filter(course -> course.getCode().equals(code))
                 .map(PlannedCourse::getId)
                 .findFirst().orElseThrow();
     }
 
     private List<String> termNames(StudentProfile student) {
-        return planService.coursesByTerm(student).keySet().stream().map(PlanTerm::getName).toList();
+        return planService.termPlans(student).stream().map(termPlan -> termPlan.term().getName()).toList();
     }
 
     private List<String> courseCodes(StudentProfile student) {
-        return planService.coursesByTerm(student).values().stream()
-                .flatMap(List::stream)
+        return planService.termPlans(student).stream()
+                .flatMap(termPlan -> termPlan.courses().stream())
                 .map(PlannedCourse::getCode)
                 .toList();
     }
@@ -148,24 +161,29 @@ class PlanControllerTest {
                .andExpect(content().string(containsString("No terms yet")))
                .andExpect(content().string(containsString("2027 Spring")))
                .andExpect(content().string(containsString("<option value=\"2027\">2027</option>")))
-               .andExpect(content().string(containsString("<option value=\"2033\">2033</option>")));
+               .andExpect(content().string(containsString("<option value=\"2033\">2033</option>")))
+               .andExpect(content().string(containsString("<option value=\"FALL\">Fall</option>")));
     }
 
+    // Each term shows its courses with their titles, and the term's total units
     @Test
-    void showsTermsAndCourses() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+    void showsTermsCoursesAndUnits() throws Exception {
+        planService.addTerm(priya, 2027, "FALL");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
+        planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 295");
 
         mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
                .andExpect(content().string(containsString("2027 Fall")))
                .andExpect(content().string(containsString("CMPT 276")))
+               .andExpect(content().string(containsString("Title of CMPT 276")))
+               .andExpect(content().string(containsString("6 units")))
                .andExpect(content().string(not(containsString("No terms yet"))));
     }
 
     // Remove term asks in a dialog on the page, naming the courses that go with it, not in a browser pop-up
     @Test
     void removeTermAsksFirstInADialog() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+        planService.addTerm(priya, 2027, "FALL");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 295");
 
@@ -179,7 +197,7 @@ class PlanControllerTest {
     // Each student only sees their own plan
     @Test
     void doesntShowAnotherStudentsPlan() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+        planService.addTerm(priya, 2027, "FALL");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
 
         mockMvc.perform(get("/student/plan").session(sessionFor(marcus)))
@@ -199,7 +217,7 @@ class PlanControllerTest {
     @Test
     void planIsStillThereAfterLoggingInAgain() throws Exception {
         mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
-                        .param("year", "2027").param("season", "Fall"));
+                        .param("year", "2027").param("season", "FALL"));
 
         mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
                .andExpect(content().string(containsString("2027 Fall")));
@@ -210,7 +228,7 @@ class PlanControllerTest {
     @Test
     void addsATerm() throws Exception {
         mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
-                        .param("year", "2027").param("season", "Fall"))
+                        .param("year", "2027").param("season", "FALL"))
                .andExpect(redirectedUrl("/student/plan"))
                .andExpect(flash().attribute("message", "Your plan was saved."));
 
@@ -220,7 +238,7 @@ class PlanControllerTest {
     @Test
     void termTheRulesDontAllowShowsAnError() throws Exception {
         mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
-                        .param("year", "2027").param("season", "Spring"))
+                        .param("year", "2027").param("season", "SPRING"))
                .andExpect(redirectedUrl("/student/plan"))
                .andExpect(flash().attribute("errors", contains("Choose a term after next semester (2027 Spring).")));
 
@@ -231,7 +249,7 @@ class PlanControllerTest {
     @Test
     void yearThatIsntANumberShowsAnError() throws Exception {
         mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
-                        .param("year", "next year").param("season", "Fall"))
+                        .param("year", "next year").param("season", "FALL"))
                .andExpect(flash().attribute("errors", contains("Choose a year.")));
 
         assertThat(termNames(priya)).isEmpty();
@@ -239,7 +257,7 @@ class PlanControllerTest {
 
     @Test
     void removesATerm() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+        planService.addTerm(priya, 2027, "FALL");
 
         mockMvc.perform(post("/student/plan/terms/{id}/remove", termId(priya, "2027 Fall")).session(sessionFor(priya)))
                .andExpect(redirectedUrl("/student/plan"))
@@ -252,7 +270,7 @@ class PlanControllerTest {
 
     @Test
     void addsACourse() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+        planService.addTerm(priya, 2027, "FALL");
 
         mockMvc.perform(post("/student/plan/terms/{id}/courses", termId(priya, "2027 Fall")).session(sessionFor(priya))
                         .param("code", "cmpt 225"))
@@ -264,7 +282,7 @@ class PlanControllerTest {
 
     @Test
     void textThatIsntACourseCodeShowsAnError() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+        planService.addTerm(priya, 2027, "FALL");
 
         mockMvc.perform(post("/student/plan/terms/{id}/courses", termId(priya, "2027 Fall")).session(sessionFor(priya))
                         .param("code", "data structures"))
@@ -275,7 +293,7 @@ class PlanControllerTest {
 
     @Test
     void removesACourse() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+        planService.addTerm(priya, 2027, "FALL");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 225");
 
         mockMvc.perform(post("/student/plan/courses/{id}/remove", courseId(priya, "CMPT 225")).session(sessionFor(priya)))
@@ -289,7 +307,7 @@ class PlanControllerTest {
     // Marcus changes the ids in the request to Priya's; nothing of hers changes
     @Test
     void anotherStudentsIdsAreRejected() throws Exception {
-        planService.addTerm(priya, 2027, "Fall");
+        planService.addTerm(priya, 2027, "FALL");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 225");
         Long priyasTerm = termId(priya, "2027 Fall");
         Long priyasCourse = courseId(priya, "CMPT 225");

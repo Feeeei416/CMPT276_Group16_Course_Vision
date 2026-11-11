@@ -1,9 +1,9 @@
 package cmpt276.group16.services;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,13 +12,18 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import cmpt276.group16.models.Course;
+import cmpt276.group16.models.CourseRepository;
 import cmpt276.group16.models.Plan;
 import cmpt276.group16.models.PlanRepository;
 import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.PlanTermRepository;
 import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.PlannedCourseRepository;
+import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
+import cmpt276.group16.models.Term;
+import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
 // Changes to a student's plan. Each change returns every problem found; an empty list means it was saved
@@ -30,45 +35,65 @@ public class PlanService {
     private final PlanRepository planRepository;
     private final PlanTermRepository planTermRepository;
     private final PlannedCourseRepository plannedCourseRepository;
+    private final TermRepository termRepository;
+    private final CourseRepository courseRepository;
     private final Clock clock;
 
     public PlanService(PlanRepository planRepository, PlanTermRepository planTermRepository,
-            PlannedCourseRepository plannedCourseRepository, Clock clock) {
+            PlannedCourseRepository plannedCourseRepository, TermRepository termRepository,
+            CourseRepository courseRepository, Clock clock) {
         this.planRepository = planRepository;
         this.planTermRepository = planTermRepository;
         this.plannedCourseRepository = plannedCourseRepository;
+        this.termRepository = termRepository;
+        this.courseRepository = courseRepository;
         this.clock = clock;
     }
 
-    // Every term in the student's main plan, oldest first, each with its courses in the order they were added.
+    // One term as the My plan page shows it: the term, its courses in the order they were added, and their units
+    public record TermPlan(PlanTerm term, List<PlannedCourse> courses) {
+
+        // For example "9 units", or "1 unit"
+        public String unitsText() {
+            BigDecimal total = courses.stream().map(PlannedCourse::getUnits).reduce(BigDecimal.ZERO, BigDecimal::add);
+            String units = total.stripTrailingZeros().toPlainString();
+            return units + (total.compareTo(BigDecimal.ONE) == 0 ? " unit" : " units");
+        }
+    }
+
+    // Every term in the student's main plan, oldest first.
     // Empty until the student adds their first term, so opening the page never writes to the database
     @Transactional(readOnly = true)
-    public Map<PlanTerm, List<PlannedCourse>> coursesByTerm(StudentProfile student) {
+    public List<TermPlan> termPlans(StudentProfile student) {
         Optional<Plan> plan = planRepository.findByStudentAndMainTrue(student);
         if (plan.isEmpty()) {
-            return Map.of();
+            return List.of();
         }
         Map<Long, List<PlannedCourse>> coursesByTermId = plannedCourseRepository.findByTermPlan(plan.get()).stream()
                 .sorted(Comparator.comparing(PlannedCourse::getId))
                 .collect(Collectors.groupingBy(course -> course.getTerm().getId()));
-        Map<PlanTerm, List<PlannedCourse>> result = new LinkedHashMap<>();
-        planTermRepository.findByPlan(plan.get()).stream()
+        return planTermRepository.findByPlan(plan.get()).stream()
                 .sorted(PlanTerm.OLDEST_FIRST)
-                .forEach(term -> result.put(term, coursesByTermId.getOrDefault(term.getId(), List.of())));
-        return result;
+                .map(term -> new TermPlan(term, coursesByTermId.getOrDefault(term.getId(), List.of())))
+                .toList();
     }
 
     @Transactional
-    public List<String> addTerm(StudentProfile student, int year, String season) {
-        List<String> problems = PlanRules.problemsWithTerm(year, season, today());
+    public List<String> addTerm(StudentProfile student, int year, String seasonText) {
+        Optional<Season> season = PlanRules.parseSeason(seasonText);
+        if (season.isEmpty()) {
+            return List.of("Choose Spring, Summer or Fall.");
+        }
+        List<String> problems = PlanRules.problemsWithTerm(year, season.get(), today());
         if (!problems.isEmpty()) {
             return problems;
         }
         Plan plan = mainPlanFor(student);
-        if (planTermRepository.existsByPlanAndYearAndSeason(plan, year, season)) {
-            return List.of(year + " " + season + " is already in your plan.");
+        Term term = termFor(year, season.get());
+        if (planTermRepository.existsByPlanAndTerm(plan, term)) {
+            return List.of(PlanTerm.nameOf(year, season.get()) + " is already in your plan.");
         }
-        planTermRepository.save(new PlanTerm(plan, year, season));
+        planTermRepository.save(new PlanTerm(plan, term));
         return List.of();
     }
 
@@ -90,19 +115,21 @@ public class PlanService {
         if (term.isEmpty()) {
             return List.of("That term isn't in your plan.");
         }
-        Optional<CourseCode> course = PlanRules.parseCourseCode(code);
-        if (course.isEmpty()) {
+        Optional<CourseCode> parsed = PlanRules.parseCourseCode(code);
+        if (parsed.isEmpty()) {
             return List.of("Enter a course code like CMPT 225.");
         }
-        String subject = course.get().subject();
-        String number = course.get().number();
+        Optional<Course> course = courseRepository.findBySubjectAndNumber(parsed.get().subject(), parsed.get().number());
+        if (course.isEmpty()) {
+            return List.of(parsed.get().subject() + " " + parsed.get().number() + " isn't in the course list.");
+        }
         // Checks the whole plan, not just this term, since a course only needs to be taken once
         Optional<PlannedCourse> alreadyPlanned = plannedCourseRepository
-                .findByTermPlanAndSubjectAndNumber(term.get().getPlan(), subject, number);
+                .findByTermPlanAndCourse(term.get().getPlan(), course.get());
         if (alreadyPlanned.isPresent()) {
             return List.of(alreadyPlannedMessage(alreadyPlanned.get(), term.get()));
         }
-        plannedCourseRepository.save(new PlannedCourse(term.get(), subject, number));
+        plannedCourseRepository.save(new PlannedCourse(term.get(), course.get()));
         return List.of();
     }
 
@@ -140,6 +167,12 @@ public class PlanService {
     private Plan mainPlanFor(StudentProfile student) {
         return planRepository.findByStudentAndMainTrue(student)
                 .orElseGet(() -> planRepository.save(new Plan(student, MAIN_PLAN_NAME, true)));
+    }
+
+    // Plans reach terms the course import hasn't seen yet, so the shared term is created if it's missing
+    private Term termFor(int year, Season season) {
+        return termRepository.findByTermYearAndSeason(year, season)
+                .orElseGet(() -> termRepository.save(new Term(year, season)));
     }
 
     private LocalDate today() {

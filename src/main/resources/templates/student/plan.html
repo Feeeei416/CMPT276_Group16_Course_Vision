@@ -18,49 +18,56 @@
             <div th:each="e : ${errors}" th:text="${e}"></div>
         </div>
 
-        <p th:if="${coursesByTerm.isEmpty()}" class="muted">No terms yet. Add your first term below.</p>
+        <p th:if="${termPlans.isEmpty()}" class="muted">No terms yet. Add your first term below.</p>
 
         <!-- One box per term, oldest first -->
-        <section class="plan-term" th:each="entry : ${coursesByTerm}">
+        <section class="plan-term" th:each="termPlan : ${termPlans}"
+                 th:with="term=${termPlan.term}, courses=${termPlan.courses}">
             <div class="plan-term-header">
-                <h2 class="section-label" th:text="${entry.key.name}">2027 Fall</h2>
+                <div>
+                    <h2 class="section-label" th:text="${term.name}">2027 Fall</h2>
+                    <span class="muted" th:text="${termPlan.unitsText()}">9 units</span>
+                </div>
                 <!-- The script below opens the dialog instead of sending this form -->
-                <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${entry.key.id})}"
-                      th:data-dialog="|remove-term-${entry.key.id}|">
+                <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}"
+                      th:data-dialog="|remove-term-${term.id}|">
                     <button type="submit" class="btn btn-secondary">Remove term</button>
                 </form>
             </div>
 
             <!-- Asks before removing, since the term's courses are removed with it -->
-            <dialog class="dialog" th:id="|remove-term-${entry.key.id}|">
-                <h2 class="dialog-title" th:text="|Remove ${entry.key.name}?|">Remove 2027 Fall?</h2>
-                <p th:if="${entry.value.isEmpty()}">This term has no courses in it.</p>
-                <p th:unless="${entry.value.isEmpty()}"
-                   th:text="|This also removes ${#strings.listJoin(entry.value.![code], ', ')} from your plan.|">
+            <dialog class="dialog" th:id="|remove-term-${term.id}|">
+                <h2 class="dialog-title" th:text="|Remove ${term.name}?|">Remove 2027 Fall?</h2>
+                <p th:if="${courses.isEmpty()}">This term has no courses in it.</p>
+                <p th:unless="${courses.isEmpty()}"
+                   th:text="|This also removes ${#strings.listJoin(courses.![code], ', ')} from your plan.|">
                     This also removes CMPT 225 from your plan.</p>
                 <div class="dialog-actions">
                     <form method="dialog">
                         <button class="btn btn-secondary" autofocus>Cancel</button>
                     </form>
-                    <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${entry.key.id})}">
+                    <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}">
                         <button type="submit" class="btn btn-primary">Remove term</button>
                     </form>
                 </div>
             </dialog>
 
-            <p th:if="${entry.value.isEmpty()}" class="muted">No courses yet.</p>
-            <ul class="plan-courses" th:unless="${entry.value.isEmpty()}">
-                <li th:each="course : ${entry.value}">
-                    <span th:text="${course.code}">CMPT 225</span>
+            <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
+            <ul class="plan-courses" th:unless="${courses.isEmpty()}">
+                <li th:each="course : ${courses}">
+                    <span>
+                        <span th:text="${course.code}">CMPT 225</span>
+                        <span class="muted" th:text="${course.title}">Data Structures and Programming</span>
+                    </span>
                     <form method="post" th:action="@{/student/plan/courses/{id}/remove(id=${course.id})}">
                         <button type="submit" class="link">Remove</button>
                     </form>
                 </li>
             </ul>
 
-            <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${entry.key.id})}">
+            <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
                 <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
-                       th:aria-label="|Course code for ${entry.key.name}|" required>
+                       th:aria-label="|Course code for ${term.name}|" required>
                 <button type="submit" class="btn btn-primary">Add course</button>
             </form>
         </section>
@@ -74,7 +81,8 @@
                 </select>
                 <select name="season" class="input" aria-label="Term" required>
                     <option value="">-- Term --</option>
-                    <option th:each="s : ${seasons}" th:value="${s}" th:text="${s}">Fall</option>
+                    <option th:each="s : ${seasons}" th:value="${s.name()}"
+                            th:text="${#strings.capitalize(#strings.toLowerCase(s.name()))}">Fall</option>
                 </select>
                 <button type="submit" class="btn btn-primary">Add term</button>
             </form>
