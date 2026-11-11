@@ -17,6 +17,7 @@ import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.transcript.CourseInput;
+import cmpt276.group16.transcript.TranscriptService;
 import jakarta.servlet.http.HttpSession;
 
 // Edit and Remove for one course in the signed-in student's record
@@ -30,10 +31,13 @@ public class EditCourseController {
 
     private final CurrentStudent currentStudent;
     private final TranscriptCourseRepository transcriptCourseRepository;
+    private final TranscriptService transcriptService;
 
-    public EditCourseController(CurrentStudent currentStudent, TranscriptCourseRepository transcriptCourseRepository) {
+    public EditCourseController(CurrentStudent currentStudent, TranscriptCourseRepository transcriptCourseRepository,
+            TranscriptService transcriptService) {
         this.currentStudent = currentStudent;
         this.transcriptCourseRepository = transcriptCourseRepository;
+        this.transcriptService = transcriptService;
     }
 
     @GetMapping("/edit")
@@ -69,13 +73,9 @@ public class EditCourseController {
         }
 
         CourseInput edited = CourseInput.from(form);
-        if (transcriptCourseRepository.existsByStudentAndTermAndSubjectAndNumberAndIdNot(student.get(),
-                edited.term(), edited.subject(), edited.number(), id)) {
+        if (!transcriptService.editByHand(course.get(), edited)) {
             return showEditPage(model, course.get(), form, List.of(CourseForms.alreadyInRecord(edited)));
         }
-        course.get().editByHand(edited.term(), edited.subject(), edited.number(), edited.title(), edited.units(),
-                edited.grade());
-        transcriptCourseRepository.save(course.get());
 
         redirectAttributes.addFlashAttribute("message", "Saved " + CourseForms.name(edited) + ".");
         return "redirect:/student/courses";

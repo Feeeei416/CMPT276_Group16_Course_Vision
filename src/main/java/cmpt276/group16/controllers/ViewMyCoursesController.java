@@ -18,6 +18,7 @@ import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.transcript.CourseInput;
 import cmpt276.group16.transcript.Terms;
+import cmpt276.group16.transcript.TranscriptService;
 import jakarta.servlet.http.HttpSession;
 
 
@@ -25,10 +26,13 @@ import jakarta.servlet.http.HttpSession;
 public class ViewMyCoursesController {
     private final CurrentStudent currentStudent;
     private final TranscriptCourseRepository transcriptCourseRepository;
+    private final TranscriptService transcriptService;
 
-    public ViewMyCoursesController(CurrentStudent currentStudent, TranscriptCourseRepository transcriptCourseRepository){
+    public ViewMyCoursesController(CurrentStudent currentStudent, TranscriptCourseRepository transcriptCourseRepository,
+            TranscriptService transcriptService){
         this.currentStudent = currentStudent;
         this.transcriptCourseRepository = transcriptCourseRepository;
+        this.transcriptService = transcriptService;
     }
 
     @GetMapping("/student/courses")
@@ -55,12 +59,9 @@ public class ViewMyCoursesController {
         }
 
         CourseInput course = CourseInput.from(form);
-        if (transcriptCourseRepository.existsByStudentAndTermAndSubjectAndNumber(student.get(), course.term(),
-                course.subject(), course.number())) {
+        if (!transcriptService.addByHand(student.get(), course)) {
             return showMyCourses(model, student.get(), form, List.of(CourseForms.alreadyInRecord(course)));
         }
-        transcriptCourseRepository.save(new TranscriptCourse(student.get(), course.term(), course.subject(),
-                course.number(), course.title(), course.units(), course.grade(), TranscriptCourse.Source.MANUAL));
 
         redirectAttributes.addFlashAttribute("message",
                 "Added " + CourseForms.name(course) + " to " + course.term() + ".");
