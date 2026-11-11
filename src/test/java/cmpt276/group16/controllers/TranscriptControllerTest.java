@@ -27,7 +27,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import cmpt276.group16.models.CourseSource;
 import cmpt276.group16.models.Program;
 import cmpt276.group16.models.Role;
 import cmpt276.group16.models.StudentProfile;
@@ -157,7 +156,7 @@ class TranscriptControllerTest {
         StudentProfile other = studentProfileRepository.save(
                 new StudentProfile(otherUser, Program.COMPUTING_SCIENCE, 2023));
         transcriptCourseRepository.save(new TranscriptCourse(other, "2024 Fall", "MATH", "152", "Calculus II",
-                new BigDecimal("3.00"), "B", CourseSource.PDF));
+                new BigDecimal("3.00"), "B"));
 
         uploadSample();
         mockMvc.perform(post("/student/transcript/confirm").session(session));
@@ -232,7 +231,7 @@ class TranscriptControllerTest {
     @Test
     void replaceWarningUsesSingularForOneCourse() throws Exception {
         transcriptCourseRepository.save(new TranscriptCourse(student, "2025 Fall", "CMPT", "120",
-                "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-", CourseSource.PDF));
+                "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-"));
 
         mockMvc.perform(multipart("/student/transcript").file(pdf(TestTranscripts.samplePdf())).session(session))
                 .andExpect(content().string(containsString("You already have 1 saved course. Confirming")));

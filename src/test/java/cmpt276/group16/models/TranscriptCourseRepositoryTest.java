@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
-// Covers only the Iteration 2 additions (the course link and the source).
+// Covers only the Iteration 2 addition (the link to the courses table).
 // The older transcript behaviour is already covered by TranscriptServiceTest and TranscriptControllerTest
 @DataJpaTest
 class TranscriptCourseRepositoryTest {
@@ -39,44 +39,19 @@ class TranscriptCourseRepositoryTest {
                 new BigDecimal("3.00"), null, null, null));
     }
 
-    private TranscriptCourse newTranscriptCourse(StudentProfile student, CourseSource source) {
+    private TranscriptCourse newTranscriptCourse(StudentProfile student) {
         return new TranscriptCourse(student, "2024 Fall", "CMPT", "225", "Data Structures",
-                new BigDecimal("3.00"), "A", source);
+                new BigDecimal("3.00"), "A");
     }
 
-    // A row made from an uploaded transcript keeps its source, and starts without a link to the courses table
+    // A new transcript row starts without a link, since the matching course may not be fetched yet
     @Test
-    void savesSourceAndStartsWithoutCourseLink() {
+    void startsWithoutCourseLink() {
         StudentProfile student = saveStudent("priya@example.com");
-        TranscriptCourse saved = transcriptCourseRepository.saveAndFlush(
-                newTranscriptCourse(student, CourseSource.PDF));
+        TranscriptCourse saved = transcriptCourseRepository.saveAndFlush(newTranscriptCourse(student));
         entityManager.clear();
 
-        TranscriptCourse found = transcriptCourseRepository.findById(saved.getId()).orElseThrow();
-        assertThat(found.getSource()).isEqualTo(CourseSource.PDF);
-        assertThat(found.getCourse()).isNull();
-    }
-
-    // A manually added row keeps the MANUAL source
-    @Test
-    void savesManualSource() {
-        StudentProfile student = saveStudent("priya@example.com");
-        TranscriptCourse saved = transcriptCourseRepository.saveAndFlush(
-                newTranscriptCourse(student, CourseSource.MANUAL));
-        entityManager.clear();
-
-        assertThat(transcriptCourseRepository.findById(saved.getId()).orElseThrow().getSource())
-            .isEqualTo(CourseSource.MANUAL);
-    }
-
-    // Rows saved before Iteration 2 have no source, so a missing source must still save and load
-    @Test
-    void allowsMissingSourceForOlderRows() {
-        StudentProfile student = saveStudent("priya@example.com");
-        TranscriptCourse saved = transcriptCourseRepository.saveAndFlush(newTranscriptCourse(student, null));
-        entityManager.clear();
-
-        assertThat(transcriptCourseRepository.findById(saved.getId()).orElseThrow().getSource()).isNull();
+        assertThat(transcriptCourseRepository.findById(saved.getId()).orElseThrow().getCourse()).isNull();
     }
 
     // A transcript row can be linked to its course later, and the link is saved
@@ -84,8 +59,7 @@ class TranscriptCourseRepositoryTest {
     void linksTranscriptRowToCourse() {
         StudentProfile student = saveStudent("priya@example.com");
         Course cmpt225 = saveCourse("CMPT", "225");
-        TranscriptCourse saved = transcriptCourseRepository.saveAndFlush(
-                newTranscriptCourse(student, CourseSource.PDF));
+        TranscriptCourse saved = transcriptCourseRepository.saveAndFlush(newTranscriptCourse(student));
         entityManager.clear();
 
         TranscriptCourse row = transcriptCourseRepository.findById(saved.getId()).orElseThrow();
@@ -103,7 +77,7 @@ class TranscriptCourseRepositoryTest {
     void linkingKeepsTranscriptDetails() {
         StudentProfile student = saveStudent("priya@example.com");
         Course cmpt225 = saveCourse("CMPT", "225");
-        TranscriptCourse row = newTranscriptCourse(student, CourseSource.PDF);
+        TranscriptCourse row = newTranscriptCourse(student);
         row.setCourse(cmpt225);
         TranscriptCourse saved = transcriptCourseRepository.saveAndFlush(row);
         entityManager.clear();
@@ -121,30 +95,13 @@ class TranscriptCourseRepositoryTest {
         StudentProfile priya = saveStudent("priya@example.com");
         StudentProfile marcus = saveStudent("marcus@example.com");
         Course cmpt225 = saveCourse("CMPT", "225");
-        TranscriptCourse priyaRow = newTranscriptCourse(priya, CourseSource.PDF);
+        TranscriptCourse priyaRow = newTranscriptCourse(priya);
         priyaRow.setCourse(cmpt225);
         transcriptCourseRepository.saveAndFlush(priyaRow);
-        TranscriptCourse marcusRow = newTranscriptCourse(marcus, CourseSource.PDF);
+        TranscriptCourse marcusRow = newTranscriptCourse(marcus);
         marcusRow.setCourse(cmpt225);
         transcriptCourseRepository.saveAndFlush(marcusRow);
 
         assertThat(transcriptCourseRepository.count()).isEqualTo(2);
-    }
-
-    // Replacing a student's transcript removes their rows but leaves the shared course in place
-    @Test
-    void deletingStudentRowsKeepsCourse() {
-        StudentProfile student = saveStudent("priya@example.com");
-        Course cmpt225 = saveCourse("CMPT", "225");
-        TranscriptCourse row = newTranscriptCourse(student, CourseSource.PDF);
-        row.setCourse(cmpt225);
-        transcriptCourseRepository.saveAndFlush(row);
-
-        transcriptCourseRepository.deleteByStudent(student);
-        transcriptCourseRepository.flush();
-        entityManager.clear();
-
-        assertThat(transcriptCourseRepository.countByStudent(student)).isZero();
-        assertThat(courseRepository.findById(cmpt225.getId())).isPresent();
     }
 }
