@@ -229,4 +229,45 @@ class RequisiteRuleRepositoryTest {
         assertThatThrownBy(() -> new RequisiteRule(cmpt225, prereqRoot, RuleKind.COREQUISITE, NodeType.COURSE))
             .isInstanceOf(IllegalArgumentException.class);
     }
+
+    // A unit node keeps how many units are needed
+    @Test
+    void unitNodeKeepsMinUnits() {
+        Course cmpt300 = saveCourse("CMPT", "300");
+        RequisiteRule rule = new RequisiteRule(cmpt300, null, RuleKind.PREREQUISITE, NodeType.MIN_UNITS);
+        rule.setMinUnits(new BigDecimal("60"));
+        RequisiteRule saved = requisiteRuleRepository.saveAndFlush(rule);
+        entityManager.clear();
+
+        RequisiteRule found = requisiteRuleRepository.findById(saved.getId()).orElseThrow();
+        assertThat(found.getNodeType()).isEqualTo(NodeType.MIN_UNITS);
+        assertThat(found.getMinUnits()).isEqualByComparingTo("60");
+        assertThat(found.isGroup()).isFalse();
+    }
+
+    // Rules are imported unless they are created as entered by hand
+    @Test
+    void sourceIsSaved() {
+        Course cmpt225 = saveCourse("CMPT", "225");
+        RequisiteRule imported = saveRule(cmpt225, null, RuleKind.PREREQUISITE, NodeType.AND);
+        RequisiteRule manual = requisiteRuleRepository.saveAndFlush(new RequisiteRule(
+                cmpt225, null, RuleKind.COREQUISITE, NodeType.SPECIAL, RequisiteRule.Source.MANUAL));
+        entityManager.clear();
+
+        assertThat(requisiteRuleRepository.findById(imported.getId()).orElseThrow().getSource())
+            .isEqualTo(RequisiteRule.Source.IMPORTED);
+        assertThat(requisiteRuleRepository.findById(manual.getId()).orElseThrow().getSource())
+            .isEqualTo(RequisiteRule.Source.MANUAL);
+    }
+
+    // A hand-entered node can't sit in an imported tree
+    @Test
+    void rejectsParentWithDifferentSource() {
+        Course cmpt225 = saveCourse("CMPT", "225");
+        RequisiteRule root = saveRule(cmpt225, null, RuleKind.PREREQUISITE, NodeType.AND);
+
+        assertThatThrownBy(() -> new RequisiteRule(cmpt225, root, RuleKind.PREREQUISITE,
+                NodeType.COURSE, RequisiteRule.Source.MANUAL))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
 }

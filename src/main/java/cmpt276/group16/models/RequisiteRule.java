@@ -1,6 +1,7 @@
 package cmpt276.group16.models;
 
 import java.util.Objects;
+import java.math.BigDecimal;
 
 import jakarta.persistence.*;
 
@@ -14,6 +15,15 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "requisite_rules")
 public class RequisiteRule {
+
+    // Where a rule came from. Re-importing only replaces IMPORTED rules, so hand-entered ones are kept
+    public enum Source {
+        // made by the prerequisite parser during an import
+        IMPORTED,
+        // entered by hand
+        MANUAL
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -33,7 +43,7 @@ public class RequisiteRule {
     @Column(nullable = false)
     private RuleKind ruleKind;
 
-    // AND or OR for a group, COURSE or SPECIAL for a leaf
+    // AND or OR for a group, COURSE, MIN_UNITS or SPECIAL for a leaf
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private NodeType nodeType;
@@ -57,10 +67,23 @@ public class RequisiteRule {
     @Column(columnDefinition = "TEXT")
     private String specialText;
 
+    // Only for unit nodes: how many units must be completed, for example 60
+    @Column(precision = 5, scale = 2)
+    private BigDecimal minUnits;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Source source;
+
     protected RequisiteRule() {}
 
-    // Pass null as parent for the root of the tree
+    // A rule made by the importer
     public RequisiteRule(Course course, RequisiteRule parent, RuleKind ruleKind, NodeType nodeType) {
+        this(course, parent, ruleKind, nodeType, Source.IMPORTED);
+    }
+
+    // Pass null as parent for the root of the tree
+    public RequisiteRule(Course course, RequisiteRule parent, RuleKind ruleKind, NodeType nodeType, Source source) {
         // A child must fit into its parent's tree
         if (parent != null) {
             if (!parent.isGroup()) {
@@ -72,11 +95,15 @@ public class RequisiteRule {
             else if(parent.getRuleKind() != ruleKind) {
                 throw new IllegalArgumentException("Parent has a different rule kind");
             }
+            else if(parent.getSource() != source) {
+                throw new IllegalArgumentException("Parent has a different source");
+            }
         }
         this.course = course;
         this.parent = parent;
         this.ruleKind = ruleKind;
         this.nodeType = nodeType;
+        this.source = source;
     }
 
     // True for AND and OR nodes, the only ones that can have children
@@ -146,5 +173,18 @@ public class RequisiteRule {
 
     public void setSpecialText(String specialText) {
         this.specialText = specialText;
+    }
+
+    public BigDecimal getMinUnits() {
+        return minUnits;
+    }
+
+    public void setMinUnits(BigDecimal minUnits) {
+        this.minUnits = minUnits;
+    }
+
+    // No setter: a rule doesn't change from imported to entered by hand
+    public Source getSource() {
+        return source;
     }
 }
