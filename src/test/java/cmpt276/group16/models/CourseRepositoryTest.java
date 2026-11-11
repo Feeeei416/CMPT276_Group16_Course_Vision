@@ -187,4 +187,35 @@ class CourseRepositoryTest {
         Instant secondFetchedAt = courseRepository.findById(saved.getId()).orElseThrow().getFetchedAt();
         assertThat(secondFetchedAt).isAfter(firstFetchedAt);
     }
+
+    // A new course hasn't been parsed, and a parse result is saved
+    @Test
+    void parseStatusIsSaved() {
+        Course saved = saveCourse("CMPT", "225");
+        assertThat(saved.getParseStatus()).isEqualTo(Course.ParseStatus.NOT_PARSED);
+
+        saved.setParseStatus(Course.ParseStatus.FAILED);
+        courseRepository.saveAndFlush(saved);
+        entityManager.clear();
+
+        assertThat(courseRepository.findById(saved.getId()).orElseThrow().getParseStatus())
+            .isEqualTo(Course.ParseStatus.FAILED);
+    }
+
+    // New requisite text needs parsing again; the same text keeps the old result
+    @Test
+    void changingRequisiteTextResetsParseStatus() {
+        Course course = newCourse("CMPT", "225");
+        course.setParseStatus(Course.ParseStatus.PARSED);
+
+        course.setPrereqText("CMPT 125 with a C- or better");
+        assertThat(course.getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
+
+        course.setPrereqText("CMPT 125 or CMPT 135");
+        assertThat(course.getParseStatus()).isEqualTo(Course.ParseStatus.NOT_PARSED);
+
+        course.setParseStatus(Course.ParseStatus.PARSED);
+        course.setCoreqText("MACM 201");
+        assertThat(course.getParseStatus()).isEqualTo(Course.ParseStatus.NOT_PARSED);
+    }
 }

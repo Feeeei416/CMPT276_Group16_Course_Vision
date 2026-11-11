@@ -3,6 +3,7 @@ package cmpt276.group16.models;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Objects;
 
 import jakarta.persistence.*;
 
@@ -10,6 +11,14 @@ import jakarta.persistence.*;
 @Table (name = "courses",
         uniqueConstraints = @UniqueConstraint(columnNames = {"subject", "course_number"}))
 public class Course {
+
+    // Whether prereqText and coreqText have been turned into rules.
+    public enum ParseStatus {
+        NOT_PARSED,
+        PARSED,
+        // the text couldn't be turned into rules, so students are shown the text instead
+        FAILED
+    }
 
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,6 +49,10 @@ public class Course {
     // Null when the course has no corequisites
     @Column(columnDefinition = "TEXT")
     private String coreqText;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ParseStatus parseStatus = ParseStatus.NOT_PARSED;
 
     // When this course was last fetched from the API
     @Column(nullable = false)
@@ -109,7 +122,11 @@ public class Course {
         return prereqText;
     }
 
+    // New text has to be parsed again, so the status goes back to NOT_PARSED when the text changes
     public void setPrereqText(String prereqText) {
+        if (!Objects.equals(this.prereqText, prereqText)) {
+            this.parseStatus = ParseStatus.NOT_PARSED;
+        }
         this.prereqText = prereqText;
     }
 
@@ -118,7 +135,19 @@ public class Course {
     }
 
     public void setCoreqText(String coreqText) {
+        if (!Objects.equals(this.coreqText, coreqText)) {
+            this.parseStatus = ParseStatus.NOT_PARSED;
+        }
         this.coreqText = coreqText;
+    }
+
+    public ParseStatus getParseStatus() {
+        return parseStatus;
+    }
+
+    // Set by the parser after it tries to turn the text into rules
+    public void setParseStatus(ParseStatus parseStatus) {
+        this.parseStatus = parseStatus;
     }
 
     public Instant getFetchedAt() {
