@@ -206,6 +206,18 @@ class PlanControllerTest {
                .andExpect(content().string(not(containsString("CMPT 276"))));
     }
 
+    // Add a term is above the terms, so it's easy to find however many terms there are
+    @Test
+    void addATermComesBeforeTheTerms() throws Exception {
+        planService.addTerm(priya, 2027, "SUMMER");
+        planService.addTerm(priya, 2027, "FALL");
+
+        String page = mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
+               .andReturn().getResponse().getContentAsString();
+
+        assertThat(page.indexOf("Add a term")).isPositive().isLessThan(page.indexOf("class=\"plan-term\""));
+    }
+
     // A change inside a term shows its message in that term's box, not at the top of the page
     @Test
     void messageShowsInsideTheTermThatChanged() throws Exception {

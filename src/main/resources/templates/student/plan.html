@@ -20,7 +20,24 @@
             </div>
         </th:block>
 
-        <p th:if="${termPlans.isEmpty()}" class="muted">No terms yet. Add your first term below.</p>
+        <!-- Above the terms, so it's in the same place however many terms there are -->
+        <section class="plan-add-term">
+            <h2 class="section-label">Add a term</h2>
+            <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
+                <select name="year" class="input" aria-label="Year" required>
+                    <option value="">-- Year --</option>
+                    <option th:each="y : ${years}" th:value="${y}" th:text="${y}">2027</option>
+                </select>
+                <select name="season" class="input" aria-label="Term" required>
+                    <option value="">-- Term --</option>
+                    <option th:each="s : ${seasons}" th:value="${s.name()}"
+                            th:text="${#strings.capitalize(#strings.toLowerCase(s.name()))}">Fall</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Add term</button>
+            </form>
+        </section>
+
+        <p th:if="${termPlans.isEmpty()}" class="muted">No terms yet. Add your first term above.</p>
 
         <!-- One box per term, oldest first. The id lets a change jump back here with /student/plan#term-5 -->
         <section class="plan-term" th:each="termPlan : ${termPlans}"
@@ -79,22 +96,6 @@
                 <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
                        th:aria-label="|Course code for ${term.name}|" required>
                 <button type="submit" class="btn btn-primary">Add course</button>
-            </form>
-        </section>
-
-        <section>
-            <h2 class="section-label">Add a term</h2>
-            <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
-                <select name="year" class="input" aria-label="Year" required>
-                    <option value="">-- Year --</option>
-                    <option th:each="y : ${years}" th:value="${y}" th:text="${y}">2027</option>
-                </select>
-                <select name="season" class="input" aria-label="Term" required>
-                    <option value="">-- Term --</option>
-                    <option th:each="s : ${seasons}" th:value="${s.name()}"
-                            th:text="${#strings.capitalize(#strings.toLowerCase(s.name()))}">Fall</option>
-                </select>
-                <button type="submit" class="btn btn-primary">Add term</button>
             </form>
         </section>
 
