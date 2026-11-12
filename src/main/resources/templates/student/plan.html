@@ -12,17 +12,19 @@
         <h1 class="page-title">My plan</h1>
         <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
 
-        <!-- Set by the last change, before redirecting back here -->
-        <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Added CMPT 225 to 2027 Fall.</div>
-        <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
-            <div th:each="e : ${errors}" th:text="${e}"></div>
-        </div>
+        <!-- Set by the last change, before redirecting back here. A change inside a term shows in that term instead -->
+        <th:block th:if="${changedTermId == null}">
+            <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Removed 2027 Fall.</div>
+            <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+                <div th:each="e : ${errors}" th:text="${e}"></div>
+            </div>
+        </th:block>
 
         <p th:if="${termPlans.isEmpty()}" class="muted">No terms yet. Add your first term below.</p>
 
-        <!-- One box per term, oldest first -->
+        <!-- One box per term, oldest first. The id lets a change jump back here with /student/plan#term-5 -->
         <section class="plan-term" th:each="termPlan : ${termPlans}"
-                 th:with="term=${termPlan.term}, courses=${termPlan.courses}">
+                 th:with="term=${termPlan.term}, courses=${termPlan.courses}" th:id="|term-${term.id}|">
             <div class="plan-term-header">
                 <div>
                     <h2 class="section-label" th:text="${term.name}">2027 Fall</h2>
@@ -34,6 +36,14 @@
                     <button type="submit" class="btn btn-secondary">Remove term</button>
                 </form>
             </div>
+
+            <!-- The last change happened in this term, so its message shows here -->
+            <th:block th:if="${changedTermId == term.id}">
+                <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Added CMPT 225 to 2027 Fall.</div>
+                <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+                    <div th:each="e : ${errors}" th:text="${e}"></div>
+                </div>
+            </th:block>
 
             <!-- Asks before removing, since the term's courses are removed with it -->
             <dialog class="dialog" th:id="|remove-term-${term.id}|">

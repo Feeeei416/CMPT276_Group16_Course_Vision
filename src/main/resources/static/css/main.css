@@ -246,6 +246,8 @@ a.btn {
     border-radius: var(--radius);
     padding: var(--space-md) var(--space-lg);
     margin-bottom: var(--space-lg);
+    /* Leaves a gap above the box when the page jumps to it after a change */
+    scroll-margin-top: var(--space-md);
 }
 
 /* Term name on the left, Remove term on the right */

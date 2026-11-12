@@ -321,6 +321,21 @@ class PlanServiceTest {
         assertThat(planOf(priya)).containsExactly(entry("2027 Fall", List.of("CMPT 276")));
     }
 
+    // -- Which term a change happened in --
+
+    // The page shows a change's message in the term it names; removing a whole term leaves none to name
+    @Test
+    void changesSayWhichTermTheyHappenedIn() {
+        Long fall = planService.addTerm(priya, 2027, "FALL").termId();
+        assertThat(fall).isEqualTo(termId(priya, "2027 Fall"));
+
+        assertThat(planService.addCourse(priya, fall, "CMPT 225").termId()).isEqualTo(fall);
+        assertThat(planService.addCourse(priya, fall, "not a code").termId()).isEqualTo(fall);
+        assertThat(planService.removeCourse(priya, courseId(priya, "CMPT 225")).termId()).isEqualTo(fall);
+        assertThat(planService.addTerm(priya, 2027, "SPRING").termId()).isNull();
+        assertThat(planService.removeTerm(priya, fall).termId()).isNull();
+    }
+
     // -- Units --
 
     // Units come from the courses table: 3 + 4 + 1.5

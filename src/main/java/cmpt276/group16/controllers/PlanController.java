@@ -90,14 +90,20 @@ public class PlanController {
         return backToPlan(planService.removeCourse(student.get(), courseId), redirectAttributes);
     }
 
-    // Says what the change did at the top of the page, or shows the problems that stopped it
+    // Says what the change did, or shows the problems that stopped it.
+    // A change inside a term jumps back to that term (#term-5) and shows its message there, so the student
+    // doesn't have to scroll back down to keep going
     private static String backToPlan(PlanChange change, RedirectAttributes redirectAttributes) {
         if (change.isSaved()) {
             redirectAttributes.addFlashAttribute("message", change.message());
         } else {
             redirectAttributes.addFlashAttribute("errors", change.problems());
         }
-        return "redirect:/student/plan";
+        if (change.termId() == null) {
+            return "redirect:/student/plan";
+        }
+        redirectAttributes.addFlashAttribute("changedTermId", change.termId());
+        return "redirect:/student/plan#term-" + change.termId();
     }
 
     // Null when the year is blank or not a number

@@ -30,6 +30,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import cmpt276.group16.models.Course;
@@ -205,6 +206,35 @@ class PlanControllerTest {
                .andExpect(content().string(not(containsString("CMPT 276"))));
     }
 
+    // A change inside a term shows its message in that term's box, not at the top of the page
+    @Test
+    void messageShowsInsideTheTermThatChanged() throws Exception {
+        planService.addTerm(priya, 2027, "SUMMER");
+        planService.addTerm(priya, 2027, "FALL");
+        Long fall = termId(priya, "2027 Fall");
+
+        String page = mockMvc.perform(get("/student/plan").session(sessionFor(priya))
+                        .flashAttr("message", "Added CMPT 225 to 2027 Fall.")
+                        .flashAttr("changedTermId", fall))
+               .andReturn().getResponse().getContentAsString();
+
+        assertThat(page).containsOnlyOnce("Added CMPT 225 to 2027 Fall.");
+        assertThat(page.indexOf("Added CMPT 225 to 2027 Fall.")).isGreaterThan(page.indexOf("id=\"term-" + fall + "\""));
+    }
+
+    // Removing a whole term leaves no box to show the message in, so it goes at the top
+    @Test
+    void messageWithoutATermShowsAtTheTop() throws Exception {
+        planService.addTerm(priya, 2027, "SUMMER");
+
+        String page = mockMvc.perform(get("/student/plan").session(sessionFor(priya))
+                        .flashAttr("message", "Removed 2027 Fall."))
+               .andReturn().getResponse().getContentAsString();
+
+        assertThat(page).containsOnlyOnce("Removed 2027 Fall.");
+        assertThat(page.indexOf("Removed 2027 Fall.")).isLessThan(page.indexOf("class=\"plan-term\""));
+    }
+
     // Errors from a change arrive as a flash attribute after the redirect
     @Test
     void showsErrorsFromTheLastChange() throws Exception {
@@ -225,14 +255,18 @@ class PlanControllerTest {
 
     // -- Terms --
 
+    // Goes back to the new term, with the message shown in it
     @Test
     void addsATerm() throws Exception {
-        mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
+        MvcResult result = mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
                         .param("year", "2027").param("season", "FALL"))
-               .andExpect(redirectedUrl("/student/plan"))
-               .andExpect(flash().attribute("message", "Added 2027 Fall to your plan."));
+               .andExpect(flash().attribute("message", "Added 2027 Fall to your plan."))
+               .andReturn();
 
         assertThat(termNames(priya)).containsExactly("2027 Fall");
+        Long fall = termId(priya, "2027 Fall");
+        assertThat(result.getResponse().getRedirectedUrl()).isEqualTo("/student/plan#term-" + fall);
+        assertThat(result.getFlashMap().get("changedTermId")).isEqualTo(fall);
     }
 
     @Test
@@ -274,21 +308,26 @@ class PlanControllerTest {
     @Test
     void addsACourse() throws Exception {
         planService.addTerm(priya, 2027, "FALL");
+        Long fall = termId(priya, "2027 Fall");
 
-        mockMvc.perform(post("/student/plan/terms/{id}/courses", termId(priya, "2027 Fall")).session(sessionFor(priya))
+        mockMvc.perform(post("/student/plan/terms/{id}/courses", fall).session(sessionFor(priya))
                         .param("code", "cmpt 225"))
-               .andExpect(redirectedUrl("/student/plan"))
+               .andExpect(redirectedUrl("/student/plan#term-" + fall))
+               .andExpect(flash().attribute("changedTermId", fall))
                .andExpect(flash().attribute("message", "Added CMPT 225 to 2027 Fall."));
 
         assertThat(courseCodes(priya)).containsExactly("CMPT 225");
     }
 
+    // The error goes back to the term the student was typing in
     @Test
     void textThatIsntACourseCodeShowsAnError() throws Exception {
         planService.addTerm(priya, 2027, "FALL");
+        Long fall = termId(priya, "2027 Fall");
 
-        mockMvc.perform(post("/student/plan/terms/{id}/courses", termId(priya, "2027 Fall")).session(sessionFor(priya))
+        mockMvc.perform(post("/student/plan/terms/{id}/courses", fall).session(sessionFor(priya))
                         .param("code", "data structures"))
+               .andExpect(redirectedUrl("/student/plan#term-" + fall))
                .andExpect(flash().attribute("errors", contains("Enter a course code like CMPT 225.")));
 
         assertThat(courseCodes(priya)).isEmpty();
@@ -300,7 +339,7 @@ class PlanControllerTest {
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 225");
 
         mockMvc.perform(post("/student/plan/courses/{id}/remove", courseId(priya, "CMPT 225")).session(sessionFor(priya)))
-               .andExpect(redirectedUrl("/student/plan"))
+               .andExpect(redirectedUrl("/student/plan#term-" + termId(priya, "2027 Fall")))
                .andExpect(flash().attribute("message", "Removed CMPT 225 from 2027 Fall."));
 
         assertThat(courseCodes(priya)).isEmpty();

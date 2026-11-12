@@ -102,8 +102,8 @@ public class PlanService {
         if (planTermRepository.existsByPlanAndTerm(plan, term)) {
             return PlanChange.rejected(name + " is already in your plan.");
         }
-        planTermRepository.save(new PlanTerm(plan, term));
-        return PlanChange.saved("Added " + name + " to your plan.");
+        PlanTerm added = planTermRepository.save(new PlanTerm(plan, term));
+        return PlanChange.saved("Added " + name + " to your plan.", added);
     }
 
     // Removes the term and every course in it together, so a failed delete leaves both in place.
@@ -136,21 +136,21 @@ public class PlanService {
         }
         Optional<CourseCode> parsed = PlanRules.parseCourseCode(code);
         if (parsed.isEmpty()) {
-            return PlanChange.rejected("Enter a course code like CMPT 225.");
+            return PlanChange.rejected("Enter a course code like CMPT 225.", term.get());
         }
         Optional<Course> course = courseRepository.findBySubjectAndNumber(parsed.get().subject(), parsed.get().number());
         if (course.isEmpty()) {
             return PlanChange.rejected(parsed.get().subject() + " " + parsed.get().number()
-                    + " isn't in the course list.");
+                    + " isn't in the course list.", term.get());
         }
         // Checks the whole plan, not just this term, since a course only needs to be taken once
         Optional<PlannedCourse> alreadyPlanned = plannedCourseRepository
                 .findByTermPlanAndCourse(term.get().getPlan(), course.get());
         if (alreadyPlanned.isPresent()) {
-            return PlanChange.rejected(alreadyPlannedMessage(alreadyPlanned.get(), term.get()));
+            return PlanChange.rejected(alreadyPlannedMessage(alreadyPlanned.get(), term.get()), term.get());
         }
         PlannedCourse added = plannedCourseRepository.save(new PlannedCourse(term.get(), course.get()));
-        return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ".");
+        return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ".", term.get());
     }
 
     // Says which term the course is already in, and how to move it when that's a different term
@@ -172,7 +172,8 @@ public class PlanService {
             return PlanChange.rejected("That course isn't in your plan.");
         }
         plannedCourseRepository.delete(course.get());
-        return PlanChange.saved("Removed " + course.get().getCode() + " from " + course.get().getTerm().getName() + ".");
+        PlanTerm term = course.get().getTerm();
+        return PlanChange.saved("Removed " + course.get().getCode() + " from " + term.getName() + ".", term);
     }
 
     // For the My plan page, so it doesn't need the clock itself
