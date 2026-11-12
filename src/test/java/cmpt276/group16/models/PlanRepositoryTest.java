@@ -122,6 +122,25 @@ class PlanRepositoryTest {
         assertThat(planRepository.findByStudentAndMainTrue(student)).isEmpty();
     }
 
+    // The safety net under the service's lock: a student can't end up with two plans called "My plan"
+    @Test
+    void rejectsTwoPlansWithTheSameNameForOneStudent() {
+        StudentProfile student = saveStudent("priya@example.com");
+        saveMainPlan(student);
+
+        assertThatThrownBy(() -> planRepository.saveAndFlush(new Plan(student, "My plan", true)))
+            .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void differentStudentsCanUseTheSamePlanName() {
+        saveMainPlan(saveStudent("priya@example.com"));
+
+        saveMainPlan(saveStudent("marcus@example.com"));
+
+        assertThat(planRepository.count()).isEqualTo(2);
+    }
+
     @Test
     void rejectsTheSameTermTwiceInOnePlan() {
         Plan plan = saveMainPlan(saveStudent("priya@example.com"));

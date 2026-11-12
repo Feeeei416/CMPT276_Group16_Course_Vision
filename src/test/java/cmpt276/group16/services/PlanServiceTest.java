@@ -22,7 +22,6 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.CourseRepository;
 import cmpt276.group16.models.PlanRepository;
-import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.PlanTermRepository;
 import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.PlannedCourseRepository;
@@ -76,7 +75,7 @@ class PlanServiceTest {
     @BeforeEach
     void setUp() {
         planService = new PlanService(planRepository, planTermRepository, plannedCourseRepository, termRepository,
-                courseRepository, NOV_9_2026);
+                courseRepository, studentProfileRepository, NOV_9_2026);
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
         // The courses the tests plan; anything else isn't in the course list

@@ -2,9 +2,11 @@ package cmpt276.group16.models;
 
 import jakarta.persistence.*;
 
-// A student's plan for the terms after next semester. #43 lets a student keep several, so each has a name
+// A student's plan for the terms after next semester. #43 lets a student keep several, so each has a name.
+// Names are unique per student, which also stops a second "My plan" being created
 @Entity
-@Table(name = "plans")
+@Table(name = "plans",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "name"}))
 public class Plan {
 
     @Id

@@ -22,11 +22,15 @@ import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.PlannedCourseRepository;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
+import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.Term;
 import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
-// Changes to a student's plan. Each change returns every problem found; an empty list means it was saved
+// Changes to a student's plan. Each change returns every problem found; an empty list means it was saved.
+// Each change first locks the student, the same way TranscriptService does: changes check what's already in the
+// plan and then save, so two requests at once (a double click) would both pass the check. With the lock, the
+// second request waits and then sees what the first one saved
 @Service
 public class PlanService {
 
@@ -37,16 +41,18 @@ public class PlanService {
     private final PlannedCourseRepository plannedCourseRepository;
     private final TermRepository termRepository;
     private final CourseRepository courseRepository;
+    private final StudentProfileRepository studentProfileRepository;
     private final Clock clock;
 
     public PlanService(PlanRepository planRepository, PlanTermRepository planTermRepository,
             PlannedCourseRepository plannedCourseRepository, TermRepository termRepository,
-            CourseRepository courseRepository, Clock clock) {
+            CourseRepository courseRepository, StudentProfileRepository studentProfileRepository, Clock clock) {
         this.planRepository = planRepository;
         this.planTermRepository = planTermRepository;
         this.plannedCourseRepository = plannedCourseRepository;
         this.termRepository = termRepository;
         this.courseRepository = courseRepository;
+        this.studentProfileRepository = studentProfileRepository;
         this.clock = clock;
     }
 
@@ -80,6 +86,7 @@ public class PlanService {
 
     @Transactional
     public List<String> addTerm(StudentProfile student, int year, String seasonText) {
+        lock(student);
         Optional<Season> season = PlanRules.parseSeason(seasonText);
         if (season.isEmpty()) {
             return List.of("Choose Spring, Summer or Fall.");
@@ -100,6 +107,7 @@ public class PlanService {
     // Removes the term and every course in it together, so a failed delete leaves both in place
     @Transactional
     public List<String> removeTerm(StudentProfile student, Long termId) {
+        lock(student);
         Optional<PlanTerm> term = planTermRepository.findByIdAndPlanStudent(termId, student);
         if (term.isEmpty()) {
             return List.of("That term isn't in your plan.");
@@ -111,6 +119,7 @@ public class PlanService {
 
     @Transactional
     public List<String> addCourse(StudentProfile student, Long termId, String code) {
+        lock(student);
         Optional<PlanTerm> term = planTermRepository.findByIdAndPlanStudent(termId, student);
         if (term.isEmpty()) {
             return List.of("That term isn't in your plan.");
@@ -146,6 +155,7 @@ public class PlanService {
 
     @Transactional
     public List<String> removeCourse(StudentProfile student, Long courseId) {
+        lock(student);
         Optional<PlannedCourse> course = plannedCourseRepository.findByIdAndTermPlanStudent(courseId, student);
         if (course.isEmpty()) {
             return List.of("That course isn't in your plan.");
@@ -173,6 +183,11 @@ public class PlanService {
     private Term termFor(int year, Season season) {
         return termRepository.findByTermYearAndSeason(year, season)
                 .orElseGet(() -> termRepository.save(new Term(year, season)));
+    }
+
+    // Held until the change's transaction ends; another change for the same student waits here
+    private void lock(StudentProfile student) {
+        studentProfileRepository.findLockedByUserId(student.getUserId());
     }
 
     private LocalDate today() {
