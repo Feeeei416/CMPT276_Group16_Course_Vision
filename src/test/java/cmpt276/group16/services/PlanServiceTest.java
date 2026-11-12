@@ -136,7 +136,7 @@ class PlanServiceTest {
 
     @Test
     void firstTermCreatesTheMainPlan() {
-        assertThat(planService.addTerm(priya, 2027, "FALL")).isEmpty();
+        assertThat(planService.addTerm(priya, 2027, "FALL").message()).isEqualTo("Added 2027 Fall to your plan.");
 
         assertThat(planOf(priya)).containsExactly(entry("2027 Fall", List.of()));
         assertThat(planRepository.findByStudentAndMainTrue(priya).orElseThrow().getName()).isEqualTo("My plan");
@@ -175,7 +175,7 @@ class PlanServiceTest {
         "2027, WINTER, 'Choose Spring, Summer or Fall.'"
     })
     void rejectsTermsTheRulesDontAllow(int year, String season, String error) {
-        assertThat(planService.addTerm(priya, year, season)).containsExactly(error);
+        assertThat(planService.addTerm(priya, year, season).problems()).containsExactly(error);
 
         assertThat(planRepository.count()).isZero();
         assertThat(planTermRepository.count()).isZero();
@@ -185,7 +185,8 @@ class PlanServiceTest {
     void rejectsATermAlreadyInThePlan() {
         planService.addTerm(priya, 2027, "FALL");
 
-        assertThat(planService.addTerm(priya, 2027, "FALL")).containsExactly("2027 Fall is already in your plan.");
+        assertThat(planService.addTerm(priya, 2027, "FALL").problems())
+            .containsExactly("2027 Fall is already in your plan.");
         assertThat(planOf(priya).keySet()).containsExactly("2027 Fall");
     }
 
@@ -194,7 +195,7 @@ class PlanServiceTest {
     void twoStudentsCanPlanTheSameTerm() {
         planService.addTerm(priya, 2027, "FALL");
 
-        assertThat(planService.addTerm(marcus, 2027, "FALL")).isEmpty();
+        assertThat(planService.addTerm(marcus, 2027, "FALL").isSaved()).isTrue();
         assertThat(planOf(marcus).keySet()).containsExactly("2027 Fall");
     }
 
@@ -206,10 +207,18 @@ class PlanServiceTest {
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 295");
 
-        assertThat(planService.removeTerm(priya, termId(priya, "2027 Fall"))).isEmpty();
+        assertThat(planService.removeTerm(priya, termId(priya, "2027 Fall")).message())
+            .isEqualTo("Removed 2027 Fall and CMPT 276, CMPT 295.");
 
         assertThat(planOf(priya)).containsExactly(entry("2027 Summer", List.of("CMPT 225")));
         assertThat(plannedCourseRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void removingAnEmptyTermJustNamesTheTerm() {
+        planService.addTerm(priya, 2027, "FALL");
+
+        assertThat(planService.removeTerm(priya, termId(priya, "2027 Fall")).message()).isEqualTo("Removed 2027 Fall.");
     }
 
     // Changing the term id in a request can't remove someone else's term
@@ -217,7 +226,7 @@ class PlanServiceTest {
     void cantRemoveAnotherStudentsTerm() {
         planService.addTerm(priya, 2027, "FALL");
 
-        assertThat(planService.removeTerm(marcus, termId(priya, "2027 Fall")))
+        assertThat(planService.removeTerm(marcus, termId(priya, "2027 Fall")).problems())
             .containsExactly("That term isn't in your plan.");
         assertThat(planOf(priya).keySet()).containsExactly("2027 Fall");
     }
@@ -229,8 +238,8 @@ class PlanServiceTest {
         planService.addTerm(priya, 2027, "FALL");
         Long fall = termId(priya, "2027 Fall");
 
-        assertThat(planService.addCourse(priya, fall, " cmpt276 ")).isEmpty();
-        assertThat(planService.addCourse(priya, fall, "MACM 201")).isEmpty();
+        assertThat(planService.addCourse(priya, fall, " cmpt276 ").message()).isEqualTo("Added CMPT 276 to 2027 Fall.");
+        assertThat(planService.addCourse(priya, fall, "MACM 201").message()).isEqualTo("Added MACM 201 to 2027 Fall.");
 
         assertThat(planOf(priya)).containsExactly(entry("2027 Fall", List.of("CMPT 276", "MACM 201")));
     }
@@ -239,7 +248,7 @@ class PlanServiceTest {
     void rejectsTextThatIsntACourseCode() {
         planService.addTerm(priya, 2027, "FALL");
 
-        assertThat(planService.addCourse(priya, termId(priya, "2027 Fall"), "data structures"))
+        assertThat(planService.addCourse(priya, termId(priya, "2027 Fall"), "data structures").problems())
             .containsExactly("Enter a course code like CMPT 225.");
         assertThat(plannedCourseRepository.count()).isZero();
     }
@@ -249,7 +258,7 @@ class PlanServiceTest {
     void rejectsACodeThatIsntInTheCourseList() {
         planService.addTerm(priya, 2027, "FALL");
 
-        assertThat(planService.addCourse(priya, termId(priya, "2027 Fall"), "cmpt 999"))
+        assertThat(planService.addCourse(priya, termId(priya, "2027 Fall"), "cmpt 999").problems())
             .containsExactly("CMPT 999 isn't in the course list.");
         assertThat(plannedCourseRepository.count()).isZero();
     }
@@ -261,7 +270,7 @@ class PlanServiceTest {
         planService.addTerm(priya, 2027, "FALL");
         planService.addCourse(priya, termId(priya, "2027 Summer"), "CMPT 225");
 
-        assertThat(planService.addCourse(priya, termId(priya, "2027 Fall"), "cmpt 225"))
+        assertThat(planService.addCourse(priya, termId(priya, "2027 Fall"), "cmpt 225").problems())
             .containsExactly("CMPT 225 is already planned for 2027 Summer. "
                     + "To move it to 2027 Fall, remove it from 2027 Summer first.");
         assertThat(planOf(priya)).containsExactly(
@@ -275,7 +284,7 @@ class PlanServiceTest {
         Long fall = termId(priya, "2027 Fall");
         planService.addCourse(priya, fall, "CMPT 225");
 
-        assertThat(planService.addCourse(priya, fall, "CMPT 225"))
+        assertThat(planService.addCourse(priya, fall, "CMPT 225").problems())
             .containsExactly("CMPT 225 is already in 2027 Fall.");
         assertThat(planOf(priya)).containsExactly(entry("2027 Fall", List.of("CMPT 225")));
     }
@@ -284,7 +293,7 @@ class PlanServiceTest {
     void cantAddACourseToAnotherStudentsTerm() {
         planService.addTerm(priya, 2027, "FALL");
 
-        assertThat(planService.addCourse(marcus, termId(priya, "2027 Fall"), "CMPT 225"))
+        assertThat(planService.addCourse(marcus, termId(priya, "2027 Fall"), "CMPT 225").problems())
             .containsExactly("That term isn't in your plan.");
         assertThat(plannedCourseRepository.count()).isZero();
     }
@@ -296,7 +305,8 @@ class PlanServiceTest {
         planService.addCourse(priya, fall, "CMPT 276");
         planService.addCourse(priya, fall, "CMPT 295");
 
-        assertThat(planService.removeCourse(priya, courseId(priya, "CMPT 276"))).isEmpty();
+        assertThat(planService.removeCourse(priya, courseId(priya, "CMPT 276")).message())
+            .isEqualTo("Removed CMPT 276 from 2027 Fall.");
 
         assertThat(planOf(priya)).containsExactly(entry("2027 Fall", List.of("CMPT 295")));
     }
@@ -306,7 +316,7 @@ class PlanServiceTest {
         planService.addTerm(priya, 2027, "FALL");
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
 
-        assertThat(planService.removeCourse(marcus, courseId(priya, "CMPT 276")))
+        assertThat(planService.removeCourse(marcus, courseId(priya, "CMPT 276")).problems())
             .containsExactly("That course isn't in your plan.");
         assertThat(planOf(priya)).containsExactly(entry("2027 Fall", List.of("CMPT 276")));
     }

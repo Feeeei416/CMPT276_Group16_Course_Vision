@@ -27,7 +27,8 @@ import cmpt276.group16.models.Term;
 import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
-// Changes to a student's plan. Each change returns every problem found; an empty list means it was saved.
+// Changes to a student's plan. Each change returns a PlanChange: a message saying what was saved, or every problem
+// that stopped it.
 // Each change first locks the student, the same way TranscriptService does: changes check what's already in the
 // plan and then save, so two requests at once (a double click) would both pass the check. With the lock, the
 // second request waits and then sees what the first one saved
@@ -85,61 +86,71 @@ public class PlanService {
     }
 
     @Transactional
-    public List<String> addTerm(StudentProfile student, int year, String seasonText) {
+    public PlanChange addTerm(StudentProfile student, int year, String seasonText) {
         lock(student);
         Optional<Season> season = PlanRules.parseSeason(seasonText);
         if (season.isEmpty()) {
-            return List.of("Choose Spring, Summer or Fall.");
+            return PlanChange.rejected("Choose Spring, Summer or Fall.");
         }
         List<String> problems = PlanRules.problemsWithTerm(year, season.get(), today());
         if (!problems.isEmpty()) {
-            return problems;
+            return PlanChange.rejected(problems);
         }
+        String name = PlanTerm.nameOf(year, season.get());
         Plan plan = mainPlanFor(student);
         Term term = termFor(year, season.get());
         if (planTermRepository.existsByPlanAndTerm(plan, term)) {
-            return List.of(PlanTerm.nameOf(year, season.get()) + " is already in your plan.");
+            return PlanChange.rejected(name + " is already in your plan.");
         }
         planTermRepository.save(new PlanTerm(plan, term));
-        return List.of();
+        return PlanChange.saved("Added " + name + " to your plan.");
     }
 
-    // Removes the term and every course in it together, so a failed delete leaves both in place
+    // Removes the term and every course in it together, so a failed delete leaves both in place.
+    // The message names the courses, so the student can see what went with the term
     @Transactional
-    public List<String> removeTerm(StudentProfile student, Long termId) {
+    public PlanChange removeTerm(StudentProfile student, Long termId) {
         lock(student);
         Optional<PlanTerm> term = planTermRepository.findByIdAndPlanStudent(termId, student);
         if (term.isEmpty()) {
-            return List.of("That term isn't in your plan.");
+            return PlanChange.rejected("That term isn't in your plan.");
         }
+        String name = term.get().getName();
+        List<String> codes = plannedCourseRepository.findByTermOrderByIdAsc(term.get()).stream()
+                .map(PlannedCourse::getCode)
+                .toList();
         plannedCourseRepository.deleteByTerm(term.get());
         planTermRepository.delete(term.get());
-        return List.of();
+        if (codes.isEmpty()) {
+            return PlanChange.saved("Removed " + name + ".");
+        }
+        return PlanChange.saved("Removed " + name + " and " + String.join(", ", codes) + ".");
     }
 
     @Transactional
-    public List<String> addCourse(StudentProfile student, Long termId, String code) {
+    public PlanChange addCourse(StudentProfile student, Long termId, String code) {
         lock(student);
         Optional<PlanTerm> term = planTermRepository.findByIdAndPlanStudent(termId, student);
         if (term.isEmpty()) {
-            return List.of("That term isn't in your plan.");
+            return PlanChange.rejected("That term isn't in your plan.");
         }
         Optional<CourseCode> parsed = PlanRules.parseCourseCode(code);
         if (parsed.isEmpty()) {
-            return List.of("Enter a course code like CMPT 225.");
+            return PlanChange.rejected("Enter a course code like CMPT 225.");
         }
         Optional<Course> course = courseRepository.findBySubjectAndNumber(parsed.get().subject(), parsed.get().number());
         if (course.isEmpty()) {
-            return List.of(parsed.get().subject() + " " + parsed.get().number() + " isn't in the course list.");
+            return PlanChange.rejected(parsed.get().subject() + " " + parsed.get().number()
+                    + " isn't in the course list.");
         }
         // Checks the whole plan, not just this term, since a course only needs to be taken once
         Optional<PlannedCourse> alreadyPlanned = plannedCourseRepository
                 .findByTermPlanAndCourse(term.get().getPlan(), course.get());
         if (alreadyPlanned.isPresent()) {
-            return List.of(alreadyPlannedMessage(alreadyPlanned.get(), term.get()));
+            return PlanChange.rejected(alreadyPlannedMessage(alreadyPlanned.get(), term.get()));
         }
-        plannedCourseRepository.save(new PlannedCourse(term.get(), course.get()));
-        return List.of();
+        PlannedCourse added = plannedCourseRepository.save(new PlannedCourse(term.get(), course.get()));
+        return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ".");
     }
 
     // Says which term the course is already in, and how to move it when that's a different term
@@ -154,14 +165,14 @@ public class PlanService {
     }
 
     @Transactional
-    public List<String> removeCourse(StudentProfile student, Long courseId) {
+    public PlanChange removeCourse(StudentProfile student, Long courseId) {
         lock(student);
         Optional<PlannedCourse> course = plannedCourseRepository.findByIdAndTermPlanStudent(courseId, student);
         if (course.isEmpty()) {
-            return List.of("That course isn't in your plan.");
+            return PlanChange.rejected("That course isn't in your plan.");
         }
         plannedCourseRepository.delete(course.get());
-        return List.of();
+        return PlanChange.saved("Removed " + course.get().getCode() + " from " + course.get().getTerm().getName() + ".");
     }
 
     // For the My plan page, so it doesn't need the clock itself

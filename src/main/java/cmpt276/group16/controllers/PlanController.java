@@ -13,6 +13,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
+import cmpt276.group16.services.PlanChange;
 import cmpt276.group16.services.PlanService;
 import jakarta.servlet.http.HttpSession;
 
@@ -56,7 +57,7 @@ public class PlanController {
         }
         Integer parsedYear = parseYear(year);
         if (parsedYear == null) {
-            return backToPlan(List.of("Choose a year."), redirectAttributes);
+            return backToPlan(PlanChange.rejected("Choose a year."), redirectAttributes);
         }
         return backToPlan(planService.addTerm(student.get(), parsedYear, season), redirectAttributes);
     }
@@ -89,12 +90,12 @@ public class PlanController {
         return backToPlan(planService.removeCourse(student.get(), courseId), redirectAttributes);
     }
 
-    // Shows the problems at the top of the page, or a saved message if there were none
-    private static String backToPlan(List<String> problems, RedirectAttributes redirectAttributes) {
-        if (problems.isEmpty()) {
-            redirectAttributes.addFlashAttribute("message", "Your plan was saved.");
+    // Says what the change did at the top of the page, or shows the problems that stopped it
+    private static String backToPlan(PlanChange change, RedirectAttributes redirectAttributes) {
+        if (change.isSaved()) {
+            redirectAttributes.addFlashAttribute("message", change.message());
         } else {
-            redirectAttributes.addFlashAttribute("errors", problems);
+            redirectAttributes.addFlashAttribute("errors", change.problems());
         }
         return "redirect:/student/plan";
     }

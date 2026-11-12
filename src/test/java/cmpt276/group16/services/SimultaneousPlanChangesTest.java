@@ -121,8 +121,8 @@ class SimultaneousPlanChangesTest {
     // Without the lock, both would create a "My plan" and the page would break for this student from then on
     @Test
     void addingTheFirstTermTwiceAtOnceMakesOnePlanAndOneTerm() throws Exception {
-        List<List<String>> results = atOnce(() -> planService.addTerm(priya, 2027, "FALL"),
-                () -> planService.addTerm(priya, 2027, "FALL"));
+        List<List<String>> results = atOnce(() -> planService.addTerm(priya, 2027, "FALL").problems(),
+                () -> planService.addTerm(priya, 2027, "FALL").problems());
 
         assertThat(results).containsExactlyInAnyOrder(List.of(), List.of("2027 Fall is already in your plan."));
         assertThat(planService.termPlans(priya)).hasSize(1);
@@ -133,8 +133,8 @@ class SimultaneousPlanChangesTest {
         planService.addTerm(priya, 2027, "FALL");
         Long fall = planService.termPlans(priya).get(0).term().getId();
 
-        List<List<String>> results = atOnce(() -> planService.addCourse(priya, fall, "MACM 101"),
-                () -> planService.addCourse(priya, fall, "MACM 101"));
+        List<List<String>> results = atOnce(() -> planService.addCourse(priya, fall, "MACM 101").problems(),
+                () -> planService.addCourse(priya, fall, "MACM 101").problems());
 
         assertThat(results).containsExactlyInAnyOrder(List.of(), List.of("MACM 101 is already in 2027 Fall."));
         assertThat(planService.termPlans(priya).get(0).courses()).hasSize(1);

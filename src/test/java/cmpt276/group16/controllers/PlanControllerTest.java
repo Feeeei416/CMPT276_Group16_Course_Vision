@@ -230,7 +230,7 @@ class PlanControllerTest {
         mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
                         .param("year", "2027").param("season", "FALL"))
                .andExpect(redirectedUrl("/student/plan"))
-               .andExpect(flash().attribute("message", "Your plan was saved."));
+               .andExpect(flash().attribute("message", "Added 2027 Fall to your plan."));
 
         assertThat(termNames(priya)).containsExactly("2027 Fall");
     }
@@ -255,13 +255,16 @@ class PlanControllerTest {
         assertThat(termNames(priya)).isEmpty();
     }
 
+    // The message names the courses that were removed with the term
     @Test
     void removesATerm() throws Exception {
         planService.addTerm(priya, 2027, "FALL");
+        planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 225");
+        planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
 
         mockMvc.perform(post("/student/plan/terms/{id}/remove", termId(priya, "2027 Fall")).session(sessionFor(priya)))
                .andExpect(redirectedUrl("/student/plan"))
-               .andExpect(flash().attribute("message", "Your plan was saved."));
+               .andExpect(flash().attribute("message", "Removed 2027 Fall and CMPT 225, CMPT 276."));
 
         assertThat(termNames(priya)).isEmpty();
     }
@@ -275,7 +278,7 @@ class PlanControllerTest {
         mockMvc.perform(post("/student/plan/terms/{id}/courses", termId(priya, "2027 Fall")).session(sessionFor(priya))
                         .param("code", "cmpt 225"))
                .andExpect(redirectedUrl("/student/plan"))
-               .andExpect(flash().attribute("message", "Your plan was saved."));
+               .andExpect(flash().attribute("message", "Added CMPT 225 to 2027 Fall."));
 
         assertThat(courseCodes(priya)).containsExactly("CMPT 225");
     }
@@ -297,7 +300,8 @@ class PlanControllerTest {
         planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 225");
 
         mockMvc.perform(post("/student/plan/courses/{id}/remove", courseId(priya, "CMPT 225")).session(sessionFor(priya)))
-               .andExpect(redirectedUrl("/student/plan"));
+               .andExpect(redirectedUrl("/student/plan"))
+               .andExpect(flash().attribute("message", "Removed CMPT 225 from 2027 Fall."));
 
         assertThat(courseCodes(priya)).isEmpty();
     }

@@ -16,6 +16,9 @@ public interface PlannedCourseRepository extends JpaRepository<PlannedCourse, Lo
     // The course if it's already in any term of the plan, so the error can say which term
     Optional<PlannedCourse> findByTermPlanAndCourse(Plan plan, Course course);
 
+    // One term's courses in the order they were added
+    List<PlannedCourse> findByTermOrderByIdAsc(PlanTerm term);
+
     // Used when a term is removed, so its courses go with it
     long deleteByTerm(PlanTerm term);
 }

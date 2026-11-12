@@ -13,7 +13,7 @@
         <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
 
         <!-- Set by the last change, before redirecting back here -->
-        <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Your plan was saved.</div>
+        <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Added CMPT 225 to 2027 Fall.</div>
         <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
             <div th:each="e : ${errors}" th:text="${e}"></div>
         </div>
