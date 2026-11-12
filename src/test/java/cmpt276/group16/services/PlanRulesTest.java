@@ -3,6 +3,7 @@ package cmpt276.group16.services;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,6 +36,18 @@ class PlanRulesTest {
     @ValueSource(strings = {"", "CMPT", "225", "CMPT 22", "CMPT 2255", "CMPTX 225", "C 225", "CMPT-225", "CMPT 225 276"})
     void rejectsTextThatIsntACourseCode(String text) {
         assertThat(PlanRules.parseCourseCode(text)).isEmpty();
+    }
+
+    // On a computer set to Turkish, a plain toUpperCase() turns "i" into "İ", so BISC would never match a course
+    @Test
+    void capitalsDontDependOnTheComputersLanguage() {
+        Locale before = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            assertThat(PlanRules.parseCourseCode("bisc 101")).contains(new CourseCode("BISC", "101"));
+        } finally {
+            Locale.setDefault(before);
+        }
     }
 
     // Next semester changes on the first day of January, May and September

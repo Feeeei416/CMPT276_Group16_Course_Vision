@@ -32,13 +32,14 @@ public final class PlanRules {
     public record CourseCode(String subject, String number) {
     }
 
-    // Empty when the text isn't a course code. Saved in capitals, the way SFU writes them
+    // Empty when the text isn't a course code. Saved in capitals, the way SFU writes them.
+    // Locale.ROOT so the capitals don't depend on the server's language (in Turkish, "i" becomes "İ")
     public static Optional<CourseCode> parseCourseCode(String text) {
         Matcher m = COURSE_CODE.matcher(text.trim());
         if (!m.matches()) {
             return Optional.empty();
         }
-        return Optional.of(new CourseCode(m.group(1).toUpperCase(), m.group(2).toUpperCase()));
+        return Optional.of(new CourseCode(m.group(1).toUpperCase(Locale.ROOT), m.group(2).toUpperCase(Locale.ROOT)));
     }
 
     // Empty when the text isn't Spring, Summer or Fall. The form sends FALL, but any case works
