@@ -37,8 +37,9 @@ import cmpt276.group16.models.UserRepository;
 
 // Two requests changing the same student's plan at once, like a double click on Add term.
 // Not @Transactional: each change has to commit on its own, like two real requests, so the rows are deleted
-// after each test instead of rolled back. Same approach as SimultaneousChangesTest for My courses
-@SpringBootTest
+// after each test instead of rolled back. Same approach as SimultaneousChangesTest for My courses.
+// No demo password, so DataSeeder's demo courses never clash with the course this test saves
+@SpringBootTest(properties = "app.demo-password=")
 class SimultaneousPlanChangesTest {
 
     // Next semester is always 2027 Spring, so 2027 Fall can be planned whenever this runs

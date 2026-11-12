@@ -47,8 +47,9 @@ import cmpt276.group16.services.PlanService;
 import cmpt276.group16.services.PlanService.TermPlan;
 
 // Uses the whole app, so AuthInterceptor and the real database are part of every test.
-// addFilters = false: Spring Session's filter would swap the test's session for a database one
-@SpringBootTest
+// addFilters = false: Spring Session's filter would swap the test's session for a database one.
+// No demo password, so DataSeeder's demo courses never clash with the courses these tests save
+@SpringBootTest(properties = "app.demo-password=")
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 class PlanControllerTest {
