@@ -96,6 +96,15 @@ class StudentHomeControllerTest {
                 .andExpect(content().string(containsString("No courses yet")));
     }
 
+    // Acceptance criterion (#42): the student home page links to My plan
+    @Test
+    void homeLinksToMyPlan() throws Exception {
+        StudentProfile student = saveStudent();
+
+        mockMvc.perform(get("/student/home").session(sessionFor(student.getUser())))
+                .andExpect(content().string(containsString("href=\"/student/plan\"")));
+    }
+
     @Test
     void homeListsSavedCourses() throws Exception {
         StudentProfile student = saveStudent();
