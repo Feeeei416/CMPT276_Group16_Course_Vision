@@ -2,6 +2,8 @@ package cmpt276.group16.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -12,6 +14,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import cmpt276.group16.models.AdvisorAssignmentRepository;
+import cmpt276.group16.models.Course;
+import cmpt276.group16.models.CourseRepository;
 import cmpt276.group16.models.Program;
 import cmpt276.group16.models.Role;
 import cmpt276.group16.models.StudentProfile;
@@ -32,13 +36,16 @@ class DataSeederTest {
     private AdvisorAssignmentRepository advisorAssignmentRepository;
 
     @Autowired
+    private CourseRepository courseRepository;
+
+    @Autowired
     private TestEntityManager entityManager;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // Runs the seeder with a chosen password, then clears the cache so checks read the database
     private void runSeeder(String password) {
-        new DataSeeder(userRepository, studentProfileRepository, advisorAssignmentRepository,
+        new DataSeeder(userRepository, studentProfileRepository, advisorAssignmentRepository, courseRepository,
                 passwordEncoder, password).run();
         entityManager.flush();
         entityManager.clear();
@@ -100,6 +107,33 @@ class DataSeederTest {
         assertThat(userRepository.count()).isEqualTo(4);
         assertThat(studentProfileRepository.count()).isEqualTo(2);
         assertThat(advisorAssignmentRepository.count()).isEqualTo(2);
+        assertThat(courseRepository.count()).isEqualTo(DataSeeder.DEMO_COURSES.size());
+    }
+
+    // Demo courses let My plan be tried before the course import exists
+    @Test
+    void addsTheDemoCoursesWithTheirTitleAndUnits() {
+        runSeeder("test-password");
+
+        Course cmpt295 = courseRepository.findBySubjectAndNumber("CMPT", "295").orElseThrow();
+        assertThat(cmpt295.getTitle()).isEqualTo("Introduction to Computer Systems");
+        assertThat(cmpt295.getUnits()).isEqualByComparingTo("4");
+        assertThat(courseRepository.findBySubjectAndNumber("MACM", "101")).isPresent();
+        assertThat(courseRepository.findBySubjectAndNumber("ENSC", "251")).isPresent();
+    }
+
+    // A course the import already saved keeps the import's details
+    @Test
+    void leavesCoursesThatAreAlreadyThereAlone() {
+        courseRepository.saveAndFlush(new Course("CMPT", "225", "Title from the import", new BigDecimal("3.00"),
+                "Description from the import", null, null));
+
+        runSeeder("test-password");
+
+        Course cmpt225 = courseRepository.findBySubjectAndNumber("CMPT", "225").orElseThrow();
+        assertThat(cmpt225.getTitle()).isEqualTo("Title from the import");
+        assertThat(cmpt225.getDescription()).isEqualTo("Description from the import");
+        assertThat(courseRepository.count()).isEqualTo(DataSeeder.DEMO_COURSES.size());
     }
 
     @ParameterizedTest
@@ -108,5 +142,6 @@ class DataSeederTest {
         runSeeder(password);
 
         assertThat(userRepository.count()).isZero();
+        assertThat(courseRepository.count()).isZero();
     }
 }

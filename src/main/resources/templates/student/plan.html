@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>My plan</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">My plan</h1>
+        <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
+
+        <!-- Set by the last change, before redirecting back here. A change inside a term shows in that term instead -->
+        <th:block th:if="${changedTermId == null}">
+            <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Removed 2027 Fall.</div>
+            <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+                <div th:each="e : ${errors}" th:text="${e}"></div>
+            </div>
+        </th:block>
+
+        <!-- Above the terms, so it's in the same place however many terms there are -->
+        <section class="plan-add-term">
+            <h2 class="section-label">Add a term</h2>
+            <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
+                <select name="year" class="input" aria-label="Year" required>
+                    <option value="">-- Year --</option>
+                    <option th:each="y : ${years}" th:value="${y}" th:text="${y}">2027</option>
+                </select>
+                <select name="season" class="input" aria-label="Term" required>
+                    <option value="">-- Term --</option>
+                    <option th:each="s : ${seasons}" th:value="${s.name()}"
+                            th:text="${#strings.capitalize(#strings.toLowerCase(s.name()))}">Fall</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Add term</button>
+            </form>
+        </section>
+
+        <p th:if="${termPlans.isEmpty()}" class="muted">No terms yet. Add your first term above.</p>
+
+        <!-- One box per term, oldest first. The id lets a change jump back here with /student/plan#term-5 -->
+        <section class="plan-term" th:each="termPlan : ${termPlans}"
+                 th:with="term=${termPlan.term}, courses=${termPlan.courses}" th:id="|term-${term.id}|">
+            <div class="plan-term-header">
+                <div>
+                    <h2 class="section-label" th:text="${term.name}">2027 Fall</h2>
+                    <span class="muted" th:text="${termPlan.unitsText()}">9 units</span>
+                </div>
+                <!-- The script below opens the dialog instead of sending this form -->
+                <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}"
+                      th:data-dialog="|remove-term-${term.id}|">
+                    <button type="submit" class="btn btn-secondary">Remove term</button>
+                </form>
+            </div>
+
+            <!-- The last change happened in this term, so its message shows here -->
+            <th:block th:if="${changedTermId == term.id}">
+                <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Added CMPT 225 to 2027 Fall.</div>
+                <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+                    <div th:each="e : ${errors}" th:text="${e}"></div>
+                </div>
+            </th:block>
+
+            <!-- Asks before removing, since the term's courses are removed with it -->
+            <dialog class="dialog" th:id="|remove-term-${term.id}|">
+                <h2 class="dialog-title" th:text="|Remove ${term.name}?|">Remove 2027 Fall?</h2>
+                <p th:if="${courses.isEmpty()}">This term has no courses in it.</p>
+                <p th:unless="${courses.isEmpty()}"
+                   th:text="|This also removes ${#strings.listJoin(courses.![code], ', ')} from your plan.|">
+                    This also removes CMPT 225 from your plan.</p>
+                <div class="dialog-actions">
+                    <form method="dialog">
+                        <button class="btn btn-secondary" autofocus>Cancel</button>
+                    </form>
+                    <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}">
+                        <button type="submit" class="btn btn-primary">Remove term</button>
+                    </form>
+                </div>
+            </dialog>
+
+            <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
+            <ul class="plan-courses" th:unless="${courses.isEmpty()}">
+                <li th:each="course : ${courses}">
+                    <span>
+                        <span th:text="${course.code}">CMPT 225</span>
+                        <span class="muted" th:text="${course.title}">Data Structures and Programming</span>
+                    </span>
+                    <form method="post" th:action="@{/student/plan/courses/{id}/remove(id=${course.id})}">
+                        <button type="submit" class="link">Remove</button>
+                    </form>
+                </li>
+            </ul>
+
+            <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
+                <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
+                       th:aria-label="|Course code for ${term.name}|" required>
+                <button type="submit" class="btn btn-primary">Add course</button>
+            </form>
+        </section>
+
+        <div class="actions">
+            <a th:href="@{/student/home}" class="link">Back to home</a>
+        </div>
+    </main>
+
+    <script>
+        // Remove term opens its dialog instead of removing straight away.
+        // Without JavaScript the form still works, it just doesn't ask first
+        document.querySelectorAll('form[data-dialog]').forEach(form => {
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                document.getElementById(form.dataset.dialog).showModal();
+            });
+        });
+    </script>
+</body>
+</html>
