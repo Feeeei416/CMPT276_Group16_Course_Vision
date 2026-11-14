@@ -14,10 +14,11 @@ import cmpt276.group16.models.Grades;
 public final class RequisiteTokenizer {
 
     public enum Type {
-        COURSE, AND, OR, ALL, GRADE, COMMA, SEMICOLON, LPAREN, RPAREN, PERIOD
+        COURSE, UNITS, SPECIAL, AND, OR, ALL, GRADE, COMMA, SEMICOLON, LPAREN, RPAREN, PERIOD
     }
 
-    // text is the course code for COURSE, the letter grade for GRADE, then null for the rest
+    // text is the course code for COURSE, the number for UNITS, the wording for SPECIAL,
+    // the letter grade for GRADE, then null for the rest
     public record Token(Type type, String text) {
         @Override
         public String toString() {
@@ -29,6 +30,9 @@ public final class RequisiteTokenizer {
     // Words ignore case, but course codes don't, so "and 100 units" isn't read as course "and 100"
     private static final Pattern TOKEN = Pattern.compile(String.join("|",
             "(?<COURSE>[A-Z]{2,4} \\d{3}[A-Z]?)",
+            "(?<UNITS>(?<count>\\d+) (?i:units)\\b)",
+            // This is only the wordings currently known so anything else fails the course instead of being guessed at
+            "(?<SPECIAL>(?i:permission of the (?:instructor|department)))",
             "(?<AND>(?i:and)\\b)",
             "(?<OR>(?i:or)\\b)",
             "(?<ALL>(?i:all)\\b)",
@@ -64,6 +68,12 @@ public final class RequisiteTokenizer {
     private static Token tokenFrom(Matcher m) {
         if (m.group("COURSE") != null) {
             return new Token(Type.COURSE, m.group("COURSE"));
+        }
+        if (m.group("UNITS") != null) {
+            return new Token(Type.UNITS, m.group("count"));
+        }
+        if (m.group("SPECIAL") != null) {
+            return new Token(Type.SPECIAL, m.group("SPECIAL"));
         }
         if (m.group("GRADE") != null) {
             String grade = m.group("letter").toUpperCase();
