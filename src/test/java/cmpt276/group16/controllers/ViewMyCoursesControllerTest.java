@@ -1,21 +1,20 @@
 package cmpt276.group16.controllers;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.transaction.annotation.Transactional;
 
 import cmpt276.group16.models.Program;
@@ -128,5 +127,41 @@ class ViewMyCoursesControllerTest {
             new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-")));
         mockMvc.perform(get("/student/home").session(sessionFor(student.getUser())))
         .andExpect(content().string(containsString("href=\"/student/courses\"")));
+    }
+
+    // #50 The total counts passed courses only, and shows in-progress units separately
+    @Test
+    void showsUnitsEarnedAndInProgress() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-"),
+            new ParsedCourse("2025 Fall", "MATH", "151", "Calculus I", new BigDecimal("3.00"), "F"),
+            new ParsedCourse("2026 Spring", "CMPT", "225", "Data Structures/Programming", new BigDecimal("3.00"), null)));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("3.00 units earned")))
+        .andExpect(content().string(containsString("(3.00 in progress)")));
+    }
+
+    // #50 Nothing in progress, so only the earned total is shown
+    @Test
+    void hidesInProgressWhenThereIsNone() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-")));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(containsString("3.00 units earned")))
+        .andExpect(content().string(org.hamcrest.Matchers.not(containsString("in progress)"))));
+    }
+
+    // #50 An empty record shows the upload link instead of "0.00 units earned"
+    @Test
+    void noUnitTotalWithoutCourses() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(org.hamcrest.Matchers.not(containsString("units earned"))));
     }
 }

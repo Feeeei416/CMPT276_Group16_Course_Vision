@@ -1,40 +1,79 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" th:href="@{/css/main.css}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
     <title>My courses</title>
-</head>
-<body class="page">
+  </head>
+  <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title">My courses</h1>
+      <h1 class="page-title">My courses</h1>
 
-        <!-- Set after adding, editing or removing a course -->
-        <div th:if="${message}" th:text="${message}" class="notice-message" role="status">Added CMPT 120 to 2025 Fall.</div>
-        <div th:if="${error}" th:text="${error}" class="error-message" role="alert">That course isn't in your record.</div>
+      <!-- Set after adding, editing or removing a course -->
+      <div
+        th:if="${message}"
+        th:text="${message}"
+        class="notice-message"
+        role="status"
+      >
+        Added CMPT 120 to 2025 Fall.
+      </div>
+      <div
+        th:if="${error}"
+        th:text="${error}"
+        class="error-message"
+        role="alert"
+      >
+        That course isn't in your record.
+      </div>
 
-        <p th:if="${coursesByTerm.isEmpty()}">You don't have any saved courses yet.
-            <a th:href="@{/student/transcript}" class="link">Upload your transcript</a> or add a course below.</p>
-        <section th:each="entry : ${coursesByTerm}">
-            <h2 class="section-label" th:text="${entry.key}"></h2>
-            <th:block th:with="editable=true">
-                <div th:replace="~{fragments/course-table :: courseTable(${entry.value})}"></div>
-            </th:block>
-        </section>
+      <!-- Each course counts once, from its most recent passing attempt -->
+      <p th:unless="${coursesByTerm.isEmpty()}">
+        <strong th:text="|${units.earned()} units earned|"
+          >45.00 units earned</strong
+        >
+        <span
+          th:if="${units.inProgress().signum() > 0}"
+          class="muted"
+          th:text="|(${units.inProgress()} in progress)|"
+          >(9.00 in progress)</span
+        >
+      </p>
 
-        <!-- Opens by itself when the form has errors to show -->
-        <details class="collapsible" th:open="${!formErrors.isEmpty()}">
-            <summary class="btn btn-secondary">Add course</summary>
-            <p>Add a course the transcript missed, or transfer credit from another school.</p>
-            <form th:action="@{/student/courses}" method="post">
-                <th:block th:replace="~{fragments/course-form :: courseFields}"></th:block>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Add course</button>
-                </div>
-            </form>
-        </details>
+      <p th:if="${coursesByTerm.isEmpty()}">
+        You don't have any saved courses yet.
+        <a th:href="@{/student/transcript}" class="link"
+          >Upload your transcript</a
+        >
+        or add a course below.
+      </p>
+      <section th:each="entry : ${coursesByTerm}">
+        <h2 class="section-label" th:text="${entry.key}"></h2>
+        <th:block th:with="editable=true">
+          <div
+            th:replace="~{fragments/course-table :: courseTable(${entry.value})}"
+          ></div>
+        </th:block>
+      </section>
+
+      <!-- Opens by itself when the form has errors to show -->
+      <details class="collapsible" th:open="${!formErrors.isEmpty()}">
+        <summary class="btn btn-secondary">Add course</summary>
+        <p>
+          Add a course the transcript missed, or transfer credit from another
+          school.
+        </p>
+        <form th:action="@{/student/courses}" method="post">
+          <th:block
+            th:replace="~{fragments/course-form :: courseFields}"
+          ></th:block>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Add course</button>
+          </div>
+        </form>
+      </details>
     </main>
-</body>
+  </body>
 </html>
