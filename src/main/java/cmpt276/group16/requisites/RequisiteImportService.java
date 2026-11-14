@@ -35,28 +35,30 @@ public class RequisiteImportService {
     }
 
     // Parses prereqText again and replaces the course's imported rules, then returns the new parse status.
-    // FAILED leaves the course with no imported rules, so the student is shown prereqText instead.
+    // FAILED leaves the course with no rules, so the student is shown prereqText instead.
     // This is one transaction, so a failed save leaves the old rules in place
     @Transactional
     public Course.ParseStatus importPrerequisites(Course course) {
-        // The old rules came from outdated text so they should be removed regardless of if the new rules parse or not 
+        // The old rules came from outdated text so they should be removed regardless of if the new rules parse or not
         List<RequisiteRule> imported = requisiteRuleRepository.findByCourseIdAndRuleKindAndSourceOrderByIdDesc(
                 course.getId(), RuleKind.PREREQUISITE, RequisiteRule.Source.IMPORTED);
         requisiteRuleRepository.deleteAll(imported);
         requisiteRuleRepository.flush();
 
+        // Rules entered by hand win, so the text isn't needed. The course isn't flagged even if its text
+        // doesn't parse, since it has rules for the student instead
+        if (requisiteRuleRepository.existsByCourseIdAndRuleKindAndSource(
+                course.getId(), RuleKind.PREREQUISITE, RequisiteRule.Source.MANUAL)) {
+            return setStatus(course, Course.ParseStatus.PARSED);
+        }
+
         Optional<Requirement> requirement;
         try {
             requirement = RequisiteParser.parse(course.getPrereqText());
-		} catch (RequisiteParseException e) {
-			return setStatus(course, Course.ParseStatus.FAILED);
-		}
-
-        boolean hasManualRules = requisiteRuleRepository.existsByCourseIdAndRuleKindAndSource(
-                course.getId(), RuleKind.PREREQUISITE, RequisiteRule.Source.MANUAL);
-        if (!hasManualRules) {
-            requirement.ifPresent(root -> save(root, course, null));
+        } catch (RequisiteParseException e) {
+            return setStatus(course, Course.ParseStatus.FAILED);
         }
+        requirement.ifPresent(root -> save(root, course, null));
         return setStatus(course, Course.ParseStatus.PARSED);
     }
 

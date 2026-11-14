@@ -192,4 +192,22 @@ class RequisiteImportServiceTest {
         assertThat(stored(cmpt225)).isEqualTo("CMPT 125 (B)");
         assertThat(importedRules(cmpt225)).isEmpty();
     }
+
+    // The point of a MANUAL rule is a course whose text doesn't parse, like CMPT 276's "may be substituted"
+    // sentence. It has rules for the student, so it isn't flagged to show the text instead
+    @Test
+    void rulesEnteredByHandMeanTheCourseIsNotFlagged() {
+        Course cmpt276 = saveCourse("CMPT", "276", "CMPT 225, with a minimum grade of C-. "
+                + "MATH 154 or MATH 157 with at least a B+ may be substituted for MATH 151 or MATH 150.");
+        RequisiteRule manual = new RequisiteRule(cmpt276, null, RuleKind.PREREQUISITE, NodeType.COURSE,
+                RequisiteRule.Source.MANUAL);
+        manual.setRequiredSubjectAndNumber("CMPT", "225");
+        manual.setMinGrade("C-");
+        requisiteRuleRepository.saveAndFlush(manual);
+
+        cmpt276 = importAndReload(cmpt276);
+
+        assertThat(cmpt276.getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
+        assertThat(stored(cmpt276)).isEqualTo("CMPT 225 (C-)");
+    }
 }
