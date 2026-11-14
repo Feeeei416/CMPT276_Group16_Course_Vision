@@ -65,6 +65,27 @@ class RequisiteParserTest {
                 .isEqualTo("OR(60 units, SPECIAL(permission of the instructor))");
     }
 
+    // ENSC 450's wording: the units are needed on top of the courses
+    @Test
+    void unitsAfterTheGrade() {
+        assertThat(parse("(ENSC 225 or MSE 251) and ENSC 350, all with a minimum grade of C- and a minimum of 80 units."))
+                .isEqualTo("AND(OR(ENSC 225 (C-), MSE 251 (C-)), ENSC 350 (C-), 80 units)");
+    }
+
+    // ENSC 410's whole prerequisite
+    @Test
+    void unitsAsASentence() {
+        assertThat(parse("A minimum of 80 units is required to enroll in this course.")).isEqualTo("80 units");
+    }
+
+    // ENSC 406's wording
+    @Test
+    void oneOf() {
+        assertThat(parse("100 units including one of ENSC 100, ENSC 106, CMPT 106, or MSE 102, "
+                + "with a minimum grade of C-."))
+                .isEqualTo("AND(100 units, OR(ENSC 100 (C-), ENSC 106 (C-), CMPT 106 (C-), MSE 102 (C-)))");
+    }
+
     // The sentence after the prerequisites marks courses that can be taken in the same term
     @Test
     void mayBeTakenConcurrently() {
@@ -136,6 +157,8 @@ class RequisiteParserTest {
             // MATH 260 isn't one of the prerequisites, so it's really a corequisite
             "MATH 232. MATH 260 may be taken concurrently.",
             "60 units. 60 units may be taken concurrently.",
+            // "one of" with "and" contradicts itself
+            "one of CMPT 125 and CMPT 135",
             // Sentences that add an option are kept, so these get MANUAL rules instead of wrong ones
             "MATH 151 with a minimum grade of C-. MATH 154 or MATH 157 with at least a B+ may be substituted for "
                     + "MATH 151.",
