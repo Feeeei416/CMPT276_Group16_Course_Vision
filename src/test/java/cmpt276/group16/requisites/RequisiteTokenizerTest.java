@@ -1,0 +1,54 @@
+package cmpt276.group16.requisites;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.stream.Collectors;
+
+import org.junit.jupiter.api.Test;
+
+// plain unit tests with no Spring or database
+class RequisiteTokenizerTest {
+
+	private static String tokens(String text) {
+		return RequisiteTokenizer.tokenize(text).stream()
+				.map(RequisiteTokenizer.Token::toString)
+				.collect(Collectors.joining(" "));
+	}
+
+	// Some courses have a w at the end for writing designation
+    @Test
+	void splitsCmpt376w() {
+		assertThat(tokens("CMPT 105W and (CMPT 275 or CMPT 276), with a minimum grade of C-."))
+				.isEqualTo("COURSE(CMPT 105W) AND LPAREN COURSE(CMPT 275) OR COURSE(CMPT 276) RPAREN COMMA "
+						+ "GRADE(C-) PERIOD");
+	}
+
+    @Test
+	void splitsMath152() {
+		assertThat(tokens("MATH 150 or MATH 151, with a minimum grade of C-; or MATH 154 or MATH 157, "
+				+ "with a minimum grade of B."))
+				.isEqualTo("COURSE(MATH 150) OR COURSE(MATH 151) COMMA GRADE(C-) SEMICOLON OR COURSE(MATH 154) "
+						+ "OR COURSE(MATH 157) COMMA GRADE(B) PERIOD");
+	}
+
+    @Test
+    void wordsIgnoreCase() {
+        assertThat(tokens("CMPT 125 AND CMPT 127, All With A Minimum Grade Of c-"))
+                .isEqualTo("COURSE(CMPT 125) AND COURSE(CMPT 127) COMMA ALL GRADE(C-)");
+    }
+
+    // CMPT 120's prerequisite text. Anything the tokenizer doesn't know makes the course FAILED
+    @Test
+    void unknownTextThrows() {
+        assertThatThrownBy(() -> RequisiteTokenizer.tokenize("BC Math 12 or equivalent is recommended."))
+                .isInstanceOf(RequisiteParseException.class)
+                .hasMessageContaining("BC Math 12");
+    }
+
+    @Test
+    void gradeSfuDoesNotHaveThrows() {
+        assertThatThrownBy(() -> RequisiteTokenizer.tokenize("CMPT 125 with a minimum grade of D+."))
+                .isInstanceOf(RequisiteParseException.class);
+    }
+}
