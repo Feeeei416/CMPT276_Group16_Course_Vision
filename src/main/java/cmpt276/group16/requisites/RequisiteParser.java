@@ -182,8 +182,13 @@ public final class RequisiteParser {
         if (items.size() == 1) {
             return items.get(0);
         }
-        // "A, B" could be either, and "A or B, C" puts the word in the wrong place
-        if (joiner == null || !lastHadWord) {
+        // Calendar text always writes "or" out, so a list joined only by commas needs all of them:
+        // ENSC 429's "(ENSC 327 or ENSC 328), (ENSC 380 or MSE 280), all with..."
+        if (joiner == null) {
+            return group(AND, items);
+        }
+        // "A or B, C" puts the word in the wrong place
+        if (!lastHadWord) {
             throw new RequisiteParseException("A list of " + items + " needs \"and\" or \"or\" before its last part");
         }
         return group(joiner, items);

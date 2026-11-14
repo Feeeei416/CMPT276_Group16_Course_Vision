@@ -52,6 +52,12 @@ class RequisiteParserTest {
         assertThat(parse("CMPT 125, CMPT 128, and CMPT 135")).isEqualTo("AND(CMPT 125, CMPT 128, CMPT 135)");
     }
 
+    // Calendar text writes "or" out, so commas alone mean all of them
+    @Test
+    void onlyCommasMeansAnd() {
+        assertThat(parse("(CMPT 125 or CMPT 135), MACM 101")).isEqualTo("AND(OR(CMPT 125, CMPT 135), MACM 101)");
+    }
+
     // The grade written closest to a course wins
     @Test
     void innerGradeWins() {
@@ -146,7 +152,6 @@ class RequisiteParserTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "CMPT 125 and CMPT 127 or CMPT 135",
-            "CMPT 125, CMPT 127",
             "CMPT 125 or CMPT 127, CMPT 135",
             "(CMPT 125 or CMPT 127",
             "CMPT 125 or CMPT 127)",

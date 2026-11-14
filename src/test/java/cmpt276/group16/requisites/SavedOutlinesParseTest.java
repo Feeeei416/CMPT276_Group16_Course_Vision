@@ -38,6 +38,7 @@ class SavedOutlinesParseTest {
             ensc-351-e100.json  | AND(OR(AND(ENSC 151 (C-), ENSC 215 (C-), ENSC 250 (C-)), ENSC 254 (C-), AND(CMPT 225 (C-), OR(CMPT 250 (C-), CMPT 295 (C-)))), 60 units)
             ensc-406-d100.json  | AND(100 units, OR(ENSC 100 (C-), ENSC 106 (C-), CMPT 106 (C-), MSE 102 (C-)))
             ensc-410-d100.json  | 80 units
+            ensc-429-d100.json  | AND(OR(ENSC 327 (C-), ENSC 328 (C-)), OR(ENSC 380 (C-), MSE 280 (C-)), 80 units)
             ensc-450-d100.json  | AND(OR(ENSC 225 (C-), MSE 251 (C-), SEE 231 (C-)), ENSC 350 (C-), 80 units)
             ensc-452-d100.json  | AND(ENSC 350 (C-), ENSC 351 (C-), 80 units)
             macm-201-d100.json  | OR(MATH 141, MACM 101, AND(ENSC 251, OR(MATH 232, MATH 240)))
