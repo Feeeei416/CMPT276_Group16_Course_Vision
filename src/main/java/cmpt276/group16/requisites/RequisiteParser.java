@@ -4,6 +4,9 @@ import static cmpt276.group16.requisites.RequisiteTokenizer.Type.AND;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.ALL;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COMMA;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COURSE;
+import static cmpt276.group16.requisites.RequisiteTokenizer.Type.EITHER;
+import static cmpt276.group16.requisites.RequisiteTokenizer.Type.INCLUDING;
+import static cmpt276.group16.requisites.RequisiteTokenizer.Type.NUMBER;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.GRADE;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.LPAREN;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.OR;
@@ -28,15 +31,18 @@ import cmpt276.group16.requisites.RequisiteTokenizer.Type;
 
 // This turns prerequisite text into a Requirement tree with one method per grammar rule starting with loosest:
 //   requisite := segment ( SEMICOLON OR segment )* PERIOD?
-//   segment   := list ( COMMA? ALL? GRADE )?
+//   segment   := list ( INCLUDING list )? ( COMMA? ALL? GRADE )?
 //   list      := item ( separator item )*
-//   item      := COURSE | UNITS | SPECIAL | LPAREN segment RPAREN
+//   item      := COURSE | NUMBER | UNITS | SPECIAL | LPAREN segment RPAREN | EITHER item ( OR item )+
 // A separator is a comma, "and", "or", or a comma then "and"/"or".
-// One list can't mix "and" with "or", so "A, B or C" is OR(A, B, C) but "A and B or C" fails instead of being guessed
+// One list can't mix "and" with "or", so "A, B or C" is OR(A, B, C) but "A and B or C" fails instead of being guessed.
+// "either" works like a bracket, so "A and either B or C" is AND(A, OR(B, C))
 public final class RequisiteParser {
 
     private final List<Token> tokens;
     private int pos;
+    // The subject of the last course read, for numbers written without one: the 126 in "PHYS 121 or 126"
+    private String lastSubject;
 
     private RequisiteParser(List<Token> tokens) {
         this.tokens = tokens;
@@ -78,6 +84,11 @@ public final class RequisiteParser {
     // A list, and the minimum grade for the courses in it that don't have their own
     private Requirement segment() {
         Requirement list = list();
+        // "80 units including (PHYS 121 or 126) and MATH 260": the units and everything after "including"
+        if (at(0, INCLUDING)) {
+            pos++;
+            list = group(AND, List.of(list, list()));
+        }
         int start = pos;
         if (at(0, COMMA)) {
             pos++;
@@ -132,7 +143,14 @@ public final class RequisiteParser {
         return switch (token.type()) {
             case COURSE -> {
                 String[] code = token.text().split(" ");
+                lastSubject = code[0];
                 yield new CourseReq(code[0], code[1], null);
+            }
+            case NUMBER -> {
+                if (lastSubject == null) {
+                    throw new RequisiteParseException("Course number " + token.text() + " has no subject before it");
+                }
+                yield new CourseReq(lastSubject, token.text(), null);
             }
             case UNITS -> new MinUnits(new BigDecimal(token.text()));
             case SPECIAL -> new Special(token.text());
@@ -141,12 +159,26 @@ public final class RequisiteParser {
                 expect(RPAREN);
                 yield inside;
             }
+            // Only "or" can follow, and the group ends with the last option
+            case EITHER -> {
+                List<Requirement> options = new ArrayList<>();
+                options.add(item());
+                while (at(0, OR) && startsItem(1)) {
+                    pos++;
+                    options.add(item());
+                }
+                if (options.size() < 2) {
+                    throw new RequisiteParseException("\"either\" without an \"or\"");
+                }
+                yield group(OR, options);
+            }
             default -> throw new RequisiteParseException("Expected a course but found " + token);
         };
     }
 
     private boolean startsItem(int offset) {
-        return at(offset, COURSE) || at(offset, UNITS) || at(offset, SPECIAL) || at(offset, LPAREN);
+        return at(offset, COURSE) || at(offset, NUMBER) || at(offset, UNITS) || at(offset, SPECIAL)
+                || at(offset, LPAREN) || at(offset, EITHER);
     }
 
     // True if the token offset places ahead is of this type, without taking it

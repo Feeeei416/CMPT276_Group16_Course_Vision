@@ -14,11 +14,12 @@ import cmpt276.group16.models.Grades;
 public final class RequisiteTokenizer {
 
     public enum Type {
-        COURSE, UNITS, SPECIAL, AND, OR, ALL, GRADE, COMMA, SEMICOLON, LPAREN, RPAREN, PERIOD
+        COURSE, NUMBER, UNITS, SPECIAL, AND, OR, EITHER, INCLUDING, ALL, GRADE,
+        COMMA, SEMICOLON, LPAREN, RPAREN, PERIOD
     }
 
-    // text is the course code for COURSE, the number for UNITS, the wording for SPECIAL,
-    // the letter grade for GRADE, then null for the rest
+    // text is the course code for COURSE, the course number for NUMBER, the number for UNITS,
+    // the wording for SPECIAL, the letter grade for GRADE, then null for the rest
     public record Token(Type type, String text) {
         @Override
         public String toString() {
@@ -30,12 +31,18 @@ public final class RequisiteTokenizer {
     // Words ignore case, but course codes don't, so "and 100 units" isn't read as course "and 100"
     private static final Pattern TOKEN = Pattern.compile(String.join("|",
             "(?<COURSE>[A-Z]{2,4} \\d{3}[A-Z]?)",
-            "(?<UNITS>(?<count>\\d+) (?i:units)\\b)",
+            // "60 units" or "Completion of 80 units"
+            "(?<UNITS>(?:(?i:completion of) )?(?<count>\\d+) (?i:units)\\b)",
+            // A course number without its subject, like the 126 in "PHYS 121 or 126". After UNITS, so "100 units" isn't one
+            "(?<NUMBER>\\d{3}[A-Z]?\\b)",
             // This is only the wordings currently known so anything else fails the course instead of being guessed at
             "(?<SPECIAL>(?i:permission of the (?:instructor|department)))",
             "(?<AND>(?i:and)\\b)",
             "(?<OR>(?i:or)\\b)",
-            "(?<ALL>(?i:all)\\b)",
+            "(?<EITHER>(?i:either)\\b)",
+            "(?<INCLUDING>(?i:including)\\b)",
+            // "all with a minimum grade of", or "both with" when there are two courses
+            "(?<ALL>(?i:all|both)\\b)",
             "(?<GRADE>(?i:with a minimum grade of) (?<letter>[A-Fa-f][+-]?))",
             "(?<COMMA>,)",
             "(?<SEMICOLON>;)",
@@ -68,6 +75,9 @@ public final class RequisiteTokenizer {
     private static Token tokenFrom(Matcher m) {
         if (m.group("COURSE") != null) {
             return new Token(Type.COURSE, m.group("COURSE"));
+        }
+        if (m.group("NUMBER") != null) {
+            return new Token(Type.NUMBER, m.group("NUMBER"));
         }
         if (m.group("UNITS") != null) {
             return new Token(Type.UNITS, m.group("count"));
