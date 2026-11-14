@@ -75,7 +75,7 @@ class PlanServiceTest {
     @BeforeEach
     void setUp() {
         planService = new PlanService(planRepository, planTermRepository, plannedCourseRepository, termRepository,
-                courseRepository, studentProfileRepository, NOV_9_2026);
+                courseRepository, studentProfileRepository, new TermCreator(termRepository), NOV_9_2026);
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
         // The courses the tests plan; anything else isn't in the course list
