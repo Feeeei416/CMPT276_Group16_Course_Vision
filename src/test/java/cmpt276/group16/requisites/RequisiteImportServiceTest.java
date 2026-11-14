@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.CourseRepository;
@@ -24,9 +25,11 @@ import cmpt276.group16.requisites.Requirement.MinUnits;
 import cmpt276.group16.requisites.Requirement.Or;
 import cmpt276.group16.requisites.Requirement.Special;
 
-// @DataJpaTest will only set up repos, so the service is added with @Import
+// @DataJpaTest will only set up repos, so the service is added with @Import.
+// The manual rules come from a test file with one rule, for MATH 260, so these tests don't change with the real one
 @DataJpaTest
-@Import(RequisiteImportService.class)
+@Import({RequisiteImportService.class, ManualRules.class})
+@TestPropertySource(properties = "app.manual-rules=classpath:requisites/test-manual-rules.json")
 class RequisiteImportServiceTest {
 
     private static final String CMPT_225 = "(MACM 101 and (CMPT 125, CMPT 129 or CMPT 135)) or (ENSC 251 and ENSC 252), "
@@ -209,5 +212,34 @@ class RequisiteImportServiceTest {
 
         assertThat(cmpt276.getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
         assertThat(stored(cmpt276)).isEqualTo("CMPT 225 (C-)");
+    }
+
+    private static final String MATH_260 = "MATH 152 with a minimum grade of C-; or MATH 155 or 158, with a grade "
+            + "of at least B; MATH 232 or 240, with a minimum grade of C-.";
+
+    // MATH 260's text doesn't parse, so its rule comes from the manual rules file
+    @Test
+    void ruleFromTheManualRulesFileIsSaved() {
+        Course math260 = importAndReload(saveCourse("MATH", "260", MATH_260));
+
+        assertThat(math260.getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
+        assertThat(stored(math260))
+                .isEqualTo("AND(OR(MATH 152 (C-), MATH 155 (B), MATH 158 (B)), OR(MATH 232 (C-), MATH 240 (C-)))");
+        assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(math260.getId(), RuleKind.PREREQUISITE))
+                .allSatisfy(row -> assertThat(row.getSource()).isEqualTo(RequisiteRule.Source.MANUAL));
+    }
+
+    // Saved again on each import, so a fix to the file replaces the old rule instead of adding to it
+    @Test
+    void importingAgainReplacesTheManualRule() {
+        Course math260 = importAndReload(saveCourse("MATH", "260", MATH_260));
+        int rowsAfterFirst = requisiteRuleRepository
+                .findByCourseIdAndRuleKindOrderByIdAsc(math260.getId(), RuleKind.PREREQUISITE).size();
+
+        math260 = importAndReload(math260);
+
+        assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(math260.getId(), RuleKind.PREREQUISITE))
+                .hasSize(rowsAfterFirst);
+        assertThat(importedRules(math260)).isEmpty();
     }
 }

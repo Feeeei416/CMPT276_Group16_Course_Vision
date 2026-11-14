@@ -1,0 +1,27 @@
+{
+  "rules": [
+    {
+      "course": "CMPT 276",
+      "reason": "\"MATH 154 or MATH 157 with at least a B+ may be substituted for MATH 151 or MATH 150\" adds options the parser can't place",
+      "prerequisite": {
+        "and": [
+          { "special": "One W course" },
+          { "course": "CMPT 225", "minGrade": "C-" },
+          { "or": [
+            { "course": "MACM 101", "minGrade": "C-" },
+            { "and": [
+              { "course": "ENSC 251", "minGrade": "C-" },
+              { "course": "ENSC 252", "minGrade": "C-" }
+            ] }
+          ] },
+          { "or": [
+            { "course": "MATH 151", "minGrade": "C-" },
+            { "course": "MATH 150", "minGrade": "C-" },
+            { "course": "MATH 154", "minGrade": "B+" },
+            { "course": "MATH 157", "minGrade": "B+" }
+          ] }
+        ]
+      }
+    }
+  ]
+}

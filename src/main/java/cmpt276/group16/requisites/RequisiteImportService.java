@@ -1,6 +1,5 @@
 package cmpt276.group16.requisites;
 
-import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -19,31 +18,39 @@ import cmpt276.group16.requisites.Requirement.Or;
 import cmpt276.group16.requisites.Requirement.Special;
 
 // Turns a course's prerequisite text into RequisiteRule rows.
-// Rules entered by hand (MANUAL) replace the imported ones instead of sitting beside them: if a course has any,
-// its imported rules aren't saved, so a re-import can't bring back a rule someone fixed.
+// Rules entered by hand (MANUAL, from ManualRules) replace the imported ones instead of sitting beside them:
+// if a course has any, its imported rules aren't saved, so a re-import can't bring back a rule someone fixed.
 // That way a course only ever has one tree, which findByCourseIdAndRuleKindAndParentIsNull relies on
 @Service
 public class RequisiteImportService {
 
     private final RequisiteRuleRepository requisiteRuleRepository;
     private final CourseRepository courseRepository;
+    private final ManualRules manualRules;
 
     public RequisiteImportService(RequisiteRuleRepository requisiteRuleRepository,
-            CourseRepository courseRepository) {
+            CourseRepository courseRepository, ManualRules manualRules) {
         this.requisiteRuleRepository = requisiteRuleRepository;
         this.courseRepository = courseRepository;
+        this.manualRules = manualRules;
     }
 
-    // Parses prereqText again and replaces the course's imported rules, then returns the new parse status.
+    // Saves the course's hand-entered rule if it has one, otherwise parses prereqText again and replaces
+    // the course's imported rules. Returns the new parse status.
     // FAILED leaves the course with no rules, so the student is shown prereqText instead.
     // This is one transaction, so a failed save leaves the old rules in place
     @Transactional
     public Course.ParseStatus importPrerequisites(Course course) {
         // The old rules came from outdated text so they should be removed regardless of if the new rules parse or not
-        List<RequisiteRule> imported = requisiteRuleRepository.findByCourseIdAndRuleKindAndSourceOrderByIdDesc(
-                course.getId(), RuleKind.PREREQUISITE, RequisiteRule.Source.IMPORTED);
-        requisiteRuleRepository.deleteAll(imported);
-        requisiteRuleRepository.flush();
+        deleteRules(course, RequisiteRule.Source.IMPORTED);
+
+        // Saved again each time, so a fix to the manual rules file reaches the database on the next import
+        Optional<Requirement> manual = manualRules.forCourse(course);
+        if (manual.isPresent()) {
+            deleteRules(course, RequisiteRule.Source.MANUAL);
+            save(manual.get(), course, null, RequisiteRule.Source.MANUAL);
+            return setStatus(course, Course.ParseStatus.PARSED);
+        }
 
         // Rules entered by hand win, so the text isn't needed. The course isn't flagged even if its text
         // doesn't parse, since it has rules for the student instead
@@ -58,8 +65,15 @@ public class RequisiteImportService {
         } catch (RequisiteParseException e) {
             return setStatus(course, Course.ParseStatus.FAILED);
         }
-        requirement.ifPresent(root -> save(root, course, null));
+        requirement.ifPresent(root -> save(root, course, null, RequisiteRule.Source.IMPORTED));
         return setStatus(course, Course.ParseStatus.PARSED);
+    }
+
+    // Newest first, so children are deleted before the groups they point at
+    private void deleteRules(Course course, RequisiteRule.Source source) {
+        requisiteRuleRepository.deleteAll(requisiteRuleRepository.findByCourseIdAndRuleKindAndSourceOrderByIdDesc(
+                course.getId(), RuleKind.PREREQUISITE, source));
+        requisiteRuleRepository.flush();
     }
 
     private Course.ParseStatus setStatus(Course course, Course.ParseStatus status) {
@@ -69,15 +83,17 @@ public class RequisiteImportService {
     }
 
     // save the node before its children so a parent always has a smaller id than the nodes under it
-    private void save(Requirement requirement, Course course, RequisiteRule parent) {
+    private void save(Requirement requirement, Course course, RequisiteRule parent, RequisiteRule.Source source) {
         if (requirement instanceof And and) {
-            RequisiteRule group = saveNode(course, parent, NodeType.AND);
-            and.parts().forEach(part -> save(part, course, group));
+            RequisiteRule group = requisiteRuleRepository.save(
+                    new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.AND, source));
+            and.parts().forEach(part -> save(part, course, group, source));
         } else if (requirement instanceof Or or) {
-            RequisiteRule group = saveNode(course, parent, NodeType.OR);
-            or.parts().forEach(part -> save(part, course, group));
+            RequisiteRule group = requisiteRuleRepository.save(
+                    new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.OR, source));
+            or.parts().forEach(part -> save(part, course, group, source));
         } else if (requirement instanceof CourseReq required) {
-            RequisiteRule node = new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.COURSE);
+            RequisiteRule node = new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.COURSE, source);
             node.setRequiredSubjectAndNumber(required.subject(), required.number());
             node.setMinGrade(required.minGrade());
             node.setConcurrentOk(required.concurrentOk());
@@ -86,17 +102,13 @@ public class RequisiteImportService {
                     .findBySubjectAndNumber(node.getReqSubject(), node.getReqNumber()).orElse(null));
             requisiteRuleRepository.save(node);
         } else if (requirement instanceof MinUnits units) {
-            RequisiteRule node = new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.MIN_UNITS);
+            RequisiteRule node = new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.MIN_UNITS, source);
             node.setMinUnits(units.units());
             requisiteRuleRepository.save(node);
         } else if (requirement instanceof Special special) {
-            RequisiteRule node = new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.SPECIAL);
+            RequisiteRule node = new RequisiteRule(course, parent, RuleKind.PREREQUISITE, NodeType.SPECIAL, source);
             node.setSpecialText(special.text());
             requisiteRuleRepository.save(node);
         }
-    }
-
-    private RequisiteRule saveNode(Course course, RequisiteRule parent, NodeType type) {
-        return requisiteRuleRepository.save(new RequisiteRule(course, parent, RuleKind.PREREQUISITE, type));
     }
 }
