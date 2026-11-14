@@ -30,8 +30,7 @@
                 </select>
                 <select name="season" class="input" aria-label="Term" required>
                     <option value="">-- Term --</option>
-                    <option th:each="s : ${seasons}" th:value="${s.name()}"
-                            th:text="${#strings.capitalize(#strings.toLowerCase(s.name()))}">Fall</option>
+                    <option th:each="s : ${seasons}" th:value="${s.name()}" th:text="${s.showName}">Fall</option>
                 </select>
                 <button type="submit" class="btn btn-primary">Add term</button>
             </form>
