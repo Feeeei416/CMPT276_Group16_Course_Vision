@@ -48,7 +48,8 @@ public final class RequisiteTokenizer {
             // "one of ENSC 100, ENSC 106, or MSE 102" or "either ENSC 250 or CMPT 250"
             "(?<ONEOF>(?i:one of|either)\\b)",
             "(?<INCLUDING>(?i:including)\\b)",
-            "(?<GRADE>(?i:with a minimum grade of) (?<letter>[A-Fa-f][+-]?))",
+            // "with a minimum grade of C-" or "with a grade of at least B"
+            "(?<GRADE>(?i:with a minimum grade of|with a grade of at least) (?<letter>[A-Fa-f][+-]?))",
             // The course after "with" is the one whose prerequisite this is, as in ENSC 280's
             // "MATH 251 and/or MATH 232 may be taken concurrently with ENSC 280."
             "(?<CONCURRENT>(?i:may be taken concurrently)(?: (?i:with) [A-Z]{2,4} \\d{3}[A-Z]?)?\\b)",

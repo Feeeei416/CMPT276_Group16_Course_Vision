@@ -17,6 +17,21 @@ class RequisiteParserTest {
     }
 
     @Test
+    void gradeOfAtLeast() {
+        assertThat(parse("MATH 154 or 157, both with a grade of at least B."))
+                .isEqualTo("OR(MATH 154 (B), MATH 157 (B))");
+    }
+
+    // Options with their own grades, split by "; or" or ", or"
+    @Test
+    void eachOptionWithItsOwnGrade() {
+        assertThat(parse("MATH 150 or 151, with a minimum grade of C-; or MATH 157 with a grade of at least B."))
+                .isEqualTo("OR(MATH 150 (C-), MATH 151 (C-), MATH 157 (B))");
+        assertThat(parse("PHYS 120 or 125, with a minimum grade of C-, or PHYS 101 with a minimum grade of B."))
+                .isEqualTo("OR(PHYS 120 (C-), PHYS 125 (C-), PHYS 101 (B))");
+    }
+
+    @Test
     void oneCourseWithoutAGrade() {
         assertThat(parse("CMPT 125.")).isEqualTo("CMPT 125");
     }
@@ -143,6 +158,8 @@ class RequisiteParserTest {
             "60 units. 60 units may be taken concurrently.",
             // "one of" with "and" contradicts itself
             "one of CMPT 125 and CMPT 135",
+            // MATH 260's shape: a semicolon without "or" could mean "and" or "or", so it isn't guessed
+            "MATH 152 with a minimum grade of C-; or MATH 158 with a grade of at least B; MATH 232.",
             // Unclear where "either" ends, so it isn't guessed
             "CMPT 120 and either CMPT 125 or CMPT 135 and MACM 101",
             // Sentences that add an option are kept, so these get MANUAL rules instead of wrong ones

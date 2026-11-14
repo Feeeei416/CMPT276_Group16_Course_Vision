@@ -34,7 +34,7 @@ import cmpt276.group16.requisites.RequisiteTokenizer.Token;
 import cmpt276.group16.requisites.RequisiteTokenizer.Type;
 
 // This turns prerequisite text into a Requirement tree with one method per grammar rule starting with loosest:
-//   requisite  := segment ( SEMICOLON OR segment )* PERIOD? concurrent*
+//   requisite  := segment ( ( SEMICOLON | COMMA ) OR segment )* PERIOD? concurrent*
 //   concurrent := list CONCURRENT PERIOD?
 //   segment    := list ( INCLUDING list )? ( COMMA? GRADE ( AND UNITS )? )?
 //   list       := item ( separator item )*
@@ -100,9 +100,11 @@ public final class RequisiteParser {
     private Requirement requisite() {
         List<Requirement> segments = new ArrayList<>();
         segments.add(segment());
-        while (at(0, SEMICOLON)) {
-            pos++;
-            expect(OR);
+        // Each option has its own grade. PHYS 121 writes the same thing with a comma:
+        // "PHYS 120 or 125, with a minimum grade of C-, or PHYS 101 with a minimum grade of B"
+        // A semicolon without "or" isn't read as either, so MATH 260's "...; MATH 232 or 240, ..." fails
+        while ((at(0, SEMICOLON) || at(0, COMMA)) && at(1, OR)) {
+            pos += 2;
             segments.add(segment());
         }
         if (at(0, PERIOD)) {

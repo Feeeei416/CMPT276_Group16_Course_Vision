@@ -80,15 +80,15 @@ class SavedOutlinesTest {
             math-151-d100.json  | FAILED
             math-152-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MATH 154 (B), MATH 157 (B))
             math-154-d100.json  | FAILED
-            math-155-d100.json  | FAILED
+            math-155-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MATH 154 (C-), MATH 157 (B))
             math-157-d100.json  | FAILED
             math-158-e200.json  | OR(MATH 150 (C-), MATH 151 (C-), MATH 154 (C-), MATH 157 (C-))
-            math-232-d100.json  | FAILED
-            math-240-d100.json  | FAILED
+            math-232-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MACM 101 (C-), MATH 154 (B), MATH 157 (B))
+            math-240-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MACM 101 (C-), MATH 154 (B), MATH 157 (B))
             math-251-d100.json  | FAILED
             math-260-d100.json  | FAILED
             phys-120-d100.json  | FAILED
-            phys-121-d100.json  | FAILED
+            phys-121-d100.json  | OR(PHYS 120 (C-), PHYS 125 (C-), PHYS 140 (C-), PHYS 101 (B))
             stat-271-d100.json  | CMPT 210 (C-)
             """;
 
