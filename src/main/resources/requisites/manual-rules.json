@@ -1,6 +1,39 @@
 {
   "rules": [
     {
+      "course": "CHEM 121",
+      "reason": "\"CHEM 109 or 111 with a minimum grade of C- or CHEM 110 and 115\" mixes \"and\" with \"or\" without brackets",
+      "prerequisite": {
+        "or": [
+          { "special": "Verify high school requirements" },
+          { "course": "CHEM 109", "minGrade": "C-" },
+          { "course": "CHEM 111", "minGrade": "C-" },
+          { "and": [
+            { "course": "CHEM 110", "minGrade": "C-" },
+            { "course": "CHEM 115", "minGrade": "C-" }
+          ] }
+        ]
+      }
+    },
+    {
+      "course": "CMPT 210",
+      "reason": "\"MACM 101, MATH 152, CMPT 125 or CMPT 135, and (...)\" has an \"or\" inside a list joined by \"and\"",
+      "prerequisite": {
+        "and": [
+          { "course": "MACM 101", "minGrade": "C-" },
+          { "course": "MATH 152", "minGrade": "C-" },
+          { "or": [
+            { "course": "CMPT 125", "minGrade": "C-" },
+            { "course": "CMPT 135", "minGrade": "C-" }
+          ] },
+          { "or": [
+            { "course": "MATH 240", "minGrade": "C-" },
+            { "course": "MATH 232", "minGrade": "C-" }
+          ] }
+        ]
+      }
+    },
+    {
       "course": "CMPT 276",
       "reason": "\"MATH 154 or MATH 157 with at least a B+ may be substituted for MATH 151 or MATH 150\" adds options the parser can't place",
       "prerequisite": {
@@ -20,6 +53,176 @@
             { "course": "MATH 154", "minGrade": "B+" },
             { "course": "MATH 157", "minGrade": "B+" }
           ] }
+        ]
+      }
+    },
+    {
+      "course": "CMPT 295",
+      "reason": "The second option is only \"for students in an Applied Physics program\"",
+      "prerequisite": {
+        "or": [
+          { "and": [
+            { "course": "MACM 101", "minGrade": "C-" },
+            { "or": [
+              { "course": "CMPT 125", "minGrade": "C-" },
+              { "course": "CMPT 135", "minGrade": "C-" }
+            ] }
+          ] },
+          { "and": [
+            { "course": "MATH 151", "minGrade": "C-" },
+            { "course": "CMPT 102", "minGrade": "C-" },
+            { "special": "Applied Physics program students only" }
+          ] }
+        ]
+      }
+    },
+    {
+      "course": "CMPT 307",
+      "reason": "\"MATH 154 or MATH 157 with a grade of at least B+ may be substituted for MATH 150 or MATH 151\" adds options the parser can't place",
+      "prerequisite": {
+        "and": [
+          { "course": "CMPT 225", "minGrade": "C-" },
+          { "or": [
+            { "course": "MACM 201", "minGrade": "C-" },
+            { "course": "CMPT 210", "minGrade": "C-" }
+          ] },
+          { "or": [
+            { "course": "MATH 150", "minGrade": "C-" },
+            { "course": "MATH 151", "minGrade": "C-" },
+            { "course": "MATH 154", "minGrade": "B+" },
+            { "course": "MATH 157", "minGrade": "B+" }
+          ] },
+          { "or": [
+            { "course": "MATH 232", "minGrade": "C-" },
+            { "course": "MATH 240", "minGrade": "C-" }
+          ] }
+        ]
+      }
+    },
+    {
+      "course": "ENSC 151",
+      "reason": "The options are inside the brackets: \"BC Math 12 (or equivalent, or any of MATH 100, 150, ...)\"",
+      "prerequisite": {
+        "or": [
+          { "special": "Verify high school requirements" },
+          { "course": "MATH 100", "minGrade": "C-" },
+          { "course": "MATH 150", "minGrade": "C-" },
+          { "course": "MATH 151", "minGrade": "C-" },
+          { "course": "MATH 154", "minGrade": "C-" },
+          { "course": "MATH 157", "minGrade": "C-" }
+        ]
+      }
+    },
+    {
+      "course": "ENSC 327",
+      "reason": "\"Students who completed STAT 270 prior to Spring 2015 may use STAT 270 instead of ENSC 280\" adds an option the parser can't place",
+      "prerequisite": {
+        "and": [
+          { "or": [
+            { "course": "ENSC 380", "minGrade": "C-" },
+            { "course": "MSE 280", "minGrade": "C-" }
+          ] },
+          { "or": [
+            { "course": "ENSC 280", "minGrade": "C-" },
+            { "and": [
+              { "course": "STAT 270", "minGrade": "C-" },
+              { "special": "STAT 270 completed before Spring 2015" }
+            ] }
+          ] }
+        ]
+      }
+    },
+    {
+      "course": "ENSC 380",
+      "reason": "\"ENSC 220 (or MSE 250)\" puts the option in brackets after the course",
+      "prerequisite": {
+        "and": [
+          { "course": "ENSC 180", "minGrade": "C-" },
+          { "or": [
+            { "course": "ENSC 220", "minGrade": "C-" },
+            { "course": "MSE 250", "minGrade": "C-" }
+          ] },
+          { "or": [
+            { "course": "MATH 260", "minGrade": "C-" },
+            { "course": "MATH 310", "minGrade": "C-" }
+          ] }
+        ]
+      }
+    },
+    {
+      "course": "ENSC 405W",
+      "reason": "Capstone conditions that can't be read from a transcript. The co-op and Capstone B sentences are about ENSC 440, so they're left out",
+      "prerequisite": {
+        "and": [
+          { "or": [
+            { "course": "ENSC 105W", "minGrade": "C-" },
+            { "course": "MSE 101W", "minGrade": "C-" }
+          ] },
+          { "course": "ENSC 204", "minGrade": "C-" },
+          { "special": "22 units of required upper division ENSC courses" },
+          { "special": "Two upper division technical electives, completed or in progress" },
+          { "special": "Approval of the department via Capstone application form" }
+        ]
+      }
+    },
+    {
+      "course": "MACM 316",
+      "reason": "\"MATH 152 or 155 or 158, and MATH 232 or 240\" has an \"or\" inside a list joined by \"and\", and \"computing experience\" can't be read from a transcript",
+      "prerequisite": {
+        "and": [
+          { "or": [
+            { "course": "MATH 152" },
+            { "course": "MATH 155" },
+            { "course": "MATH 158" }
+          ] },
+          { "or": [
+            { "course": "MATH 232" },
+            { "course": "MATH 240" }
+          ] },
+          { "special": "Computing experience" }
+        ]
+      }
+    },
+    {
+      "course": "MATH 251",
+      "reason": "The third option is only \"for students in the life sciences\"",
+      "prerequisite": {
+        "or": [
+          { "course": "MATH 152", "minGrade": "C-" },
+          { "course": "MATH 158", "minGrade": "B" },
+          { "and": [
+            { "course": "MATH 154", "minGrade": "C-" },
+            { "course": "MATH 155", "minGrade": "A-" },
+            { "special": "Life sciences students only" }
+          ] }
+        ]
+      }
+    },
+    {
+      "course": "MATH 260",
+      "reason": "The last semicolon means \"and\", unlike the one before it",
+      "prerequisite": {
+        "and": [
+          { "or": [
+            { "course": "MATH 152", "minGrade": "C-" },
+            { "course": "MATH 155", "minGrade": "B" },
+            { "course": "MATH 158", "minGrade": "B" }
+          ] },
+          { "or": [
+            { "course": "MATH 232", "minGrade": "C-" },
+            { "course": "MATH 240", "minGrade": "C-" }
+          ] }
+        ]
+      }
+    },
+    {
+      "course": "PHYS 120",
+      "reason": "\"This prerequisite may be waived, at the discretion of the department\" adds an option the parser can't place",
+      "prerequisite": {
+        "or": [
+          { "special": "Verify high school requirements" },
+          { "course": "PHYS 100", "minGrade": "C-" },
+          { "special": "Waiver from the physics department" }
         ]
       }
     }

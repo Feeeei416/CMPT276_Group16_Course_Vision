@@ -3,6 +3,7 @@ package cmpt276.group16.requisites;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,14 +20,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.core.io.ClassPathResource;
 
+import cmpt276.group16.models.Course;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 // Real prerequisite text, from the SFU API responses saved in src/test/resources/sfu, and what it parses to.
 // The table is also the to-do list for the story's acceptance criterion that rules exist for every course the
 // Computing Science and Computer Engineering programs require (listed in src/test/resources/programs):
-// a FAILED row still needs a parser fix or a MANUAL rule
+// a FAILED row for a required course needs a rule in src/main/resources/requisites/manual-rules.json
 class SavedOutlinesTest {
 
     // NONE means no prerequisites. FAILED means the course is flagged and the student is shown the text
@@ -172,5 +175,24 @@ class SavedOutlinesTest {
         }
         assertThat(problems).isEmpty();
         assertThat(requiredCourses()).containsAll(NO_OUTLINE);
+    }
+
+    // The acceptance criterion itself: a required course whose text doesn't parse has a rule entered by hand
+    // in src/main/resources/requisites/manual-rules.json, so every required course ends up with rules
+    @Test
+    void everyFailedRequiredCourseHasAManualRule() throws IOException, URISyntaxException {
+        ManualRules manualRules = new ManualRules(new ClassPathResource("requisites/manual-rules.json"));
+        Set<String> required = requiredCourses();
+        List<String> missing = new ArrayList<>();
+        for (Map.Entry<String, String> row : expected().entrySet()) {
+            // "cmpt-276-d100.json" -> CMPT 276
+            String[] name = row.getKey().toUpperCase(Locale.ROOT).split("-");
+            Course course = new Course(name[0], name[1], "Some Course", new BigDecimal("3.00"), null, null, null);
+            boolean isRequired = required.contains(name[0] + " " + name[1]);
+            if (isRequired && row.getValue().equals("FAILED") && manualRules.forCourse(course).isEmpty()) {
+                missing.add(name[0] + " " + name[1]);
+            }
+        }
+        assertThat(missing).isEmpty();
     }
 }
