@@ -22,6 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import cmpt276.group16.requisites.Requirement.And;
 import cmpt276.group16.requisites.Requirement.CourseReq;
@@ -47,16 +50,35 @@ public final class RequisiteParser {
     // The subject of the last course read, for numbers written without one: the 126 in "PHYS 121 or 126"
     private String lastSubject;
 
+    // Sentences that only inform, or that belong to another rule kind, so they're left out before tokenizing.
+    // Sentences that add an option, like "MATH 154 ... may be substituted for MATH 151", are purposely excluded:
+    // leaving one out would turn down students who qualify, so those courses fail and will get MANUAL rules instead
+    private static final List<Pattern> NOTES = Stream.of(
+            "[A-Z]{2,4} \\d{3}[A-Z]? is a required course for all .*",
+            "Engineering Science Majors and Honours students are required to take .*",
+            "Students will be automatically enrolled .*",
+            "Students are advised to .*",
+            "Please consult .*",
+            "Recommended: .*",
+            // Corequisites are their own rule kind instead of being part of the prerequisite
+            "(Recommended )?Corequisite: .*")
+            .map(note -> Pattern.compile(note, Pattern.CASE_INSENSITIVE))
+            .toList();
+
+    // A new sentence starts after a period, at a capital letter
+    private static final Pattern SENTENCE_BREAK = Pattern.compile("(?<=\\.)\\s+(?=[A-Z])");
+
     private RequisiteParser(List<Token> tokens) {
         this.tokens = tokens;
     }
 
     // Empty for blank text, which means the course has no prerequisites
     public static Optional<Requirement> parse(String text) {
-        if (text == null || text.isBlank()) {
+        String prerequisites = text == null ? "" : withoutNotes(text);
+        if (prerequisites.isBlank()) {
             return Optional.empty();
         }
-        RequisiteParser parser = new RequisiteParser(RequisiteTokenizer.tokenize(text));
+        RequisiteParser parser = new RequisiteParser(RequisiteTokenizer.tokenize(prerequisites));
         try {
             Requirement result = parser.requisite();
             if (parser.pos < parser.tokens.size()) {
@@ -67,6 +89,12 @@ public final class RequisiteParser {
             // A Requirement turned down what was read, for example "0 units"
             throw new RequisiteParseException(e.getMessage() + " in \"" + text + "\"");
         }
+    }
+
+    private static String withoutNotes(String text) {
+        return SENTENCE_BREAK.splitAsStream(text.strip())
+                .filter(sentence -> NOTES.stream().noneMatch(note -> note.matcher(sentence).matches()))
+                .collect(Collectors.joining(" "));
     }
 
     // "MATH 150 or MATH 151, with a minimum grade of C-; or MATH 154 or MATH 157, with a minimum grade of B."

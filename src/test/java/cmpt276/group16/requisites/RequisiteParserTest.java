@@ -78,6 +78,41 @@ class RequisiteParserTest {
                 .isEqualTo("AND(CMPT 125 (concurrent), MATH 151 (concurrent))");
     }
 
+    // ENSC 280's wording
+    @Test
+    void concurrentlyWithTheCourseItself() {
+        assertThat(parse("MATH 251 and MATH 232, all with a minimum grade of C-. "
+                + "MATH 251 and/or MATH 232 may be taken concurrently with ENSC 280."))
+                .isEqualTo("AND(MATH 251 (C-, concurrent), MATH 232 (C-, concurrent))");
+    }
+
+    @Test
+    void andOrMeansOr() {
+        assertThat(parse("CMPT 125 and/or CMPT 135")).isEqualTo("OR(CMPT 125, CMPT 135)");
+    }
+
+    // Sentences that only inform, or that are corequisites, are left out
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "ENSC 151 with a minimum grade of C-. ENSC 252 is a required course for all engineering science majors "
+                    + "and honours students (no course substitutions are permitted).",
+            "ENSC 151 with a minimum grade of C-. Engineering Science Majors and Honours students are required to "
+                    + "take ENSC 280 (no course substitutions will be accepted).",
+            "ENSC 151 with a minimum grade of C-. Students will be automatically enrolled in ENSC 440 in the term "
+                    + "immediately following successful completion of ENSC 405W.",
+            "ENSC 151 with a minimum grade of C-. Students are advised to have taken MATH 141.",
+            "ENSC 151 with a minimum grade of C-. Recommended: It is recommended that MATH 240 be taken first.",
+            "ENSC 151 with a minimum grade of C-. Corequisite: MATH 152 and MATH 232.",
+            "ENSC 151 with a minimum grade of C-. Corequisite: MATH 152 or 155. Recommended Corequisite: PHYS 133."})
+    void leavesOutNotes(String text) {
+        assertThat(parse(text)).isEqualTo("ENSC 151 (C-)");
+    }
+
+    @Test
+    void onlyACorequisiteMeansNoPrerequisites() {
+        assertThat(RequisiteParser.parse("Corequisite: MATH 152.")).isEmpty();
+    }
+
     // CMPT 105W's prerequisite text is ""
     @ParameterizedTest
     @NullAndEmptySource
@@ -100,7 +135,12 @@ class RequisiteParserTest {
             "BC Math 12 or equivalent is recommended.",
             // MATH 260 isn't one of the prerequisites, so it's really a corequisite
             "MATH 232. MATH 260 may be taken concurrently.",
-            "60 units. 60 units may be taken concurrently."})
+            "60 units. 60 units may be taken concurrently.",
+            // Sentences that add an option are kept, so these get MANUAL rules instead of wrong ones
+            "MATH 151 with a minimum grade of C-. MATH 154 or MATH 157 with at least a B+ may be substituted for "
+                    + "MATH 151.",
+            "ENSC 280 with a minimum grade of C-. Students who completed STAT 270 prior to Spring 2015 may use "
+                    + "STAT 270 instead of ENSC 280."})
     void unclearTextFails(String text) {
         assertThatThrownBy(() -> RequisiteParser.parse(text)).isInstanceOf(RequisiteParseException.class);
     }

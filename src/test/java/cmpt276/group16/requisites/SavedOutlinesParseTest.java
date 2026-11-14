@@ -31,6 +31,10 @@ class SavedOutlinesParseTest {
     @ParameterizedTest
     @CsvSource(delimiter = '|', textBlock = """
             econ-103-d100.json  | NONE
+            ensc-180-d100.json  | AND(ENSC 151 (C-), OR(MATH 151 (C-), MATH 150 (C-)))
+            ensc-252-d100.json  | ENSC 151 (C-)
+            ensc-280-d100.json  | AND(OR(AND(PHYS 121 (C-), ENSC 120 (C-)), PHYS 141 (C-)), MATH 251 (C-, concurrent), MATH 232 (C-, concurrent))
+            ensc-440-e100.json  | ENSC 405W (C-)
             ensc-316-d100.json  | AND(MATH 251 (C-), OR(ENSC 220 (C-), MSE 250 (C-)))
             ensc-324-d100.json  | AND(OR(ENSC 220 (C-), MSE 250 (C-)), MATH 232 (C-), OR(MATH 260 (C-), MATH 310 (C-)))
             ensc-350-e100.json  | OR(AND(ENSC 215 (C-), OR(ENSC 250 (C-), CMPT 250 (C-))), AND(ENSC 252 (C-), ENSC 254 (C-)))

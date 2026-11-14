@@ -37,14 +37,18 @@ public final class RequisiteTokenizer {
             "(?<NUMBER>\\d{3}[A-Z]?\\b)",
             // This is only the wordings currently known so anything else fails the course instead of being guessed at
             "(?<SPECIAL>(?i:permission of the (?:instructor|department)))",
-            "(?<AND>(?i:and)\\b)",
-            "(?<OR>(?i:or)\\b)",
+            // Not the "and" in "and/or"
+            "(?<AND>(?i:and)\\b(?!/))",
+            // "A and/or B" is met by either one, which is what OR already means
+            "(?<OR>(?i:and/or|or)\\b)",
             "(?<EITHER>(?i:either)\\b)",
             "(?<INCLUDING>(?i:including)\\b)",
             // "all with a minimum grade of", or "both with" when there are two courses
             "(?<ALL>(?i:all|both)\\b)",
             "(?<GRADE>(?i:with a minimum grade of) (?<letter>[A-Fa-f][+-]?))",
-            "(?<CONCURRENT>(?i:may be taken concurrently)\\b)",
+            // The course after "with" is the one whose prerequisite this is, as in ENSC 280's
+            // "MATH 251 and/or MATH 232 may be taken concurrently with ENSC 280."
+            "(?<CONCURRENT>(?i:may be taken concurrently)(?: (?i:with) [A-Z]{2,4} \\d{3}[A-Z]?)?\\b)",
             "(?<COMMA>,)",
             "(?<SEMICOLON>;)",
             "(?<LPAREN>\\()",

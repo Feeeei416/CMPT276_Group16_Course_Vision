@@ -28,8 +28,8 @@ class ProgramCoverageTest {
     // Prerequisite text the parser can't turn into rules yet
     private static final Set<String> NOT_PARSED_YET = Set.of(
             "CHEM 121", "CMPT 120", "CMPT 210", "CMPT 276", "CMPT 295", "CMPT 307",
-            "ENSC 120", "ENSC 151", "ENSC 180", "ENSC 252", "ENSC 280", "ENSC 327", "ENSC 351", "ENSC 380",
-            "ENSC 405W", "ENSC 406", "ENSC 410", "ENSC 429", "ENSC 440", "ENSC 450", "ENSC 452",
+            "ENSC 120", "ENSC 151", "ENSC 327", "ENSC 351", "ENSC 380",
+            "ENSC 405W", "ENSC 406", "ENSC 410", "ENSC 429", "ENSC 450", "ENSC 452",
             "MACM 101", "MACM 201", "MACM 316",
             "MATH 150", "MATH 151", "MATH 154", "MATH 155", "MATH 157", "MATH 232", "MATH 240", "MATH 251",
             "MATH 260", "PHYS 120", "PHYS 121");
