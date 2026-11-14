@@ -2,7 +2,9 @@ package cmpt276.group16.requisites;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import cmpt276.group16.models.Grades;
 
@@ -35,19 +37,27 @@ public sealed interface Requirement {
         }
     }
 
-    // A course, for example CMPT 125 with C- or better. minGrade is null if any passing grade counts
-    record CourseReq(String subject, String number, String minGrade) implements Requirement {
+    // A course, for example CMPT 125 with C- or better. minGrade is null if any passing grade counts.
+    // concurrentOk: the course can also be taken in the same term ("MATH 260 may be taken concurrently.")
+    record CourseReq(String subject, String number, String minGrade, boolean concurrentOk) implements Requirement {
         public CourseReq {
             if (minGrade != null && !Grades.LETTER.contains(minGrade)) {
                 throw new IllegalArgumentException("Not a letter grade: " + minGrade);
             }
         }
 
-        // "CMPT 125" or "CMPT 125 (C-)"
+        public CourseReq(String subject, String number, String minGrade) {
+            this(subject, number, minGrade, false);
+        }
+
+        // "CMPT 125", "CMPT 125 (C-)" or "MATH 260 (C-, concurrent)"
         @Override
         public String toString() {
+            String notes = Stream.of(minGrade, concurrentOk ? "concurrent" : null)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining(", "));
             String code = subject + " " + number;
-            return minGrade == null ? code : code + " (" + minGrade + ")";
+            return notes.isEmpty() ? code : code + " (" + notes + ")";
         }
     }
 

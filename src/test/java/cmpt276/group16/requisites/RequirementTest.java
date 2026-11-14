@@ -39,6 +39,8 @@ class RequirementTest {
     @Test
     void printsLeaves() {
         assertThat(new CourseReq("CMPT", "105W", null)).hasToString("CMPT 105W");
+        assertThat(new CourseReq("MATH", "260", "C-", true)).hasToString("MATH 260 (C-, concurrent)");
+        assertThat(new CourseReq("MATH", "260", null, true)).hasToString("MATH 260 (concurrent)");
         assertThat(new MinUnits(new BigDecimal("60.00"))).hasToString("60 units");
         assertThat(new Special("permission of the instructor")).hasToString("SPECIAL(permission of the instructor)");
     }

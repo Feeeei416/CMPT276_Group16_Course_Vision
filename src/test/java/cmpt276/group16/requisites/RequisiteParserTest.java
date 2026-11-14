@@ -65,6 +65,19 @@ class RequisiteParserTest {
                 .isEqualTo("OR(60 units, SPECIAL(permission of the instructor))");
     }
 
+    // The sentence after the prerequisites marks courses that can be taken in the same term
+    @Test
+    void mayBeTakenConcurrently() {
+        assertThat(parse("MATH 232 and MATH 260, with a minimum grade of C-. MATH 260 may be taken concurrently."))
+                .isEqualTo("AND(MATH 232 (C-), MATH 260 (C-, concurrent))");
+    }
+
+    @Test
+    void severalMayBeTakenConcurrently() {
+        assertThat(parse("CMPT 125 and MATH 151. CMPT 125 and MATH 151 may be taken concurrently."))
+                .isEqualTo("AND(CMPT 125 (concurrent), MATH 151 (concurrent))");
+    }
+
     // CMPT 105W's prerequisite text is ""
     @ParameterizedTest
     @NullAndEmptySource
@@ -84,7 +97,10 @@ class RequisiteParserTest {
             "CMPT 125 or",
             "CMPT 125. CMPT 127.",
             "0 units",
-            "BC Math 12 or equivalent is recommended."})
+            "BC Math 12 or equivalent is recommended.",
+            // MATH 260 isn't one of the prerequisites, so it's really a corequisite
+            "MATH 232. MATH 260 may be taken concurrently.",
+            "60 units. 60 units may be taken concurrently."})
     void unclearTextFails(String text) {
         assertThatThrownBy(() -> RequisiteParser.parse(text)).isInstanceOf(RequisiteParseException.class);
     }

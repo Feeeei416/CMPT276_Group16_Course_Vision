@@ -14,7 +14,7 @@ import cmpt276.group16.models.Grades;
 public final class RequisiteTokenizer {
 
     public enum Type {
-        COURSE, NUMBER, UNITS, SPECIAL, AND, OR, EITHER, INCLUDING, ALL, GRADE,
+        COURSE, NUMBER, UNITS, SPECIAL, AND, OR, EITHER, INCLUDING, ALL, GRADE, CONCURRENT,
         COMMA, SEMICOLON, LPAREN, RPAREN, PERIOD
     }
 
@@ -44,6 +44,7 @@ public final class RequisiteTokenizer {
             // "all with a minimum grade of", or "both with" when there are two courses
             "(?<ALL>(?i:all|both)\\b)",
             "(?<GRADE>(?i:with a minimum grade of) (?<letter>[A-Fa-f][+-]?))",
+            "(?<CONCURRENT>(?i:may be taken concurrently)\\b)",
             "(?<COMMA>,)",
             "(?<SEMICOLON>;)",
             "(?<LPAREN>\\()",

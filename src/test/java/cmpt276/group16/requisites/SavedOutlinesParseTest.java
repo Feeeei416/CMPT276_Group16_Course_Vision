@@ -37,8 +37,7 @@ class SavedOutlinesParseTest {
             ensc-416-d100.json  | AND(ENSC 316 (C-), MATH 254 (C-))
             ensc-470-e100.json  | AND(80 units, OR(PHYS 121 (C-), PHYS 126 (C-), PHYS 141 (C-)), OR(MATH 260 (C-), MATH 310 (C-)))
             ensc-405w-d100.json | FAILED
-            # Not decided yet: "MATH 260 may be taken concurrently." is a second sentence
-            ensc-220-d100.json  | FAILED
+            ensc-220-d100.json  | AND(OR(PHYS 121 (C-), PHYS 126 (C-), PHYS 141 (C-)), ENSC 120 (C-), MATH 232 (C-), OR(MATH 260 (C-, concurrent), MATH 310 (C-)))
             """)
     void parsesSavedOutline(String file, String expected) throws IOException {
         assertThat(parse(prerequisitesIn(file))).isEqualTo(expected);

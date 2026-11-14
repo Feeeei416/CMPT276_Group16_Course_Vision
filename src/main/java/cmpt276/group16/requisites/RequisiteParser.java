@@ -3,6 +3,7 @@ package cmpt276.group16.requisites;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.AND;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.ALL;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COMMA;
+import static cmpt276.group16.requisites.RequisiteTokenizer.Type.CONCURRENT;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COURSE;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.EITHER;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.INCLUDING;
@@ -20,6 +21,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 import cmpt276.group16.requisites.Requirement.And;
 import cmpt276.group16.requisites.Requirement.CourseReq;
@@ -30,10 +32,11 @@ import cmpt276.group16.requisites.RequisiteTokenizer.Token;
 import cmpt276.group16.requisites.RequisiteTokenizer.Type;
 
 // This turns prerequisite text into a Requirement tree with one method per grammar rule starting with loosest:
-//   requisite := segment ( SEMICOLON OR segment )* PERIOD?
-//   segment   := list ( INCLUDING list )? ( COMMA? ALL? GRADE )?
-//   list      := item ( separator item )*
-//   item      := COURSE | NUMBER | UNITS | SPECIAL | LPAREN segment RPAREN | EITHER item ( OR item )+
+//   requisite  := segment ( SEMICOLON OR segment )* PERIOD? concurrent*
+//   concurrent := list CONCURRENT PERIOD?
+//   segment    := list ( INCLUDING list )? ( COMMA? ALL? GRADE )?
+//   list       := item ( separator item )*
+//   item       := COURSE | NUMBER | UNITS | SPECIAL | LPAREN segment RPAREN | EITHER item ( OR item )+
 // A separator is a comma, "and", "or", or a comma then "and"/"or".
 // One list can't mix "and" with "or", so "A, B or C" is OR(A, B, C) but "A and B or C" fails instead of being guessed.
 // "either" works like a bracket, so "A and either B or C" is AND(A, OR(B, C))
@@ -78,7 +81,20 @@ public final class RequisiteParser {
         if (at(0, PERIOD)) {
             pos++;
         }
-        return group(OR, segments);
+        Requirement result = group(OR, segments);
+
+        // "MATH 260 may be taken concurrently." after the prerequisites
+        while (startsItem(0)) {
+            Requirement named = list();
+            expect(CONCURRENT);
+            if (at(0, PERIOD)) {
+                pos++;
+            }
+            for (CourseReq course : coursesIn(named)) {
+                result = concurrently(result, course);
+            }
+        }
+        return result;
     }
 
     // A list, and the minimum grade for the courses in it that don't have their own
@@ -220,14 +236,50 @@ public final class RequisiteParser {
 
     // Gives every course in the tree this minimum grade, unless a closer one already gave it one
     private static Requirement withGrade(Requirement requirement, String grade) {
+        return mapCourses(requirement, course -> course.minGrade() != null
+                ? course
+                : new CourseReq(course.subject(), course.number(), grade, course.concurrentOk()));
+    }
+
+    // Lets the named course be taken in the same term. It has to be one of the prerequisites:
+    // a course that isn't would be a corequisite in the wrong place, and guessing is worse than failing
+    private static Requirement concurrently(Requirement requirement, CourseReq named) {
+        Requirement marked = mapCourses(requirement, course ->
+                course.subject().equals(named.subject()) && course.number().equals(named.number())
+                        ? new CourseReq(course.subject(), course.number(), course.minGrade(), true)
+                        : course);
+        // Records compare by value, so nothing changed means the course wasn't found
+        if (marked.equals(requirement)) {
+            throw new RequisiteParseException(named.subject() + " " + named.number()
+                    + " may be taken concurrently, but isn't a prerequisite");
+        }
+        return marked;
+    }
+
+    // The courses in "MATH 232 and MATH 260 may be taken concurrently"
+    private static List<CourseReq> coursesIn(Requirement requirement) {
         if (requirement instanceof CourseReq course) {
-            return course.minGrade() != null ? course : new CourseReq(course.subject(), course.number(), grade);
+            return List.of(course);
         }
         if (requirement instanceof And and) {
-            return new And(and.parts().stream().map(part -> withGrade(part, grade)).toList());
+            return and.parts().stream().flatMap(part -> coursesIn(part).stream()).toList();
         }
         if (requirement instanceof Or or) {
-            return new Or(or.parts().stream().map(part -> withGrade(part, grade)).toList());
+            return or.parts().stream().flatMap(part -> coursesIn(part).stream()).toList();
+        }
+        throw new RequisiteParseException("Only courses can be taken concurrently, not " + requirement);
+    }
+
+    // Rebuilds the tree with change applied to every course in it
+    private static Requirement mapCourses(Requirement requirement, UnaryOperator<CourseReq> change) {
+        if (requirement instanceof CourseReq course) {
+            return change.apply(course);
+        }
+        if (requirement instanceof And and) {
+            return new And(and.parts().stream().map(part -> mapCourses(part, change)).toList());
+        }
+        if (requirement instanceof Or or) {
+            return new Or(or.parts().stream().map(part -> mapCourses(part, change)).toList());
         }
         return requirement;
     }
