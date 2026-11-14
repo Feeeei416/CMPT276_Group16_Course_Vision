@@ -47,12 +47,18 @@ class RequisiteTokenizerTest {
                 .isInstanceOf(RequisiteParseException.class);
     }
 
-    // CMPT 120's prerequisite text. Anything the tokenizer doesn't know makes the course FAILED
+    // Part of CMPT 295's prerequisite text. Anything the tokenizer doesn't know makes the course FAILED
     @Test
     void unknownTextThrows() {
-        assertThatThrownBy(() -> RequisiteTokenizer.tokenize("BC Math 12 or equivalent is recommended."))
+        assertThatThrownBy(() -> RequisiteTokenizer.tokenize("CMPT 102 for students in an Applied Physics program"))
                 .isInstanceOf(RequisiteParseException.class)
-                .hasMessageContaining("BC Math 12");
+                .hasMessageContaining("for students in an Applied Physics program");
+    }
+
+    @Test
+    void highSchoolCourses() {
+        assertThat(tokens("BC Pre-Calculus 12 (or equivalent), Chemistry 12 and BC Principles of Physics 12"))
+                .isEqualTo("HIGHSCHOOL COMMA HIGHSCHOOL AND HIGHSCHOOL");
     }
 
     @Test

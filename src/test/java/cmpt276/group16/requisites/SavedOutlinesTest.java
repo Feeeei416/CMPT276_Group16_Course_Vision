@@ -33,7 +33,7 @@ class SavedOutlinesTest {
     private static final String EXPECTED = """
             chem-121-d100.json  | FAILED
             cmpt-105w-d100.json | NONE
-            cmpt-120-d100.json  | FAILED
+            cmpt-120-d100.json  | NONE
             cmpt-125-d100.json  | OR(CMPT 120 (C-), CMPT 130 (C-))
             cmpt-201-d100.json  | AND(OR(CMPT 125 (C-), CMPT 135 (C-)), MACM 101 (C-))
             cmpt-210-d100.json  | FAILED
@@ -46,7 +46,7 @@ class SavedOutlinesTest {
             econ-103-d100.json  | NONE
             ensc-100-e100.json  | NONE
             ensc-105w-d100.json | NONE
-            ensc-120-d100.json  | FAILED
+            ensc-120-d100.json  | SPECIAL(Verify high school requirements)
             ensc-151-d100.json  | FAILED
             ensc-180-d100.json  | AND(ENSC 151 (C-), OR(MATH 151 (C-), MATH 150 (C-)))
             ensc-204-e100.json  | NONE
@@ -73,15 +73,15 @@ class SavedOutlinesTest {
             ensc-452-d100.json  | AND(ENSC 350 (C-), ENSC 351 (C-), 80 units)
             ensc-453-d100.json  | AND(ENSC 350 (C-), ENSC 351 (C-))
             ensc-470-e100.json  | AND(80 units, OR(PHYS 121 (C-), PHYS 126 (C-), PHYS 141 (C-)), OR(MATH 260 (C-), MATH 310 (C-)))
-            macm-101-d100.json  | FAILED
+            macm-101-d100.json  | OR(SPECIAL(Verify high school requirements), MATH 100, MATH 150, MATH 151, MATH 154, MATH 157)
             macm-201-d100.json  | OR(MATH 141, MACM 101, AND(ENSC 251, OR(MATH 232, MATH 240)))
             macm-316-d100.json  | FAILED
-            math-150-d100.json  | FAILED
-            math-151-d100.json  | FAILED
+            math-150-d100.json  | OR(SPECIAL(Verify high school requirements), MATH 100 (B-), MATH 110 (A-))
+            math-151-d100.json  | OR(SPECIAL(Verify high school requirements), MATH 100 (B), MATH 110 (A))
             math-152-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MATH 154 (B), MATH 157 (B))
-            math-154-d100.json  | FAILED
+            math-154-d100.json  | OR(SPECIAL(Verify high school requirements), MATH 100 (C-), MATH 110 (C-))
             math-155-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MATH 154 (C-), MATH 157 (B))
-            math-157-d100.json  | FAILED
+            math-157-d100.json  | OR(SPECIAL(Verify high school requirements), MATH 100 (C), MATH 110 (C))
             math-158-e200.json  | OR(MATH 150 (C-), MATH 151 (C-), MATH 154 (C-), MATH 157 (C-))
             math-232-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MACM 101 (C-), MATH 154 (B), MATH 157 (B))
             math-240-d100.json  | OR(MATH 150 (C-), MATH 151 (C-), MACM 101 (C-), MATH 154 (B), MATH 157 (B))

@@ -31,6 +31,32 @@ class RequisiteParserTest {
                 .isEqualTo("OR(PHYS 120 (C-), PHYS 125 (C-), PHYS 101 (B))");
     }
 
+    // A transcript doesn't show high school courses, so they're left for the student to check
+    @Test
+    void highSchoolCoursesAreForTheStudentToCheck() {
+        assertThat(parse("Pre-Calculus 12 (or equivalent) with a grade of at least B+, "
+                + "or MATH 100 with a grade of at least B-."))
+                .isEqualTo("OR(SPECIAL(Verify high school requirements), MATH 100 (B-))");
+    }
+
+    // Two high school courses are still one thing to check
+    @Test
+    void sameRequirementTwiceIsOnce() {
+        assertThat(parse("BC Pre-Calculus 12 and BC Physics 12 (or equivalents)."))
+                .isEqualTo("SPECIAL(Verify high school requirements)");
+    }
+
+    // "any of" says what the commas mean
+    @Test
+    void anyOfWithOnlyCommas() {
+        assertThat(parse("any of MATH 100, 150, 151")).isEqualTo("OR(MATH 100, MATH 150, MATH 151)");
+    }
+
+    @Test
+    void recommendedIsNotRequired() {
+        assertThat(RequisiteParser.parse("BC Math 12 or equivalent is recommended.")).isEmpty();
+    }
+
     @Test
     void oneCourseWithoutAGrade() {
         assertThat(parse("CMPT 125.")).isEqualTo("CMPT 125");
@@ -152,7 +178,6 @@ class RequisiteParserTest {
             "CMPT 125 or",
             "CMPT 125. CMPT 127.",
             "0 units",
-            "BC Math 12 or equivalent is recommended.",
             // MATH 260 isn't one of the prerequisites, so it's really a corequisite
             "MATH 232. MATH 260 may be taken concurrently.",
             "60 units. 60 units may be taken concurrently.",

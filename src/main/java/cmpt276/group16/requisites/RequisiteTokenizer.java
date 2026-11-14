@@ -14,7 +14,7 @@ import cmpt276.group16.models.Grades;
 public final class RequisiteTokenizer {
 
     public enum Type {
-        COURSE, NUMBER, UNITS, SPECIAL, AND, OR, ONEOF, INCLUDING, GRADE, CONCURRENT,
+        COURSE, NUMBER, UNITS, SPECIAL, HIGHSCHOOL, AND, OR, ONEOF, INCLUDING, GRADE, CONCURRENT,
         COMMA, SEMICOLON, LPAREN, RPAREN, PERIOD
     }
 
@@ -41,12 +41,16 @@ public final class RequisiteTokenizer {
             "(?<NUMBER>\\d{3}[A-Z]?\\b)",
             // This is only the wordings currently known so anything else fails the course instead of being guessed at
             "(?<SPECIAL>(?i:permission of the (?:instructor|department)))",
+            // A BC high school course, like "BC Pre-Calculus 12 (or equivalent)". Only the subjects we've seen, so
+            // anything else fails the course instead of being guessed at
+            "(?<HIGHSCHOOL>(?:BC )?(?:Principles of )?(?:Pre-Calculus|Calculus|Math|Physics|Chemistry) 12"
+                    + "(?: \\(or equivalents?\\))?)",
             // Not the "and" in "and/or"
             "(?<AND>(?i:and)\\b(?!/))",
             // "A and/or B" is met by either one, which is what OR already means
             "(?<OR>(?i:and/or|or)\\b)",
-            // "one of ENSC 100, ENSC 106, or MSE 102" or "either ENSC 250 or CMPT 250"
-            "(?<ONEOF>(?i:one of|either)\\b)",
+            // "one of ENSC 100, ENSC 106, or MSE 102", "either ENSC 250 or CMPT 250" or "any of MATH 100, 150, 151"
+            "(?<ONEOF>(?i:one of|either|any of)\\b)",
             "(?<INCLUDING>(?i:including)\\b)",
             // "with a minimum grade of C-" or "with a grade of at least B"
             "(?<GRADE>(?i:with a minimum grade of|with a grade of at least) (?<letter>[A-Fa-f][+-]?))",

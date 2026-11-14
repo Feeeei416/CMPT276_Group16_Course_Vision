@@ -4,6 +4,7 @@ import static cmpt276.group16.requisites.RequisiteTokenizer.Type.AND;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COMMA;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.CONCURRENT;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COURSE;
+import static cmpt276.group16.requisites.RequisiteTokenizer.Type.HIGHSCHOOL;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.INCLUDING;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.NUMBER;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.ONEOF;
@@ -38,7 +39,7 @@ import cmpt276.group16.requisites.RequisiteTokenizer.Type;
 //   concurrent := list CONCURRENT PERIOD?
 //   segment    := list ( INCLUDING list )? ( COMMA? GRADE ( AND UNITS )? )?
 //   list       := item ( separator item )*
-//   item       := COURSE | NUMBER | UNITS | SPECIAL | LPAREN segment RPAREN | ONEOF list
+//   item       := COURSE | NUMBER | UNITS | SPECIAL | HIGHSCHOOL | LPAREN segment RPAREN | ONEOF list
 // A separator is a comma, "and", "or", or a comma then "and"/"or".
 // One list can't mix "and" with "or", so "A, B or C" is OR(A, B, C) but "A and B or C" fails instead of being guessed.
 // "either" and "one of" work like a bracket, so "A and either B or C" is AND(A, OR(B, C))
@@ -59,10 +60,15 @@ public final class RequisiteParser {
             "Students are advised to .*",
             "Please consult .*",
             "Recommended: .*",
+            // CMPT 120's whole prerequisite is "BC Math 12 or equivalent is recommended."
+            ".* is recommended\\.",
             // Corequisites are their own rule kind instead of being part of the prerequisite
             "(Recommended )?Corequisite: .*")
             .map(note -> Pattern.compile(note, Pattern.CASE_INSENSITIVE))
             .toList();
+
+    // What a high school course in a prerequisite turns into
+    static final String VERIFY_HIGH_SCHOOL = "Verify high school requirements";
 
     // A new sentence starts after a period, at a capital letter
     private static final Pattern SENTENCE_BREAK = Pattern.compile("(?<=\\.)\\s+(?=[A-Z])");
@@ -114,7 +120,7 @@ public final class RequisiteParser {
 
         // "MATH 260 may be taken concurrently." after the prerequisites
         while (startsItem(0)) {
-            Requirement named = list();
+            Requirement named = list(AND);
             expect(CONCURRENT);
             if (at(0, PERIOD)) {
                 pos++;
@@ -128,11 +134,11 @@ public final class RequisiteParser {
 
     // A list, and the minimum grade for the courses in it that don't have their own
     private Requirement segment() {
-        Requirement list = list();
+        Requirement list = list(AND);
         // "80 units including (PHYS 121 or 126) and MATH 260": the units and everything after "including"
         if (at(0, INCLUDING)) {
             pos++;
-            list = group(AND, List.of(list, list()));
+            list = group(AND, List.of(list, list(AND)));
         }
         int start = pos;
         if (at(0, COMMA)) {
@@ -152,7 +158,8 @@ public final class RequisiteParser {
         return list;
     }
 
-    private Requirement list() {
+    // commasMean: what a list joined only by commas means, AND unless "one of" before it says otherwise
+    private Requirement list(Type commasMean) {
         List<Requirement> items = new ArrayList<>();
         items.add(item());
         Type joiner = null;
@@ -179,10 +186,10 @@ public final class RequisiteParser {
         if (items.size() == 1) {
             return items.get(0);
         }
-        // Calendar text always writes "or" out, so a list joined only by commas needs all of them:
+        // Calendar text always writes "or" out, so a list joined only by commas usually needs all of them:
         // ENSC 429's "(ENSC 327 or ENSC 328), (ENSC 380 or MSE 280), all with..."
         if (joiner == null) {
-            return group(AND, items);
+            return group(commasMean, items);
         }
         // "A or B, C" puts the word in the wrong place
         if (!lastHadWord) {
@@ -207,15 +214,17 @@ public final class RequisiteParser {
             }
             case UNITS -> new MinUnits(new BigDecimal(token.text()));
             case SPECIAL -> new Special(token.text());
+            // A transcript doesn't show high school courses, so the student checks these themselves
+            case HIGHSCHOOL -> new Special(VERIFY_HIGH_SCHOOL);
             case LPAREN -> {
                 Requirement inside = segment();
                 expect(RPAREN);
                 yield inside;
             }
-            // "one of ENSC 100, ENSC 106, or MSE 102" or "either ENSC 250 or CMPT 250":
-            // the list after it has to be one where any option is enough
+            // "one of ENSC 100, ENSC 106, or MSE 102", "either ENSC 250 or CMPT 250" or "any of MATH 100, 150, 151":
+            // the list after it has to be one where any option is enough, so commas alone mean "or" here
             case ONEOF -> {
-                Requirement options = list();
+                Requirement options = list(OR);
                 if (!(options instanceof Or)) {
                     throw new RequisiteParseException("\"one of\" or \"either\" needs a list joined with \"or\", not "
                             + options);
@@ -228,7 +237,7 @@ public final class RequisiteParser {
 
     private boolean startsItem(int offset) {
         return at(offset, COURSE) || at(offset, NUMBER) || at(offset, UNITS) || at(offset, SPECIAL)
-                || at(offset, LPAREN) || at(offset, ONEOF);
+                || at(offset, HIGHSCHOOL) || at(offset, LPAREN) || at(offset, ONEOF);
     }
 
     // True if the token offset places ahead is of this type, without taking it
@@ -250,11 +259,9 @@ public final class RequisiteParser {
         }
     }
 
-    // A group of one is just that part. "(A or B) or C" is the same as "A or B or C", so it's stored flat
+    // A group of one is just that part. "(A or B) or C" is the same as "A or B or C", so it's stored flat,
+    // and "A and A" is just A: ENSC 120's "BC Pre-Calculus 12 and BC Physics 12" is one high school check
     private static Requirement group(Type joiner, List<Requirement> parts) {
-        if (parts.size() == 1) {
-            return parts.get(0);
-        }
         List<Requirement> flat = new ArrayList<>();
         for (Requirement part : parts) {
             if (joiner == AND && part instanceof And and) {
@@ -265,7 +272,11 @@ public final class RequisiteParser {
                 flat.add(part);
             }
         }
-        return joiner == AND ? new And(flat) : new Or(flat);
+        List<Requirement> distinct = flat.stream().distinct().toList();
+        if (distinct.size() == 1) {
+            return distinct.get(0);
+        }
+        return joiner == AND ? new And(distinct) : new Or(distinct);
     }
 
     // Gives every course in the tree this minimum grade, unless a closer one already gave it one
