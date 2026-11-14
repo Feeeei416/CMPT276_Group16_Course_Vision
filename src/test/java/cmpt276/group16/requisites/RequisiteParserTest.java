@@ -8,33 +8,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-// Plain unit tests: no Spring or database
+// Plain unit tests: no Spring or database.
+// One case per rule of the grammar; real prerequisite text from the SFU API is in SavedOutlinesTest
 class RequisiteParserTest {
 
     private static String parse(String text) {
         return RequisiteParser.parse(text).orElseThrow().toString();
-    }
-
-    @Test
-    void parsesCmpt225() {
-        assertThat(parse("(MACM 101 and (CMPT 125, CMPT 129 or CMPT 135)) or (ENSC 251 and ENSC 252), "
-                + "all with a minimum grade of C-."))
-                .isEqualTo("OR(AND(MACM 101 (C-), OR(CMPT 125 (C-), CMPT 129 (C-), CMPT 135 (C-))), "
-                        + "AND(ENSC 251 (C-), ENSC 252 (C-)))");
-    }
-
-    @Test
-    void parsesCmpt376w() {
-        assertThat(parse("CMPT 105W and (CMPT 275 or CMPT 276), with a minimum grade of C-."))
-                .isEqualTo("AND(CMPT 105W (C-), OR(CMPT 275 (C-), CMPT 276 (C-)))");
-    }
-
-    // Each half of the semicolon has its own grade
-    @Test
-    void parsesMath152() {
-        assertThat(parse("MATH 150 or MATH 151, with a minimum grade of C-; or MATH 154 or MATH 157, "
-                + "with a minimum grade of B."))
-                .isEqualTo("OR(MATH 150 (C-), MATH 151 (C-), MATH 154 (B), MATH 157 (B))");
     }
 
     @Test
@@ -164,6 +143,8 @@ class RequisiteParserTest {
             "60 units. 60 units may be taken concurrently.",
             // "one of" with "and" contradicts itself
             "one of CMPT 125 and CMPT 135",
+            // Unclear where "either" ends, so it isn't guessed
+            "CMPT 120 and either CMPT 125 or CMPT 135 and MACM 101",
             // Sentences that add an option are kept, so these get MANUAL rules instead of wrong ones
             "MATH 151 with a minimum grade of C-. MATH 154 or MATH 157 with at least a B+ may be substituted for "
                     + "MATH 151.",

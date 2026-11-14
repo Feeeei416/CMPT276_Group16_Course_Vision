@@ -35,7 +35,16 @@ class RequisiteTokenizerTest {
     @Test
     void wordsIgnoreCase() {
         assertThat(tokens("CMPT 125 AND CMPT 127, All With A Minimum Grade Of c-"))
-                .isEqualTo("COURSE(CMPT 125) AND COURSE(CMPT 127) COMMA ALL GRADE(C-)");
+                .isEqualTo("COURSE(CMPT 125) AND COURSE(CMPT 127) COMMA GRADE(C-)");
+    }
+
+    // Filler is skipped, but only as whole words: the "all" in "allowed" isn't filler
+    @Test
+    void skipsFiller() {
+        assertThat(tokens("Completion of 80 units, both with a minimum grade of C-"))
+                .isEqualTo("UNITS(80) COMMA GRADE(C-)");
+        assertThatThrownBy(() -> RequisiteTokenizer.tokenize("CMPT 125 allowed"))
+                .isInstanceOf(RequisiteParseException.class);
     }
 
     // CMPT 120's prerequisite text. Anything the tokenizer doesn't know makes the course FAILED

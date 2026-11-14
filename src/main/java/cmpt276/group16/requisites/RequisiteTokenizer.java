@@ -14,7 +14,7 @@ import cmpt276.group16.models.Grades;
 public final class RequisiteTokenizer {
 
     public enum Type {
-        COURSE, NUMBER, UNITS, SPECIAL, AND, OR, EITHER, ONEOF, INCLUDING, ALL, GRADE, CONCURRENT,
+        COURSE, NUMBER, UNITS, SPECIAL, AND, OR, ONEOF, INCLUDING, GRADE, CONCURRENT,
         COMMA, SEMICOLON, LPAREN, RPAREN, PERIOD
     }
 
@@ -31,10 +31,12 @@ public final class RequisiteTokenizer {
     // Words ignore case, but course codes don't, so "and 100 units" isn't read as course "and 100"
     private static final Pattern TOKEN = Pattern.compile(String.join("|",
             "(?<COURSE>[A-Z]{2,4} \\d{3}[A-Z]?)",
-            // "60 units", "Completion of 80 units", "a minimum of 80 units",
-            // or ENSC 410's whole sentence "A minimum of 80 units is required to enroll in this course"
-            "(?<UNITS>(?:(?i:completion of) )?(?:(?i:a minimum of) )?(?<count>\\d+) (?i:units)\\b"
-                    + "(?: (?i:is required to enroll in this course))?)",
+            // Words that don't change what's required, so they're skipped wherever they appear, for example
+            // "Completion of 80 units", "all with a minimum grade of", or ENSC 410's
+            // "A minimum of 80 units is required to enroll in this course".
+            // Only add a phrase here if the prerequisite means the same with it taken out
+            "(?<FILLER>(?i:completion of|a minimum of|all|both|is required to enroll in this course)\\b)",
+            "(?<UNITS>(?<count>\\d+) (?i:units)\\b)",
             // A course number without its subject, like the 126 in "PHYS 121 or 126". After UNITS, so "100 units" isn't one
             "(?<NUMBER>\\d{3}[A-Z]?\\b)",
             // This is only the wordings currently known so anything else fails the course instead of being guessed at
@@ -43,12 +45,9 @@ public final class RequisiteTokenizer {
             "(?<AND>(?i:and)\\b(?!/))",
             // "A and/or B" is met by either one, which is what OR already means
             "(?<OR>(?i:and/or|or)\\b)",
-            "(?<EITHER>(?i:either)\\b)",
-            // "one of ENSC 100, ENSC 106, or MSE 102"
-            "(?<ONEOF>(?i:one of)\\b)",
+            // "one of ENSC 100, ENSC 106, or MSE 102" or "either ENSC 250 or CMPT 250"
+            "(?<ONEOF>(?i:one of|either)\\b)",
             "(?<INCLUDING>(?i:including)\\b)",
-            // "all with a minimum grade of", or "both with" when there are two courses
-            "(?<ALL>(?i:all|both)\\b)",
             "(?<GRADE>(?i:with a minimum grade of) (?<letter>[A-Fa-f][+-]?))",
             // The course after "with" is the one whose prerequisite this is, as in ENSC 280's
             // "MATH 251 and/or MATH 232 may be taken concurrently with ENSC 280."
@@ -75,7 +74,9 @@ public final class RequisiteTokenizer {
             if (!m.lookingAt()) {
                 throw new RequisiteParseException("Can't read \"" + text.substring(pos) + "\"");
             }
-            tokens.add(tokenFrom(m));
+            if (m.group("FILLER") == null) {
+                tokens.add(tokenFrom(m));
+            }
             pos = m.end();
         }
         return tokens;

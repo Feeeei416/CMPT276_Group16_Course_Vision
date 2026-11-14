@@ -1,11 +1,9 @@
 package cmpt276.group16.requisites;
 
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.AND;
-import static cmpt276.group16.requisites.RequisiteTokenizer.Type.ALL;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COMMA;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.CONCURRENT;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.COURSE;
-import static cmpt276.group16.requisites.RequisiteTokenizer.Type.EITHER;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.INCLUDING;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.NUMBER;
 import static cmpt276.group16.requisites.RequisiteTokenizer.Type.ONEOF;
@@ -38,12 +36,12 @@ import cmpt276.group16.requisites.RequisiteTokenizer.Type;
 // This turns prerequisite text into a Requirement tree with one method per grammar rule starting with loosest:
 //   requisite  := segment ( SEMICOLON OR segment )* PERIOD? concurrent*
 //   concurrent := list CONCURRENT PERIOD?
-//   segment    := list ( INCLUDING list )? ( COMMA? ALL? GRADE ( AND UNITS )? )?
+//   segment    := list ( INCLUDING list )? ( COMMA? GRADE ( AND UNITS )? )?
 //   list       := item ( separator item )*
-//   item       := COURSE | NUMBER | UNITS | SPECIAL | LPAREN segment RPAREN | EITHER item ( OR item )+ | ONEOF list
+//   item       := COURSE | NUMBER | UNITS | SPECIAL | LPAREN segment RPAREN | ONEOF list
 // A separator is a comma, "and", "or", or a comma then "and"/"or".
 // One list can't mix "and" with "or", so "A, B or C" is OR(A, B, C) but "A and B or C" fails instead of being guessed.
-// "either" works like a bracket, so "A and either B or C" is AND(A, OR(B, C))
+// "either" and "one of" work like a bracket, so "A and either B or C" is AND(A, OR(B, C))
 public final class RequisiteParser {
 
     private final List<Token> tokens;
@@ -138,9 +136,6 @@ public final class RequisiteParser {
         if (at(0, COMMA)) {
             pos++;
         }
-        if (at(0, ALL)) {
-            pos++;
-        }
         if (at(0, GRADE)) {
             Requirement graded = withGrade(list, next().text());
             // "all with a minimum grade of C- and a minimum of 80 units": the units are needed as well
@@ -215,24 +210,13 @@ public final class RequisiteParser {
                 expect(RPAREN);
                 yield inside;
             }
-            // Only "or" can follow, and the group ends with the last option
-            case EITHER -> {
-                List<Requirement> options = new ArrayList<>();
-                options.add(item());
-                while (at(0, OR) && startsItem(1)) {
-                    pos++;
-                    options.add(item());
-                }
-                if (options.size() < 2) {
-                    throw new RequisiteParseException("\"either\" without an \"or\"");
-                }
-                yield group(OR, options);
-            }
-            // "one of ENSC 100, ENSC 106, or MSE 102": the list after it has to be one where any option is enough
+            // "one of ENSC 100, ENSC 106, or MSE 102" or "either ENSC 250 or CMPT 250":
+            // the list after it has to be one where any option is enough
             case ONEOF -> {
                 Requirement options = list();
                 if (!(options instanceof Or)) {
-                    throw new RequisiteParseException("\"one of\" needs a list joined with \"or\", not " + options);
+                    throw new RequisiteParseException("\"one of\" or \"either\" needs a list joined with \"or\", not "
+                            + options);
                 }
                 yield options;
             }
@@ -242,7 +226,7 @@ public final class RequisiteParser {
 
     private boolean startsItem(int offset) {
         return at(offset, COURSE) || at(offset, NUMBER) || at(offset, UNITS) || at(offset, SPECIAL)
-                || at(offset, LPAREN) || at(offset, EITHER) || at(offset, ONEOF);
+                || at(offset, LPAREN) || at(offset, ONEOF);
     }
 
     // True if the token offset places ahead is of this type, without taking it
