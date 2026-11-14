@@ -27,9 +27,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 // Real prerequisite text, from the SFU API responses saved in src/test/resources/sfu, and what it parses to.
-// The table is also the to-do list for the story's acceptance criterion that rules exist for every course the
-// Computing Science and Computer Engineering programs require (listed in src/test/resources/programs):
-// a FAILED row for a required course needs a rule in src/main/resources/requisites/manual-rules.json
+// Every course the Computing Science and Computer Engineering programs require (src/test/resources/programs)
+// should end up with rules, so a required course with a FAILED row needs a rule in
+// src/main/resources/requisites/manual-rules.json
 class SavedOutlinesTest {
 
     // NONE means no prerequisites. FAILED means the course is flagged and the student is shown the text
@@ -177,8 +177,7 @@ class SavedOutlinesTest {
         assertThat(requiredCourses()).containsAll(NO_OUTLINE);
     }
 
-    // The acceptance criterion itself: a required course whose text doesn't parse has a rule entered by hand
-    // in src/main/resources/requisites/manual-rules.json, so every required course ends up with rules
+    // A required course whose text doesn't parse still gets rules, from the manual rules file
     @Test
     void everyFailedRequiredCourseHasAManualRule() throws IOException, URISyntaxException {
         ManualRules manualRules = new ManualRules(new ClassPathResource("requisites/manual-rules.json"));

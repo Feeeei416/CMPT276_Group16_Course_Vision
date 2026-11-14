@@ -187,7 +187,7 @@ class RequisiteParserTest {
             "MATH 152 with a minimum grade of C-; or MATH 158 with a grade of at least B; MATH 232.",
             // Unclear where "either" ends, so it isn't guessed
             "CMPT 120 and either CMPT 125 or CMPT 135 and MACM 101",
-            // Sentences that add an option are kept, so these get MANUAL rules instead of wrong ones
+            // Sentences that add an option are kept, so these fail instead of getting a rule that's missing an option
             "MATH 151 with a minimum grade of C-. MATH 154 or MATH 157 with at least a B+ may be substituted for "
                     + "MATH 151.",
             "ENSC 280 with a minimum grade of C-. Students who completed STAT 270 prior to Spring 2015 may use "

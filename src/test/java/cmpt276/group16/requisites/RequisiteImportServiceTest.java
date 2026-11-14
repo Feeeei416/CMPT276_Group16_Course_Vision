@@ -179,7 +179,7 @@ class RequisiteImportServiceTest {
         assertThat(stored(course)).isEmpty();
     }
 
-    // Acceptance criterion: importing again doesn't erase rules entered by hand
+    // Importing again doesn't erase rules entered by hand
     @Test
     void rulesEnteredByHandAreKeptAndWin() {
         Course cmpt225 = saveCourse("CMPT", "225", CMPT_225);
@@ -196,8 +196,8 @@ class RequisiteImportServiceTest {
         assertThat(importedRules(cmpt225)).isEmpty();
     }
 
-    // The point of a MANUAL rule is a course whose text doesn't parse, like CMPT 276's "may be substituted"
-    // sentence. It has rules for the student, so it isn't flagged to show the text instead
+    // CMPT 276's text doesn't parse because of its "may be substituted" sentence. With a manual rule the student
+    // still has rules to go by, so the course isn't flagged
     @Test
     void rulesEnteredByHandMeanTheCourseIsNotFlagged() {
         Course cmpt276 = saveCourse("CMPT", "276", "CMPT 225, with a minimum grade of C-. "

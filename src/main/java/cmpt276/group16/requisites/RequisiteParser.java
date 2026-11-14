@@ -52,7 +52,7 @@ public final class RequisiteParser {
 
     // Sentences that only inform, or that belong to another rule kind, so they're left out before tokenizing.
     // Sentences that add an option, like "MATH 154 ... may be substituted for MATH 151", are purposely excluded:
-    // leaving one out would turn down students who qualify, so those courses fail and will get MANUAL rules instead
+    // leaving one out would turn down students who qualify, so those courses fail and get a manual rule instead
     private static final List<Pattern> NOTES = Stream.of(
             "[A-Z]{2,4} \\d{3}[A-Z]? is a required course for all .*",
             "Engineering Science Majors and Honours students are required to take .*",

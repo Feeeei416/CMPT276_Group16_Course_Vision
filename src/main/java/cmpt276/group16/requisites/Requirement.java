@@ -10,7 +10,7 @@ import cmpt276.group16.models.Grades;
 
 // One part of a prerequisite, as read from the Calendar text and before it is saved as RequisiteRule rows.
 // The parser builds these instead of entities so it can be tested without a database.
-// The checks below are what PrerequisiteCheck relies on, so a bad tree fails here instead of in front of a student
+// The checks below stop a tree that could never be met from being saved, like an empty OR or a grade SFU doesn't have
 public sealed interface Requirement {
 
     // Every part must be met. Always two or more parts: a group of one is just that part

@@ -22,7 +22,7 @@ class RequirementTest {
     }
 
     // CMPT 225: "(MACM 101 and (CMPT 125, CMPT 129 or CMPT 135)) or (ENSC 251 and ENSC 252),
-    // all with a minimum grade of C-." The parser's tests will compare against strings like this one
+    // all with a minimum grade of C-." The parser's tests compare against strings like this one
     @Test
     void printsANestedTreeOnOneLine() {
         Requirement cmpt225 = new Or(List.of(
@@ -45,14 +45,14 @@ class RequirementTest {
         assertThat(new Special("permission of the instructor")).hasToString("SPECIAL(permission of the instructor)");
     }
 
-    // An empty OR would block every student with "Needs ."
+    // An empty OR could never be met, so it would block every student
     @Test
     void groupsNeedAtLeastTwoParts() {
         assertThatThrownBy(() -> new Or(List.of())).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new And(List.of(course("CMPT", "125")))).isInstanceOf(IllegalArgumentException.class);
     }
 
-    // A grade PrerequisiteCheck doesn't know would block everyone, even students with an A+
+    // A grade that isn't on SFU's scale could never be met, even by a student with an A+
     @Test
     void minGradeMustBeALetterGrade() {
         assertThatThrownBy(() -> new CourseReq("CMPT", "125", "c-")).isInstanceOf(IllegalArgumentException.class);
