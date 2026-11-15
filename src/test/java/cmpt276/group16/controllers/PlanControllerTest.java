@@ -341,9 +341,38 @@ class PlanControllerTest {
         mockMvc.perform(post("/student/plan/terms/{id}/courses", fall).session(sessionFor(priya))
                         .param("code", "data structures"))
                .andExpect(redirectedUrl("/student/plan#term-" + fall))
-               .andExpect(flash().attribute("errors", contains("Enter a course code like CMPT 225.")));
+               .andExpect(flash().attribute("errors", contains("Enter a course code like CMPT 225.")))
+               .andExpect(flash().attribute("typedCode", "data structures"));
 
         assertThat(courseCodes(priya)).isEmpty();
+    }
+
+    // After a failed add, the term's box starts with what was typed, so one wrong digit is quick to fix
+    @Test
+    void typedCodeComesBackIntoTheTermsBoxAfterAnError() throws Exception {
+        planService.addTerm(priya, 2027, "SUMMER");
+        planService.addTerm(priya, 2027, "FALL");
+        Long fall = termId(priya, "2027 Fall");
+
+        String page = mockMvc.perform(get("/student/plan").session(sessionFor(priya))
+                        .flashAttr("errors", List.of("CMPT 999 isn't in the course list."))
+                        .flashAttr("changedTermId", fall)
+                        .flashAttr("typedCode", "cmpt 999"))
+               .andReturn().getResponse().getContentAsString();
+
+        // Only Fall's box gets it, not Summer's
+        assertThat(page).containsOnlyOnce("value=\"cmpt 999\"");
+        assertThat(page.indexOf("value=\"cmpt 999\"")).isGreaterThan(page.indexOf("id=\"term-" + fall + "\""));
+    }
+
+    // A successful add leaves the box empty, ready for the next course
+    @Test
+    void savedCourseLeavesTheBoxEmpty() throws Exception {
+        planService.addTerm(priya, 2027, "FALL");
+
+        mockMvc.perform(post("/student/plan/terms/{id}/courses", termId(priya, "2027 Fall")).session(sessionFor(priya))
+                        .param("code", "CMPT 225"))
+               .andExpect(flash().attributeCount(2));
     }
 
     @Test

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,17 +44,20 @@ public class PlanService {
     private final TermRepository termRepository;
     private final CourseRepository courseRepository;
     private final StudentProfileRepository studentProfileRepository;
+    private final TermCreator termCreator;
     private final Clock clock;
 
     public PlanService(PlanRepository planRepository, PlanTermRepository planTermRepository,
             PlannedCourseRepository plannedCourseRepository, TermRepository termRepository,
-            CourseRepository courseRepository, StudentProfileRepository studentProfileRepository, Clock clock) {
+            CourseRepository courseRepository, StudentProfileRepository studentProfileRepository,
+            TermCreator termCreator, Clock clock) {
         this.planRepository = planRepository;
         this.planTermRepository = planTermRepository;
         this.plannedCourseRepository = plannedCourseRepository;
         this.termRepository = termRepository;
         this.courseRepository = courseRepository;
         this.studentProfileRepository = studentProfileRepository;
+        this.termCreator = termCreator;
         this.clock = clock;
     }
 
@@ -192,9 +196,19 @@ public class PlanService {
     }
 
     // Plans reach terms the course import hasn't seen yet, so the shared term is created if it's missing
+    // The student lock doesn't cover this: two different students can add the same new term at the same moment.
+    // Whoever saves second gets the unique-rule error, and then finds the row the other one just saved.
+    // If there's no row, the save failed for some other reason, so that error is thrown again instead of being lost
     private Term termFor(int year, Season season) {
-        return termRepository.findByTermYearAndSeason(year, season)
-                .orElseGet(() -> termRepository.save(new Term(year, season)));
+        Optional<Term> existing = termRepository.findByTermYearAndSeason(year, season);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return termCreator.create(year, season);
+        } catch (DataIntegrityViolationException e) {
+            return termRepository.findByTermYearAndSeason(year, season).orElseThrow(() -> e);
+        }
     }
 
     // Held until the change's transaction ends; another change for the same student waits here
