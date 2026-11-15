@@ -18,6 +18,9 @@ public final class PlanRules {
     // Plans can reach up to the end of the year this many years after next semester
     public static final int MAX_YEARS_AHEAD = 6;
 
+    // Long enough for "Lighter load with a co-op in 2028", short enough to fit in the plans list
+    public static final int MAX_PLAN_NAME_LENGTH = 40;
+
     // A 2 to 4 letter subject and a 3 digit number, with an optional letter like the W in 105W.
     // Spaces between them are optional, so "cmpt225" works too
     private static final Pattern COURSE_CODE = Pattern.compile("^([A-Za-z]{2,4})\\s*(\\d{3}[A-Za-z]?)$");
@@ -73,6 +76,18 @@ public final class PlanRules {
             problems.add("Choose a term no later than " + PlanTerm.nameOf(lastYear(today), Season.FALL) + ".");
         }
         return problems;
+    }
+
+    // Takes a name that's already trimmed. Whether the student already has a plan with that name is checked
+    // by the service, since that needs the database
+    public static List<String> problemsWithPlanName(String name) {
+        if (name.isEmpty()) {
+            return List.of("Give the plan a name.");
+        }
+        if (name.length() > MAX_PLAN_NAME_LENGTH) {
+            return List.of("Plan names can be at most " + MAX_PLAN_NAME_LENGTH + " characters.");
+        }
+        return List.of();
     }
 
     // Terms are numbered three a year, so the term after any term is one more

@@ -104,6 +104,23 @@ class PlanRulesTest {
             .containsExactly(2027, 2028, 2029, 2030, 2031, 2032, 2033);
     }
 
+    @Test
+    void acceptsAPlanNameUpToTheLimit() {
+        assertThat(PlanRules.problemsWithPlanName("Co-op plan")).isEmpty();
+        assertThat(PlanRules.problemsWithPlanName("a".repeat(40))).isEmpty();
+    }
+
+    @Test
+    void rejectsABlankPlanName() {
+        assertThat(PlanRules.problemsWithPlanName("")).containsExactly("Give the plan a name.");
+    }
+
+    @Test
+    void rejectsAPlanNameOverTheLimit() {
+        assertThat(PlanRules.problemsWithPlanName("a".repeat(41)))
+            .containsExactly("Plan names can be at most 40 characters.");
+    }
+
     // In Fall 2027, next semester is Spring 2028, so 2027 has nothing left to plan
     @Test
     void skipsAYearWithNoPlannableTermsLeft() {
