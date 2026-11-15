@@ -54,7 +54,6 @@ public class Section {
 
     protected Section() {}
 
-    // Pass null as associatedClass for a primary section
     public Section(CourseOffering offering, String sectionCode, SectionType sectionType,
             boolean primarySection, String associatedClass) {
         this.offering = offering;
