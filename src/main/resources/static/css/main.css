@@ -240,6 +240,89 @@ a.btn {
     text-align: right;
 }
 
+/* My plan: Add a term sits above the term boxes */
+.plan-add-term {
+    margin-bottom: var(--space-lg);
+}
+
+/* My plan: one box per term */
+.plan-term {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-md) var(--space-lg);
+    margin-bottom: var(--space-lg);
+    /* Leaves a gap above the box when the page jumps to it after a change */
+    scroll-margin-top: var(--space-md);
+}
+
+/* Term name on the left, Remove term on the right */
+.plan-term-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-sm);
+}
+
+.plan-courses {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-md);
+}
+
+.plan-courses li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* A text box or dropdowns and a button on one line, like Add course */
+.inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.inline-form .input {
+    flex: 1 1 160px;
+    width: auto;
+}
+
+/* A confirmation box over the page, like Remove term on My plan */
+.dialog {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border: none;
+    border-radius: var(--radius);
+    padding: var(--space-lg) var(--space-xl);
+    width: calc(100% - 2 * var(--space-md));
+    max-width: 440px;
+    box-shadow: var(--color-shadow) 0 4px 16px;
+}
+
+/* Dims the page behind the dialog */
+.dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.dialog-title {
+    font-size: 20px;
+    margin: 0 0 var(--space-sm);
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+}
+
+.dialog-actions form {
+    margin: 0;
+}
+
 .muted {
     color: var(--color-text-muted);
 }
