@@ -1,6 +1,7 @@
 package cmpt276.group16.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.math.BigDecimal;
@@ -18,6 +19,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.CourseRepository;
@@ -30,6 +32,7 @@ import cmpt276.group16.models.Role;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
+import cmpt276.group16.models.Term;
 import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
@@ -165,6 +168,24 @@ class PlanServiceTest {
             .filteredOn(term -> term.getTermYear() == 2028 && term.getSeason() == Season.FALL)
             .hasSize(1);
         assertThat(planOf(marcus).keySet()).containsExactly("2028 Fall");
+    }
+
+    // When saving the term fails for a reason other than another student saving it first, there's no row to
+    // fall back on, so the database's own error comes out instead of a bare "No value present"
+    @Test
+    void otherTermSaveErrorsArentHidden() {
+        TermCreator failingCreator = new TermCreator(termRepository) {
+            @Override
+            public Term create(int year, Season season) {
+                throw new DataIntegrityViolationException("NULL not allowed for column \"season\"");
+            }
+        };
+        PlanService failingService = new PlanService(planRepository, planTermRepository, plannedCourseRepository,
+                termRepository, courseRepository, studentProfileRepository, failingCreator, NOV_9_2026);
+
+        assertThatThrownBy(() -> failingService.addTerm(priya, 2028, "FALL"))
+            .isInstanceOf(DataIntegrityViolationException.class)
+            .hasMessageContaining("NULL not allowed");
     }
 
     // The rules are tested in PlanRulesTest; this checks the service uses them and saves nothing on an error

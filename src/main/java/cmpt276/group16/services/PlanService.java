@@ -197,7 +197,8 @@ public class PlanService {
 
     // Plans reach terms the course import hasn't seen yet, so the shared term is created if it's missing
     // The student lock doesn't cover this: two different students can add the same new term at the same moment.
-    // Whoever saves second gets the unique-rule error, and then finds the row the other one just saved
+    // Whoever saves second gets the unique-rule error, and then finds the row the other one just saved.
+    // If there's no row, the save failed for some other reason, so that error is thrown again instead of being lost
     private Term termFor(int year, Season season) {
         Optional<Term> existing = termRepository.findByTermYearAndSeason(year, season);
         if (existing.isPresent()) {
@@ -206,7 +207,7 @@ public class PlanService {
         try {
             return termCreator.create(year, season);
         } catch (DataIntegrityViolationException e) {
-            return termRepository.findByTermYearAndSeason(year, season).orElseThrow();
+            return termRepository.findByTermYearAndSeason(year, season).orElseThrow(() -> e);
         }
     }
 
