@@ -60,6 +60,7 @@ public class NextSemesterScheduleService {
         }
         return scheduledCourseRepository.findBySchedule(schedule.get());
     }
+
     // Adds a course to the student's next semester schedule: lecture and its lab or
     // tutorial if it has one
     // Returns every problem found
@@ -77,8 +78,7 @@ public class NextSemesterScheduleService {
         Optional<Section> primary;
         if (primarySectionId == null) {
             primary = Optional.empty();
-        } 
-        else {
+        } else {
             primary = sectionRepository.findById(primarySectionId);
         }
         if (primary.isEmpty()) {
@@ -89,7 +89,8 @@ public class NextSemesterScheduleService {
         // Checked here because the form can be edited
         CourseOffering offering = primary.get().getOffering();
         if (!offering.getId().equals(offeringId)
-                || !offering.getTerm().getId().equals(term.get().getId())) {
+                || !offering.getTerm().getId().equals(term.get().getId())
+                || !offering.isOffered()) {
             return List.of("That section isn't part of this course next semester.");
         }
 
@@ -134,6 +135,20 @@ public class NextSemesterScheduleService {
 
         // All checks passed, so save it
         scheduledCourseRepository.save(new ScheduledCourse(schedule, offering, primary.get(), attached));
+        return List.of();
+    }
+
+    // Removes one course from the student's schedule.
+    // Only finds the course if it's in this student's schedule, so nobody can
+    // remove someone else's
+    @Transactional
+    public List<String> removeCourse(StudentProfile student, Long scheduledCourseId) {
+        Optional<ScheduledCourse> course = scheduledCourseRepository.findByIdAndScheduleStudent(scheduledCourseId,
+                student);
+        if (course.isEmpty()) {
+            return List.of("That course isn't in your schedule.");
+        }
+        scheduledCourseRepository.delete(course.get());
         return List.of();
     }
 
