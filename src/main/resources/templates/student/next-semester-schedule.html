@@ -1,1 +1,40 @@
-<h1>My Scedule</h1>
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>My schedule</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">My schedule</h1>
+        <p>Choose your courses and sections for next semester.</p>
+
+        <!-- Set by the last change, before redirecting back here -->
+        <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Course added.</div>
+        <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+            <div th:each="e : ${errors}" th:text="${e}"></div>
+        </div>
+
+        <!-- The add form goes here (layer 2), above the list so it's always easy to find -->
+
+        <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
+        <ul class="plan-courses" th:unless="${courses.isEmpty()}">
+            <li th:each="c : ${courses}">
+                <span th:text="${c.offering.course.subject + ' ' + c.offering.course.number}">CMPT 225</span>
+                <span th:text="${c.primarySection.sectionCode}">D100</span>
+                <span th:if="${c.attachedSection != null}" th:text="${c.attachedSection.sectionCode}">D101</span>
+                <form method="post" th:action="@{/student/schedule/next-semester/courses/{id}/remove(id=${c.id})}">
+                    <button type="submit" class="link">Remove</button>
+                </form>
+            </li>
+        </ul>
+
+        <div class="actions">
+            <a th:href="@{/student/home}" class="link">Back to home</a>
+        </div>
+    </main>
+</body>
+</html>

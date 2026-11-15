@@ -33,6 +33,10 @@ public class NextSemesterScheduleController{
         if (student.isEmpty()) {
             return "redirect:/login";
         }
+        model.addAttribute("courses", scheduleService.coursesFor(student.get()));
+        if (!model.containsAttribute("errors")) {
+            model.addAttribute("errors", List.of());
+        }
         return "student/next-semester-schedule";
     }
 
