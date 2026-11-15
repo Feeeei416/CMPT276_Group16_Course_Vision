@@ -197,6 +197,12 @@ public class NextSemesterScheduleService {
                 .findFirst();
     }
 
+    // True for text like "CMPT 225" or "cmpt225", false for "225" or "data
+    // structures"
+    public boolean isCourseCode(String code) {
+        return PlanRules.parseCourseCode(code).isPresent();
+    }
+
     // A course's sections, sorted by code, with their times loaded, for the lecture
     // and tutorial dropdowns
     @Transactional(readOnly = true)

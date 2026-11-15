@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-public class NextSemesterScheduleController{
+public class NextSemesterScheduleController {
 
     private final CurrentStudent currentStudent;
     private final NextSemesterScheduleService scheduleService;
@@ -63,31 +63,34 @@ public class NextSemesterScheduleController{
     }
 
     @GetMapping("/student/schedule/next-semester")
-public String showSchedule(@RequestParam(required = false) String code,
-        HttpSession session, Model model) {
-    Optional<StudentProfile> student = currentStudent.find(session);
-    if (student.isEmpty()) {
-        return "redirect:/login";
-    }
-    model.addAttribute("courses", scheduleService.coursesFor(student.get()));
-    model.addAttribute("meetingsByDay", scheduleService.meetingsByDay(student.get()));
-    model.addAttribute("offerings", scheduleService.offeredNextSemester());
-    if (!model.containsAttribute("errors")) {
-        model.addAttribute("errors", List.of());
-    }
-
-    // After "Choose": show the chosen course's lectures and labs or tutorials
-    if (code != null && !code.isBlank()) {
-        Optional<CourseOffering> chosen = scheduleService.findOffering(code);
-        if (chosen.isEmpty()) {
-            model.addAttribute("errors", List.of("No course " + code.trim() + " next semester. Enter a code like CMPT 225"));
-        } else {
-            List<Section> sections = scheduleService.sectionsOf(chosen.get());
-            model.addAttribute("chosen", chosen.get());
-            model.addAttribute("lectures", sections.stream().filter(Section::isPrimarySection).toList());
-            model.addAttribute("attachedSections", sections.stream().filter(s -> !s.isPrimarySection()).toList());
+    public String showSchedule(@RequestParam(required = false) String code,
+            HttpSession session, Model model) {
+        Optional<StudentProfile> student = currentStudent.find(session);
+        if (student.isEmpty()) {
+            return "redirect:/login";
         }
+        model.addAttribute("courses", scheduleService.coursesFor(student.get()));
+        model.addAttribute("meetingsByDay", scheduleService.meetingsByDay(student.get()));
+        model.addAttribute("offerings", scheduleService.offeredNextSemester());
+        if (!model.containsAttribute("errors")) {
+            model.addAttribute("errors", List.of());
+        }
+
+        // After "Choose": show the chosen course's lectures and labs or tutorials
+        if (code != null && !code.isBlank()) {
+            Optional<CourseOffering> chosen = scheduleService.findOffering(code);
+            if (chosen.isEmpty()) {
+                String error = scheduleService.isCourseCode(code)
+                        ? code.trim().toUpperCase() + " doesn't run next semester."
+                        : "Enter a course code like CMPT 225.";
+                model.addAttribute("errors", List.of(error));
+            } else {
+                List<Section> sections = scheduleService.sectionsOf(chosen.get());
+                model.addAttribute("chosen", chosen.get());
+                model.addAttribute("lectures", sections.stream().filter(Section::isPrimarySection).toList());
+                model.addAttribute("attachedSections", sections.stream().filter(s -> !s.isPrimarySection()).toList());
+            }
+        }
+        return "student/next-semester-schedule";
     }
-    return "student/next-semester-schedule";
-}
 }
