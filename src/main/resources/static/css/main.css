@@ -376,3 +376,26 @@ button.link {
     cursor: pointer;
     text-decoration: underline;
 }
+
+/* A small label next to a name, like Main plan on My plans */
+.badge {
+    display: inline-block;
+    margin-left: var(--space-sm);
+    padding: 2px var(--space-sm);
+    border-radius: var(--radius);
+    background-color: var(--color-notice-bg);
+    color: var(--color-notice);
+    font-size: 12px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+/* My plans: Rename opens a name box under the plan */
+.plan-rename summary {
+    display: inline-block;
+    cursor: pointer;
+}
+
+.plan-rename[open] summary {
+    margin-bottom: var(--space-sm);
+}
