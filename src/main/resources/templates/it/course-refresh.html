@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <title>Course refresh</title>
+  </head>
+  <body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+      <h1 class="page-title">Course refresh</h1>
+
+      <div class="notice-message" th:if="${message}" th:text="${message}" role="status"></div>
+      <div class="error-message" th:if="${error}" th:text="${error}" role="alert"></div>
+
+      <section>
+        <h2 class="section-label">Refresh from SFU</h2>
+        <p class="muted">
+          Gets every undergraduate CMPT, ENSC, MACM and MATH course in the term from the SFU Course Outlines API.
+          This can take a few minutes.
+        </p>
+        <p class="notice-message" th:if="${running}" role="status">A refresh is running now.</p>
+        <form method="post" class="inline-form" th:action="@{/it/course-refresh/refresh}">
+          <select name="term" class="input" aria-label="Term" required>
+            <option
+              th:each="t : ${terms}"
+              th:value="${t.value()}"
+              th:text="${t.name()}"
+              th:selected="${t.value() == selectedTerm}"
+            ></option>
+          </select>
+          <button type="submit" class="btn btn-primary">Refresh course data</button>
+        </form>
+      </section>
+
+      <section>
+        <h2 class="section-label">Last refresh</h2>
+        <p th:if="${lastRun == null}" class="muted">
+          No refresh since the app last started.
+        </p>
+        <div th:if="${lastRun != null}">
+          <p>
+            <span th:text="${lastRun.termName()}"></span>,
+            finished <span th:text="${lastRunTime}"></span>
+          </p>
+          <p class="error-message" th:if="${lastRun.error() != null}" th:text="|Stopped: ${lastRun.error()}|"></p>
+          <ul th:if="${lastRun.error() == null}">
+            <li th:text="|${lastRun.courses()} courses and ${lastRun.sections()} sections saved|"></li>
+            <li th:text="|${lastRun.removedSections()} sections SFU no longer lists were removed|"></li>
+            <li th:text="|${lastRun.notOffered()} courses are no longer offered this term|"></li>
+          </ul>
+          <div th:if="${lastRun.error() == null and !lastRun.notes().isEmpty()}">
+            <h3 class="section-label">Skipped</h3>
+            <ul>
+              <li th:each="note : ${lastRun.notes()}" th:text="${note}"></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
