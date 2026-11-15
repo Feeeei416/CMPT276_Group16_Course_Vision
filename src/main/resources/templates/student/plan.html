@@ -92,8 +92,10 @@
             </ul>
 
             <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
+                <!-- Starts with what was typed when adding a course to this term just failed -->
                 <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
-                       th:aria-label="|Course code for ${term.name}|" required>
+                       th:aria-label="|Course code for ${term.name}|"
+                       th:value="${changedTermId == term.id ? typedCode : null}" required>
                 <button type="submit" class="btn btn-primary">Add course</button>
             </form>
         </section>
