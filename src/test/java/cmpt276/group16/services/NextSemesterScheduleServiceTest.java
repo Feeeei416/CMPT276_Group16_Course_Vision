@@ -38,7 +38,7 @@ public class NextSemesterScheduleServiceTest {
     @BeforeEach
     void setUp() {
         service = new NextSemesterScheduleService(scheduleRepository, scheduledCourseRepository,
-                sectionRepository, termRepository, NOV_9_2026);
+        sectionRepository, termRepository, courseOfferingRepository, NOV_9_2026);
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
 

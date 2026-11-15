@@ -1,11 +1,18 @@
 package cmpt276.group16.services;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import cmpt276.group16.models.*;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,19 +21,26 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NextSemesterScheduleService {
 
+    public record ClassTime(String course, String section, SectionType type,
+            LocalTime start, LocalTime end) {
+    }
+
     private final NextSemesterScheduleRepository scheduleRepository;
     private final ScheduledCourseRepository scheduledCourseRepository;
     private final SectionRepository sectionRepository;
+    private final CourseOfferingRepository courseOfferingRepository;
     private final TermRepository termRepository;
     private final Clock clock;
 
     public NextSemesterScheduleService(NextSemesterScheduleRepository scheduleRepository,
             ScheduledCourseRepository scheduledCourseRepository,
-            SectionRepository sectionRepository, TermRepository termRepository, Clock clock) {
+            SectionRepository sectionRepository, TermRepository termRepository,
+            CourseOfferingRepository courseOfferingRepository, Clock clock) {
         this.scheduleRepository = scheduleRepository;
         this.scheduledCourseRepository = scheduledCourseRepository;
         this.sectionRepository = sectionRepository;
         this.termRepository = termRepository;
+        this.courseOfferingRepository = courseOfferingRepository;
         this.clock = clock;
     }
 
@@ -152,4 +166,72 @@ public class NextSemesterScheduleService {
         return List.of();
     }
 
+    // Every course that runs next semester, sorted by code, for the search box
+    // suggestions
+    @Transactional(readOnly = true)
+    public List<CourseOffering> offeredNextSemester() {
+        Optional<Term> term = nextSemesterTerm();
+        if (term.isEmpty()) {
+            return List.of();
+        }
+        return courseOfferingRepository
+                .findByTermIdOrderByCourseSubjectAscCourseNumberAsc(term.get().getId())
+                .stream()
+                .filter(CourseOffering::isOffered)
+                .toList();
+    }
+
+    // Turns typed text like "cmpt 225" into that course's offering next semester.
+    // Empty if the text isn't a course code or the course doesn't run next semester
+    @Transactional(readOnly = true)
+    public Optional<CourseOffering> findOffering(String code) {
+        Optional<PlanRules.CourseCode> parsed = PlanRules.parseCourseCode(code);
+        if (parsed.isEmpty()) {
+            return Optional.empty();
+        }
+        String subject = parsed.get().subject();
+        String number = parsed.get().number();
+        return offeredNextSemester().stream()
+                .filter(o -> o.getCourse().getSubject().equals(subject)
+                        && o.getCourse().getNumber().equals(number))
+                .findFirst();
+    }
+
+    // A course's sections, sorted by code, with their times loaded, for the lecture
+    // and tutorial dropdowns
+    @Transactional(readOnly = true)
+    public List<Section> sectionsOf(CourseOffering offering) {
+        return sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId());
+    }
+
+    // The student's class meetings next semester grouped by weekday, Monday to
+    // Friday first,
+    // each day sorted by start time. Sections without published times aren't
+    // included
+    @Transactional(readOnly = true)
+    public Map<DayOfWeek, List<ClassTime>> meetingsByDay(StudentProfile student) {
+        Map<DayOfWeek, List<ClassTime>> days = new LinkedHashMap<>();
+        for (DayOfWeek day : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
+            days.put(day, new ArrayList<>());
+        }
+        for (ScheduledCourse course : coursesFor(student)) {
+            String code = course.getOffering().getCourse().getSubject() + " "
+                    + course.getOffering().getCourse().getNumber();
+            List<Section> sections = new ArrayList<>();
+            sections.add(course.getPrimarySection());
+            if (course.getAttachedSection() != null) {
+                sections.add(course.getAttachedSection());
+            }
+            for (Section section : sections) {
+                for (SectionMeeting meeting : section.getMeetings()) {
+                    days.computeIfAbsent(meeting.getDayOfWeek(), d -> new ArrayList<>())
+                            .add(new ClassTime(code, section.getSectionCode(), section.getSectionType(),
+                                    meeting.getStartTime(), meeting.getEndTime()));
+                }
+            }
+        }
+        days.values().forEach(list -> list.sort(Comparator.comparing(ClassTime::start)));
+        return days;
+    }
 }
