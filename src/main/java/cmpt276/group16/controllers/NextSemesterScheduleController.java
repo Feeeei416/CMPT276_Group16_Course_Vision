@@ -1,6 +1,8 @@
 package cmpt276.group16.controllers;
 
 import cmpt276.group16.services.NextSemesterScheduleService;
+import cmpt276.group16.services.PlanRules;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -80,8 +82,9 @@ public class NextSemesterScheduleController {
         if (code != null && !code.isBlank()) {
             Optional<CourseOffering> chosen = scheduleService.findOffering(code);
             if (chosen.isEmpty()) {
-                String error = scheduleService.isCourseCode(code)
-                        ? code.trim().toUpperCase() + " doesn't run next semester."
+                Optional<PlanRules.CourseCode> parsed = PlanRules.parseCourseCode(code);
+                String error = parsed.isPresent()
+                        ? parsed.get().subject() + " " + parsed.get().number() + " doesn't run next semester."
                         : "Enter a course code like CMPT 225.";
                 model.addAttribute("errors", List.of(error));
             } else {

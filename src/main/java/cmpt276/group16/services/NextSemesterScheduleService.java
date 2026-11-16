@@ -10,7 +10,7 @@ import cmpt276.group16.models.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -78,7 +78,7 @@ public class NextSemesterScheduleService {
     @Transactional
     public List<String> addCourse(StudentProfile student, Long offeringId,
             Long primarySectionId, Long attachedSectionId) {
-                
+
         // Locks the student so a double click waits for the first request instead of
         // failing
         studentProfileRepository.findLockedByUserId(student.getUser().getId());
@@ -189,18 +189,15 @@ public class NextSemesterScheduleService {
         if (parsed.isEmpty()) {
             return Optional.empty();
         }
-        String subject = parsed.get().subject();
-        String number = parsed.get().number();
-        return offeredNextSemester().stream()
-                .filter(o -> o.getCourse().getSubject().equals(subject)
-                        && o.getCourse().getNumber().equals(number))
-                .findFirst();
-    }
+        Optional<Term> term = nextSemesterTerm();
+        if (term.isEmpty()) {
+            return Optional.empty();
+        }
+        return courseOfferingRepository
+                .findByTermIdAndCourseSubjectAndCourseNumber(term.get().getId(),
+                        parsed.get().subject(), parsed.get().number())
+                .filter(CourseOffering::isOffered);
 
-    // True for text like "CMPT 225" or "cmpt225", false for "225" or "data
-    // structures"
-    public boolean isCourseCode(String code) {
-        return PlanRules.parseCourseCode(code).isPresent();
     }
 
     // A course's sections, sorted by code, with their times loaded, for the lecture
@@ -216,7 +213,7 @@ public class NextSemesterScheduleService {
     // included
     @Transactional(readOnly = true)
     public Map<DayOfWeek, List<ClassTime>> meetingsByDay(StudentProfile student) {
-        Map<DayOfWeek, List<ClassTime>> days = new LinkedHashMap<>();
+        Map<DayOfWeek, List<ClassTime>> days = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek day : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                 DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
             days.put(day, new ArrayList<>());

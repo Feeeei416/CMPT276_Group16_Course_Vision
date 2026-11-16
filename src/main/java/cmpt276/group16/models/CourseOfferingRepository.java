@@ -14,4 +14,7 @@ public interface CourseOfferingRepository extends JpaRepository<CourseOffering, 
 
     // Every offering in one term, sorted by course code, for example to list what runs in 2025 Spring
     List<CourseOffering> findByTermIdOrderByCourseSubjectAscCourseNumberAsc(Long termId);
+
+    // One course's offering in a term, for example CMPT 225 in 2027 Spring
+Optional<CourseOffering> findByTermIdAndCourseSubjectAndCourseNumber(Long termId, String subject, String number);
 }

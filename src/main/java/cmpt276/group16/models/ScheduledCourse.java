@@ -8,7 +8,7 @@ public class ScheduledCourse {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     // Many scheduled courses belong to one schedule
     @ManyToOne
@@ -42,7 +42,7 @@ public class ScheduledCourse {
     }
 
     public Long getId() {
-        return Id;
+        return id;
     }
 
     public NextSemesterSchedule getSchedule() {
@@ -60,5 +60,4 @@ public class ScheduledCourse {
     public Section getAttachedSection() {
         return attachedSection;
     }
-
 }
