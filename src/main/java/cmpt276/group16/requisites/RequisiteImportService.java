@@ -2,6 +2,8 @@ package cmpt276.group16.requisites;
 
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,8 @@ import cmpt276.group16.requisites.Requirement.Special;
 // That way a course only ever has one tree, which findByCourseIdAndRuleKindAndParentIsNull relies on
 @Service
 public class RequisiteImportService {
+
+    private static final Logger log = LoggerFactory.getLogger(RequisiteImportService.class);
 
     private final RequisiteRuleRepository requisiteRuleRepository;
     private final CourseRepository courseRepository;
@@ -59,6 +63,13 @@ public class RequisiteImportService {
         try {
             requirement = RequisiteParser.parse(course.getPrereqText());
         } catch (RequisiteParseException e) {
+            return setStatus(course, Course.ParseStatus.FAILED);
+        } catch (RuntimeException e) {
+            // A bug in the parser, not text it turned down. Caught here because this method joins the course
+            // import's transaction, and an exception leaving it would roll back the whole term's refresh.
+            // Only the parse is covered: a database error while saving should still roll everything back
+            log.warn("Parser crashed on {} {}: \"{}\"", course.getSubject(), course.getNumber(),
+                    course.getPrereqText(), e);
             return setStatus(course, Course.ParseStatus.FAILED);
         }
         requirement.ifPresent(root -> save(root, course, null, RequisiteRule.Source.IMPORTED));
