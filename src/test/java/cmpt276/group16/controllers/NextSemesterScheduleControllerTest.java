@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -120,4 +122,24 @@ class NextSemesterScheduleControllerTest {
         mockMvc.perform(get("/student/schedule/next-semester").param("code", "225").session(sessionFor(priya)))
                 .andExpect(content().string(containsString("Enter a course code like CMPT 225.")));
     }
+
+        @Test
+    void removesACourse() throws Exception {
+    scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+    Long courseId = scheduleService.coursesFor(priya).get(0).getId();
+
+    mockMvc.perform(post("/student/schedule/next-semester/courses/{id}/remove", courseId)
+                    .session(sessionFor(priya)))
+           .andExpect(redirectedUrl("/student/schedule/next-semester"));
+
+    assertThat(scheduleService.coursesFor(priya)).isEmpty();
+}
+
+@Test
+void showsTimesNotConfirmedWhenASectionHasNoTimes() throws Exception {
+    scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+
+    mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
+           .andExpect(content().string(containsString("Times not confirmed")));
+}
 }
