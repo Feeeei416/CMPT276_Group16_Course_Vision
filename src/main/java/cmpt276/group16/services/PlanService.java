@@ -72,26 +72,49 @@ public class PlanService {
         }
     }
 
+    // The plan My plan opens to. Empty until the student adds their first term or makes their first plan
+    @Transactional(readOnly = true)
+    public Optional<Plan> mainPlan(StudentProfile student) {
+        return planRepository.findByStudentAndMainTrue(student);
+    }
+
     // Every term in the student's main plan, oldest first.
     // Empty until the student adds their first term, so opening the page never writes to the database
     @Transactional(readOnly = true)
     public List<TermPlan> termPlans(StudentProfile student) {
-        Optional<Plan> plan = planRepository.findByStudentAndMainTrue(student);
-        if (plan.isEmpty()) {
-            return List.of();
-        }
-        Map<Long, List<PlannedCourse>> coursesByTermId = plannedCourseRepository.findByTermPlan(plan.get()).stream()
+        return mainPlan(student).map(this::termPlans).orElse(List.of());
+    }
+
+    // Every term in this plan, oldest first, with its courses in the order they were added
+    @Transactional(readOnly = true)
+    public List<TermPlan> termPlans(Plan plan) {
+        Map<Long, List<PlannedCourse>> coursesByTermId = plannedCourseRepository.findByTermPlan(plan).stream()
                 .sorted(Comparator.comparing(PlannedCourse::getId))
                 .collect(Collectors.groupingBy(course -> course.getTerm().getId()));
-        return planTermRepository.findByPlan(plan.get()).stream()
+        return planTermRepository.findByPlan(plan).stream()
                 .sorted(PlanTerm.OLDEST_FIRST)
                 .map(term -> new TermPlan(term, coursesByTermId.getOrDefault(term.getId(), List.of())))
                 .toList();
     }
 
+    // Adds the term to the main plan, making the plan if the student doesn't have one yet
     @Transactional
     public PlanChange addTerm(StudentProfile student, int year, String seasonText) {
+        return addTerm(student, null, year, seasonText);
+    }
+
+    // planId is the plan to add the term to, or null for the main plan.
+    // Removing and adding courses don't need one: the term or course id already says which plan it's in
+    @Transactional
+    public PlanChange addTerm(StudentProfile student, Long planId, int year, String seasonText) {
         lock(student);
+        Optional<Plan> chosenPlan = Optional.empty();
+        if (planId != null) {
+            chosenPlan = planRepository.findByIdAndStudent(planId, student);
+            if (chosenPlan.isEmpty()) {
+                return PlanChange.rejected("That plan isn't one of yours.");
+            }
+        }
         Optional<Season> season = PlanRules.parseSeason(seasonText);
         if (season.isEmpty()) {
             return PlanChange.rejected("Choose Spring, Summer or Fall.");
@@ -101,7 +124,7 @@ public class PlanService {
             return PlanChange.rejected(problems);
         }
         String name = PlanTerm.nameOf(year, season.get());
-        Plan plan = mainPlanFor(student);
+        Plan plan = chosenPlan.orElseGet(() -> mainPlanFor(student));
         Term term = termFor(year, season.get());
         if (planTermRepository.existsByPlanAndTerm(plan, term)) {
             return PlanChange.rejected(name + " is already in your plan.");

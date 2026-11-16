@@ -23,6 +23,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.CourseRepository;
+import cmpt276.group16.models.Plan;
 import cmpt276.group16.models.PlanRepository;
 import cmpt276.group16.models.PlanTermRepository;
 import cmpt276.group16.models.PlannedCourse;
@@ -153,6 +154,55 @@ class PlanServiceTest {
 
         assertThat(planOf(priya).keySet()).containsExactly("2027 Summer", "2027 Fall", "2028 Spring");
         assertThat(planRepository.count()).isEqualTo(1);
+    }
+
+    // -- Other plans (#43) --
+
+    // A term added from another plan's page goes into that plan, and the main plan stays as it was
+    @Test
+    void termGoesIntoTheChosenPlan() {
+        planService.addTerm(priya, 2027, "FALL");
+        Plan coop = planRepository.saveAndFlush(new Plan(priya, "Co-op plan", false));
+
+        PlanChange change = planService.addTerm(priya, coop.getId(), 2028, "SPRING");
+
+        assertThat(change.isSaved()).isTrue();
+        assertThat(planOf(priya).keySet()).containsExactly("2027 Fall");
+        assertThat(planService.termPlans(coop)).extracting(termPlan -> termPlan.term().getName())
+            .containsExactly("2028 Spring");
+    }
+
+    // Each plan has its own terms, so the same term can be in two of a student's plans
+    @Test
+    void sameTermCanBeInTwoOfAStudentsPlans() {
+        planService.addTerm(priya, 2027, "FALL");
+        Plan coop = planRepository.saveAndFlush(new Plan(priya, "Co-op plan", false));
+
+        assertThat(planService.addTerm(priya, coop.getId(), 2027, "FALL").isSaved()).isTrue();
+    }
+
+    @Test
+    void cantAddATermToAnotherStudentsPlan() {
+        Plan marcusPlan = planRepository.saveAndFlush(new Plan(marcus, "My plan", true));
+
+        PlanChange change = planService.addTerm(priya, marcusPlan.getId(), 2027, "FALL");
+
+        assertThat(change.problems()).containsExactly("That plan isn't one of yours.");
+        assertThat(planTermRepository.count()).isZero();
+        // Priya didn't get a plan made for her either
+        assertThat(planService.mainPlan(priya)).isEmpty();
+    }
+
+    // A course only has to be planned once per plan, so another plan can have it in a different term
+    @Test
+    void sameCourseCanBeInDifferentTermsOfDifferentPlans() {
+        planService.addTerm(priya, 2027, "FALL");
+        planService.addCourse(priya, termPlan(priya, "2027 Fall").term().getId(), "CMPT 225");
+        Plan lighter = planRepository.saveAndFlush(new Plan(priya, "Lighter load", false));
+        planService.addTerm(priya, lighter.getId(), 2028, "SPRING");
+        Long lighterSpring = planService.termPlans(lighter).get(0).term().getId();
+
+        assertThat(planService.addCourse(priya, lighterSpring, "CMPT 225").isSaved()).isTrue();
     }
 
     // The import may not have reached a term yet, so adding it to a plan creates the shared row.

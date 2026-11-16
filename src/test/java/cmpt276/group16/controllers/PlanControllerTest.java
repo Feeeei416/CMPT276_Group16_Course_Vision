@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.CourseRepository;
+import cmpt276.group16.models.Plan;
 import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.Program;
@@ -43,6 +44,7 @@ import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
+import cmpt276.group16.services.PlanListService;
 import cmpt276.group16.services.PlanService;
 import cmpt276.group16.services.PlanService.TermPlan;
 
@@ -78,6 +80,9 @@ class PlanControllerTest {
 
     @Autowired
     private PlanService planService;
+
+    @Autowired
+    private PlanListService planListService;
 
     private StudentProfile priya;
     private StudentProfile marcus;
@@ -407,5 +412,121 @@ class PlanControllerTest {
 
         assertThat(termNames(priya)).containsExactly("2027 Fall");
         assertThat(courseCodes(priya)).containsExactly("CMPT 225");
+    }
+
+    // -- Other plans (#43) --
+
+    private Plan otherPlan(StudentProfile student, String name) {
+        planListService.create(student, name, null);
+        return planListService.plans(student).stream().map(summary -> summary.plan())
+                .filter(plan -> plan.getName().equals(name)).findFirst().orElseThrow();
+    }
+
+    private List<String> termNames(Plan plan) {
+        return planService.termPlans(plan).stream().map(termPlan -> termPlan.term().getName()).toList();
+    }
+
+    @Test
+    void mainPlanShowsItsNameAndBadge() throws Exception {
+        planService.addTerm(priya, 2027, "FALL");
+
+        mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
+               .andExpect(content().string(containsString("Main plan")))
+               .andExpect(content().string(not(containsString("This isn't your main plan"))))
+               .andExpect(content().string(not(containsString("name=\"planId\""))));
+    }
+
+    @Test
+    void opensAnotherPlanWithItsOwnTerms() throws Exception {
+        planService.addTerm(priya, 2027, "FALL");
+        Plan coop = otherPlan(priya, "Co-op plan");
+        planService.addTerm(priya, coop.getId(), 2028, "SPRING");
+
+        String page = mockMvc.perform(get("/student/plans/{id}", coop.getId()).session(sessionFor(priya)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("student/plan"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(page).contains("Co-op plan", "This isn't your main plan", "2028 Spring")
+                .doesNotContain("2027 Fall");
+        // Every form sends the plan back, so changes stay in this plan
+        assertThat(page).contains("name=\"planId\" value=\"" + coop.getId() + "\"");
+    }
+
+    @Test
+    void cantOpenAnotherStudentsPlan() throws Exception {
+        Plan marcusPlan = otherPlan(marcus, "Marcus's plan");
+
+        mockMvc.perform(get("/student/plans/{id}", marcusPlan.getId()).session(sessionFor(priya)))
+               .andExpect(redirectedUrl("/student/plans"))
+               .andExpect(flash().attribute("errors", contains("That plan isn't one of yours.")));
+    }
+
+    @Test
+    void signedOutVisitorCantOpenAPlan() throws Exception {
+        mockMvc.perform(get("/student/plans/{id}", 1))
+               .andExpect(redirectedUrl("/login"));
+    }
+
+    // Each change made on another plan's page goes into that plan and comes back to that page
+    @Test
+    void changesFromAnotherPlansPageStayInThatPlan() throws Exception {
+        planService.addTerm(priya, 2027, "FALL");
+        Plan coop = otherPlan(priya, "Co-op plan");
+        String coopId = coop.getId().toString();
+        String back = "/student/plans/" + coopId;
+
+        MvcResult added = mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
+                        .param("year", "2028").param("season", "SPRING").param("planId", coopId))
+                .andReturn();
+        Long spring = planService.termPlans(coop).get(0).term().getId();
+        assertThat(added.getResponse().getRedirectedUrl()).isEqualTo(back + "#term-" + spring);
+
+        mockMvc.perform(post("/student/plan/terms/{id}/courses", spring).session(sessionFor(priya))
+                        .param("code", "CMPT 225").param("planId", coopId))
+               .andExpect(redirectedUrl(back + "#term-" + spring));
+        Long course = planService.termPlans(coop).get(0).courses().get(0).getId();
+        mockMvc.perform(post("/student/plan/courses/{id}/remove", course).session(sessionFor(priya))
+                        .param("planId", coopId))
+               .andExpect(redirectedUrl(back + "#term-" + spring));
+        mockMvc.perform(post("/student/plan/terms/{id}/remove", spring).session(sessionFor(priya))
+                        .param("planId", coopId))
+               .andExpect(redirectedUrl(back));
+
+        assertThat(termNames(priya)).containsExactly("2027 Fall");
+        assertThat(termNames(coop)).isEmpty();
+    }
+
+    // Changing the plan id in the form to Marcus's adds nothing to his plan or hers
+    @Test
+    void cantAddATermToAnotherStudentsPlan() throws Exception {
+        Plan marcusPlan = otherPlan(marcus, "Marcus's plan");
+
+        mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
+                        .param("year", "2027").param("season", "FALL").param("planId", marcusPlan.getId().toString()))
+               .andExpect(flash().attribute("errors", contains("That plan isn't one of yours.")));
+
+        assertThat(termNames(marcusPlan)).isEmpty();
+        assertThat(termNames(priya)).isEmpty();
+    }
+
+    @Test
+    void planIdThatIsntANumberIsRejected() throws Exception {
+        mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
+                        .param("year", "2027").param("season", "FALL").param("planId", "abc"))
+               .andExpect(flash().attribute("errors", contains("That plan isn't one of yours.")));
+
+        assertThat(termNames(priya)).isEmpty();
+    }
+
+    @Test
+    void myPlansHasAnOpenLinkForEachPlan() throws Exception {
+        planService.addTerm(priya, 2027, "FALL");
+        Plan coop = otherPlan(priya, "Co-op plan");
+        Long main = planService.mainPlan(priya).orElseThrow().getId();
+
+        mockMvc.perform(get("/student/plans").session(sessionFor(priya)))
+               .andExpect(content().string(containsString("href=\"/student/plans/" + main + "\"")))
+               .andExpect(content().string(containsString("href=\"/student/plans/" + coop.getId() + "\"")));
     }
 }

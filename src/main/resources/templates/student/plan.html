@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
-    <title>My plan</title>
+    <title th:text="${plan != null ? plan.name : 'My plan'}">My plan</title>
 </head>
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title">My plan</h1>
+        <h1 class="page-title">
+            <span th:text="${plan != null ? plan.name : 'My plan'}">My plan</span>
+            <span class="badge" th:if="${plan != null and plan.main}">Main plan</span>
+        </h1>
         <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
+        <!-- Opened from My plans, so say it isn't the one the Graduation Report uses -->
+        <p class="muted" th:if="${plan != null and !plan.main}">This isn't your main plan, so changes here don't
+            affect your main plan. You can make it your main plan on <a th:href="@{/student/plans}" class="link">My plans</a>.</p>
 
         <!-- Set by the last change, before redirecting back here. A change inside a term shows in that term instead -->
         <th:block th:if="${changedTermId == null}">
@@ -24,6 +30,8 @@
         <section class="plan-add-term">
             <h2 class="section-label">Add a term</h2>
             <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
+                <!-- Set when this page was opened from My plans, so the change goes to this plan and comes back here -->
+                <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <select name="year" class="input" aria-label="Year" required>
                     <option value="">-- Year --</option>
                     <option th:each="y : ${years}" th:value="${y}" th:text="${y}">2027</option>
@@ -49,6 +57,7 @@
                 <!-- The script below opens the dialog instead of sending this form -->
                 <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}"
                       th:data-dialog="|remove-term-${term.id}|">
+                    <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                     <button type="submit" class="btn btn-secondary">Remove term</button>
                 </form>
             </div>
@@ -73,6 +82,7 @@
                         <button class="btn btn-secondary" autofocus>Cancel</button>
                     </form>
                     <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}">
+                        <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                         <button type="submit" class="btn btn-primary">Remove term</button>
                     </form>
                 </div>
@@ -86,12 +96,14 @@
                         <span class="muted" th:text="${course.title}">Data Structures and Programming</span>
                     </span>
                     <form method="post" th:action="@{/student/plan/courses/{id}/remove(id=${course.id})}">
+                        <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                         <button type="submit" class="link">Remove</button>
                     </form>
                 </li>
             </ul>
 
             <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
+                <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <!-- Starts with what was typed when adding a course to this term just failed -->
                 <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
                        th:aria-label="|Course code for ${term.name}|"

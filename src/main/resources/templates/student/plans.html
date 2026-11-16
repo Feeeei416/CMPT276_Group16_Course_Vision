@@ -51,6 +51,7 @@
                     <span class="muted" th:text="${summary.sizeText()}">3 terms, 9 courses</span>
                 </div>
                 <div class="row-actions">
+                    <a class="btn btn-primary" th:href="@{/student/plans/{id}(id=${plan.id})}">Open</a>
                     <form method="post" th:unless="${plan.main}"
                           th:action="@{/student/plans/{id}/main(id=${plan.id})}">
                         <button type="submit" class="btn btn-secondary">Make main plan</button>
