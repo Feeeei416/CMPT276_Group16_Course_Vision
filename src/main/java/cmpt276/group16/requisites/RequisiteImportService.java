@@ -43,19 +43,15 @@ public class RequisiteImportService {
     public Course.ParseStatus importPrerequisites(Course course) {
         // The old rules came from outdated text so they should be removed regardless of if the new rules parse or not
         deleteRules(course, RequisiteRule.Source.IMPORTED);
+        // The manual rules file is the only place MANUAL rules come from, so the saved ones always go too.
+        // Otherwise a rule taken out of the file would stay in the database and keep winning over the text
+        deleteRules(course, RequisiteRule.Source.MANUAL);
 
-        // Saved again each time, so a fix to the manual rules file reaches the database on the next import
+        // Saved again each time, so a fix to the manual rules file reaches the database on the next import.
+        // The text isn't needed then, so the course isn't flagged even if its text doesn't parse
         Optional<Requirement> manual = manualRules.forCourse(course);
         if (manual.isPresent()) {
-            deleteRules(course, RequisiteRule.Source.MANUAL);
             save(manual.get(), course, null, RequisiteRule.Source.MANUAL);
-            return setStatus(course, Course.ParseStatus.PARSED);
-        }
-
-        // Rules entered by hand win, so the text isn't needed. The course isn't flagged even if its text
-        // doesn't parse, since it has rules for the student instead
-        if (requisiteRuleRepository.existsByCourseIdAndRuleKindAndSource(
-                course.getId(), RuleKind.PREREQUISITE, RequisiteRule.Source.MANUAL)) {
             return setStatus(course, Course.ParseStatus.PARSED);
         }
 

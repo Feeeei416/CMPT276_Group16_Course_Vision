@@ -179,9 +179,10 @@ class RequisiteImportServiceTest {
         assertThat(stored(course)).isEmpty();
     }
 
-    // Importing again doesn't erase rules entered by hand
+    // CMPT 225 had a manual rule that has since been taken out of the file (the test file only has MATH 260),
+    // so the import removes it and saves the parsed text instead
     @Test
-    void rulesEnteredByHandAreKeptAndWin() {
+    void manualRuleTakenOutOfTheFileIsRemoved() {
         Course cmpt225 = saveCourse("CMPT", "225", CMPT_225);
         RequisiteRule manual = new RequisiteRule(cmpt225, null, RuleKind.PREREQUISITE, NodeType.COURSE,
                 RequisiteRule.Source.MANUAL);
@@ -192,26 +193,9 @@ class RequisiteImportServiceTest {
         cmpt225 = importAndReload(cmpt225);
 
         assertThat(cmpt225.getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
-        assertThat(stored(cmpt225)).isEqualTo("CMPT 125 (B)");
-        assertThat(importedRules(cmpt225)).isEmpty();
-    }
-
-    // CMPT 276's text doesn't parse because of its "may be substituted" sentence. With a manual rule the student
-    // still has rules to go by, so the course isn't flagged
-    @Test
-    void rulesEnteredByHandMeanTheCourseIsNotFlagged() {
-        Course cmpt276 = saveCourse("CMPT", "276", "CMPT 225, with a minimum grade of C-. "
-                + "MATH 154 or MATH 157 with at least a B+ may be substituted for MATH 151 or MATH 150.");
-        RequisiteRule manual = new RequisiteRule(cmpt276, null, RuleKind.PREREQUISITE, NodeType.COURSE,
-                RequisiteRule.Source.MANUAL);
-        manual.setRequiredSubjectAndNumber("CMPT", "225");
-        manual.setMinGrade("C-");
-        requisiteRuleRepository.saveAndFlush(manual);
-
-        cmpt276 = importAndReload(cmpt276);
-
-        assertThat(cmpt276.getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
-        assertThat(stored(cmpt276)).isEqualTo("CMPT 225 (C-)");
+        assertThat(stored(cmpt225)).isEqualTo(RequisiteParser.parse(CMPT_225).orElseThrow().toString());
+        assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(cmpt225.getId(), RuleKind.PREREQUISITE))
+                .allSatisfy(row -> assertThat(row.getSource()).isEqualTo(RequisiteRule.Source.IMPORTED));
     }
 
     private static final String MATH_260 = "MATH 152 with a minimum grade of C-; or MATH 155 or 158, with a grade "
