@@ -11,6 +11,7 @@ import java.util.stream.IntStream;
 
 import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.Season;
+import cmpt276.group16.models.TermKind;
 
 // What can go in a plan: which terms can be planned and what a course code looks like
 public final class PlanRules {
@@ -43,6 +44,19 @@ public final class PlanRules {
             return Optional.empty();
         }
         return Optional.of(new CourseCode(m.group(1).toUpperCase(Locale.ROOT), m.group(2).toUpperCase(Locale.ROOT)));
+    }
+
+    // Empty when the text isn't Study, Co-op or Gap. The form sends COOP, but any case works.
+    // Blank means a study term, so a form or request without a kind still adds a normal term
+    public static Optional<TermKind> parseTermKind(String text) {
+        if (text.isBlank()) {
+            return Optional.of(TermKind.STUDY);
+        }
+        try {
+            return Optional.of(TermKind.valueOf(text.trim().toUpperCase(Locale.ROOT)));
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 
     // Empty when the text isn't Spring, Summer or Fall. The form sends FALL, but any case works

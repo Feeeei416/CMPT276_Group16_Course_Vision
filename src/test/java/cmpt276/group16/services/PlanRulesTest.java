@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import cmpt276.group16.models.Season;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
 // Plain unit tests: no Spring or database, just the rules
@@ -125,5 +126,18 @@ class PlanRulesTest {
     @Test
     void skipsAYearWithNoPlannableTermsLeft() {
         assertThat(PlanRules.plannableYears(LocalDate.of(2027, 10, 1))).startsWith(2028);
+    }
+
+    // The form sends COOP, but any case is read the same way, and blank means a study term
+    @ParameterizedTest
+    @CsvSource({"COOP, COOP", "coop, COOP", " Gap , GAP", "STUDY, STUDY", "'', STUDY"})
+    void readsTermKinds(String text, TermKind kind) {
+        assertThat(PlanRules.parseTermKind(text)).contains(kind);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Co-op", "Internship", "Exchange"})
+    void rejectsUnknownTermKinds(String text) {
+        assertThat(PlanRules.parseTermKind(text)).isEmpty();
     }
 }

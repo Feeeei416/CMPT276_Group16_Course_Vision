@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,6 +26,7 @@ import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.Term;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
@@ -97,17 +99,28 @@ public class PlanService {
                 .toList();
     }
 
-    // Adds the term to the main plan, making the plan if the student doesn't have one yet
+    // Adds a study term to the main plan, making the plan if the student doesn't have one yet
     @Transactional
     public PlanChange addTerm(StudentProfile student, int year, String seasonText) {
-        return addTerm(student, null, year, seasonText);
+        return addTerm(student, null, year, seasonText, "");
+    }
+
+    // Adds a study term to this plan, or to the main plan when planId is null
+    @Transactional
+    public PlanChange addTerm(StudentProfile student, Long planId, int year, String seasonText) {
+        return addTerm(student, planId, year, seasonText, "");
     }
 
     // planId is the plan to add the term to, or null for the main plan.
-    // Removing and adding courses don't need one: the term or course id already says which plan it's in
+    // Removing and adding courses don't need one: the term or course id already says which plan it's in.
+    // kindText is STUDY, COOP or GAP; blank means a study term
     @Transactional
-    public PlanChange addTerm(StudentProfile student, Long planId, int year, String seasonText) {
+    public PlanChange addTerm(StudentProfile student, Long planId, int year, String seasonText, String kindText) {
         lock(student);
+        Optional<TermKind> kind = PlanRules.parseTermKind(kindText);
+        if (kind.isEmpty()) {
+            return PlanChange.rejected("Choose Study, Co-op or Gap.");
+        }
         Optional<Plan> chosenPlan = Optional.empty();
         if (planId != null) {
             chosenPlan = planRepository.findByIdAndStudent(planId, student);
@@ -129,7 +142,11 @@ public class PlanService {
         if (planTermRepository.existsByPlanAndTerm(plan, term)) {
             return PlanChange.rejected(name + " is already in your plan.");
         }
-        PlanTerm added = planTermRepository.save(new PlanTerm(plan, term));
+        PlanTerm added = planTermRepository.save(new PlanTerm(plan, term, kind.get()));
+        if (!kind.get().takesCourses()) {
+            return PlanChange.saved("Added " + name + " to your plan as a "
+                    + kind.get().getShowName().toLowerCase(Locale.ROOT) + " term.", added);
+        }
         return PlanChange.saved("Added " + name + " to your plan.", added);
     }
 
@@ -160,6 +177,12 @@ public class PlanService {
         Optional<PlanTerm> term = planTermRepository.findByIdAndPlanStudent(termId, student);
         if (term.isEmpty()) {
             return PlanChange.rejected("That term isn't in your plan.");
+        }
+        // The page hides Add course on these terms, but the form can still be sent by hand
+        if (!term.get().getKind().takesCourses()) {
+            return PlanChange.rejected(term.get().getName() + " is a "
+                    + term.get().getKind().getShowName().toLowerCase(Locale.ROOT) + " term, so it doesn't hold courses.",
+                    term.get());
         }
         Optional<CourseCode> parsed = PlanRules.parseCourseCode(code);
         if (parsed.isEmpty()) {

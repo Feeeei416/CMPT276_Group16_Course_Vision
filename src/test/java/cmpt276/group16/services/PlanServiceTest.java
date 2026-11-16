@@ -34,6 +34,7 @@ import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.Term;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
@@ -429,5 +430,44 @@ class PlanServiceTest {
     void usesTheClockForNextSemesterAndYears() {
         assertThat(planService.nextSemester()).isEqualTo("2027 Spring");
         assertThat(planService.plannableYears()).startsWith(2027).endsWith(2033);
+    }
+
+    // -- Co-op and gap terms (#43) --
+
+    @Test
+    void addsACoopTerm() {
+        PlanChange change = planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+
+        assertThat(change.message()).isEqualTo("Added 2028 Summer to your plan as a co-op term.");
+        assertThat(termPlan(priya, "2028 Summer").term().getKind()).isEqualTo(TermKind.COOP);
+    }
+
+    @Test
+    void termsAreStudyTermsByDefault() {
+        planService.addTerm(priya, 2027, "FALL");
+
+        assertThat(termPlan(priya, "2027 Fall").term().getKind()).isEqualTo(TermKind.STUDY);
+    }
+
+    @Test
+    void rejectsAnUnknownKindAndSavesNothing() {
+        assertThat(planService.addTerm(priya, null, 2028, "SUMMER", "INTERNSHIP").problems())
+            .containsExactly("Choose Study, Co-op or Gap.");
+        assertThat(planTermRepository.count()).isZero();
+    }
+
+    // The page hides Add course on these terms; this is the check behind it, for a form sent by hand
+    @Test
+    void coopAndGapTermsDontTakeCourses() {
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        planService.addTerm(priya, null, 2028, "FALL", "GAP");
+
+        PlanChange coop = planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "CMPT 225");
+        PlanChange gap = planService.addCourse(priya, termPlan(priya, "2028 Fall").term().getId(), "CMPT 225");
+
+        assertThat(coop.problems()).containsExactly("2028 Summer is a co-op term, so it doesn't hold courses.");
+        assertThat(coop.termId()).isEqualTo(termPlan(priya, "2028 Summer").term().getId());
+        assertThat(gap.problems()).containsExactly("2028 Fall is a gap term, so it doesn't hold courses.");
+        assertThat(plannedCourseRepository.count()).isZero();
     }
 }

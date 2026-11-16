@@ -40,6 +40,10 @@
                     <option value="">-- Term --</option>
                     <option th:each="s : ${seasons}" th:value="${s.name()}" th:text="${s.showName}">Fall</option>
                 </select>
+                <!-- Study is first, so a term is a normal one unless the student picks Co-op or Gap -->
+                <select name="kind" class="input" aria-label="Kind of term">
+                    <option th:each="k : ${kinds}" th:value="${k.name()}" th:text="|${k.showName} term|">Study term</option>
+                </select>
                 <button type="submit" class="btn btn-primary">Add term</button>
             </form>
         </section>
@@ -51,8 +55,12 @@
                  th:with="term=${termPlan.term}, courses=${termPlan.courses}" th:id="|term-${term.id}|">
             <div class="plan-term-header">
                 <div>
-                    <h2 class="section-label" th:text="${term.name}">2027 Fall</h2>
-                    <span class="muted" th:text="${termPlan.unitsText()}">9 units</span>
+                    <h2 class="section-label">
+                        <span th:text="${term.name}">2027 Fall</span>
+                        <span class="badge badge-muted" th:unless="${term.kind.takesCourses()}"
+                              th:text="${term.kind.showName}">Co-op</span>
+                    </h2>
+                    <span class="muted" th:if="${term.kind.takesCourses()}" th:text="${termPlan.unitsText()}">9 units</span>
                 </div>
                 <!-- The script below opens the dialog instead of sending this form -->
                 <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}"
@@ -88,7 +96,10 @@
                 </div>
             </dialog>
 
-            <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
+            <!-- Co-op and gap terms hold no courses, so they say what the term is instead of offering Add course -->
+            <p th:unless="${term.kind.takesCourses()}" class="muted"
+               th:text="|${term.kind.showName} term. No courses are planned for it.|">Co-op term. No courses are planned for it.</p>
+            <p th:if="${term.kind.takesCourses() and courses.isEmpty()}" class="muted">No courses yet.</p>
             <ul class="plan-courses" th:unless="${courses.isEmpty()}">
                 <li th:each="course : ${courses}">
                     <span>
@@ -102,7 +113,8 @@
                 </li>
             </ul>
 
-            <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
+            <form method="post" class="inline-form" th:if="${term.kind.takesCourses()}"
+                  th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
                 <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <!-- Starts with what was typed when adding a course to this term just failed -->
                 <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"

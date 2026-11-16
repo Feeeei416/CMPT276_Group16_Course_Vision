@@ -42,6 +42,7 @@ import cmpt276.group16.models.Program;
 import cmpt276.group16.models.Role;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.services.PlanListService;
@@ -528,5 +529,42 @@ class PlanControllerTest {
         mockMvc.perform(get("/student/plans").session(sessionFor(priya)))
                .andExpect(content().string(containsString("href=\"/student/plans/" + main + "\"")))
                .andExpect(content().string(containsString("href=\"/student/plans/" + coop.getId() + "\"")));
+    }
+
+    // -- Co-op and gap terms (#43) --
+
+    @Test
+    void addTermOffersStudyCoopAndGap() throws Exception {
+        mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
+               .andExpect(content().string(containsString("<option value=\"STUDY\">Study term</option>")))
+               .andExpect(content().string(containsString("<option value=\"COOP\">Co-op term</option>")))
+               .andExpect(content().string(containsString("<option value=\"GAP\">Gap term</option>")));
+    }
+
+    @Test
+    void addingACoopTermFromTheForm() throws Exception {
+        mockMvc.perform(post("/student/plan/terms").session(sessionFor(priya))
+                        .param("year", "2028").param("season", "SUMMER").param("kind", "COOP"))
+               .andExpect(flash().attribute("message", "Added 2028 Summer to your plan as a co-op term."));
+
+        assertThat(planService.termPlans(priya).get(0).term().getKind()).isEqualTo(TermKind.COOP);
+    }
+
+    // A co-op term says what it is and has no Add course box or units, while a study term keeps both
+    @Test
+    void coopTermShowsALabelInsteadOfAddCourse() throws Exception {
+        planService.addTerm(priya, 2027, "FALL");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        Long fall = termId(priya, "2027 Fall");
+        Long summer = termId(priya, "2028 Summer");
+
+        String page = mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(page).contains("Co-op term. No courses are planned for it.")
+                .contains("/student/plan/terms/" + fall + "/courses")
+                .doesNotContain("/student/plan/terms/" + summer + "/courses")
+                .contains("Course code for 2027 Fall")
+                .doesNotContain("Course code for 2028 Summer");
     }
 }

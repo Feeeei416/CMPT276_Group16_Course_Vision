@@ -399,3 +399,9 @@ button.link {
 .plan-rename[open] summary {
     margin-bottom: var(--space-sm);
 }
+
+/* A grey badge, like Co-op or Gap next to a term on My plan */
+.badge-muted {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}

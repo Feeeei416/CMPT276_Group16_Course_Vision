@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import cmpt276.group16.models.Plan;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.services.PlanChange;
 import cmpt276.group16.services.PlanListService;
 import cmpt276.group16.services.PlanService;
@@ -68,6 +69,7 @@ public class PlanController {
         model.addAttribute("nextSemester", planService.nextSemester());
         model.addAttribute("years", planService.plannableYears());
         model.addAttribute("seasons", Season.values());
+        model.addAttribute("kinds", TermKind.values());
         // Already set when the change before the redirect had problems
         if (!model.containsAttribute("errors")) {
             model.addAttribute("errors", List.of());
@@ -78,6 +80,7 @@ public class PlanController {
     @PostMapping("/student/plan/terms")
     public String addTerm(@RequestParam(defaultValue = "") String year,
                           @RequestParam(defaultValue = "") String season,
+                          @RequestParam(defaultValue = "") String kind,
                           @RequestParam(defaultValue = "") String planId,
                           HttpSession session, RedirectAttributes redirectAttributes) {
         Optional<StudentProfile> student = currentStudent.find(session);
@@ -89,7 +92,7 @@ public class PlanController {
         if (parsedYear == null) {
             return backToPlan(PlanChange.rejected("Choose a year."), viewedPlanId, redirectAttributes);
         }
-        PlanChange change = planService.addTerm(student.get(), viewedPlanId, parsedYear, season);
+        PlanChange change = planService.addTerm(student.get(), viewedPlanId, parsedYear, season, kind);
         return backToPlan(change, viewedPlanId, redirectAttributes);
     }
 
