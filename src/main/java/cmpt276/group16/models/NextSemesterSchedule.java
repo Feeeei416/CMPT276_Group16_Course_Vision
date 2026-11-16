@@ -27,9 +27,10 @@ public class NextSemesterSchedule {
     @Column(name = "is_main", nullable = false)
     private boolean main;
     
-    public NextSemesterSchedule(StudentProfile student, Term term, boolean main) {
+    public NextSemesterSchedule(StudentProfile student, Term term, String name, boolean main) {
         this.student = student;
         this.term = term;
+        this.name = name;
         this.main= main;
     }
 

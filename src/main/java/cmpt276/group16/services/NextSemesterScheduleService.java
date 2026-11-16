@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NextSemesterScheduleService {
     
     public static final String MAIN_PLAN_NAME = "My plan";
+    public static final String MAIN_SCHEDULE_NAME = "My schedule";
 
     public record ClassTime(String course, String section, SectionType type,
             LocalTime start, LocalTime end) {
@@ -119,8 +120,7 @@ public class NextSemesterScheduleService {
         // If this lecture has labs or tutorials, the student must pick one
         boolean lectureHasAttached = sectionRepository
                 .findByOfferingIdOrderBySectionCodeAsc(offering.getId()).stream()
-                .anyMatch(s -> !s.isPrimarySection()
-                        && Objects.equals(s.getAssociatedClass(), primary.get().getAssociatedClass()));
+                .anyMatch(s -> goesWith(s, primary.get()));
         if (lectureHasAttached && attachedSectionId == null) {
             return List.of("Choose a lab or tutorial for this lecture.");
         }
@@ -133,8 +133,7 @@ public class NextSemesterScheduleService {
             if (found.isEmpty() || !found.get().getOffering().getId().equals(offering.getId())) {
                 return List.of("That lab or tutorial isn't part of this course.");
             }
-            if (found.get().isPrimarySection()
-                    || !Objects.equals(found.get().getAssociatedClass(), primary.get().getAssociatedClass())) {
+            if (!goesWith(found.get(), primary.get())) {
                 return List.of("That lab or tutorial doesn't go with the lecture you chose.");
             }
             attached = found.get();
@@ -142,7 +141,7 @@ public class NextSemesterScheduleService {
 
         // Find the student's schedule, or create it if this is their first course
         NextSemesterSchedule schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student, term.get())
-                .orElseGet(() -> scheduleRepository.save(new NextSemesterSchedule(student, term.get())));
+                .orElseGet(() -> scheduleRepository.save(new NextSemesterSchedule(student, term.get(), MAIN_SCHEDULE_NAME, true)));
 
         // Stop if the course is already in the schedule
         if (scheduledCourseRepository.existsByScheduleAndOffering(schedule, offering)) {
@@ -242,4 +241,17 @@ public class NextSemesterScheduleService {
         days.values().forEach(list -> list.sort(Comparator.comparing(ClassTime::start)));
         return days;
     }
+
+    // Checks that the chosen lab or tutorial belongs to the chosen lecture
+    // A lecture and its labs/tutorials share the same group number(associated class)
+    // If the lecture has no group number, any lab or tutorial of the course can be selected
+    private static boolean goesWith(Section attached, Section lecture) {
+    if (attached.isPrimarySection()) {
+        return false;
+    }
+    if (lecture.getAssociatedClass() == null) {
+        return true;
+    }
+    return Objects.equals(attached.getAssociatedClass(), lecture.getAssociatedClass());
+}
 }
