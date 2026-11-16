@@ -21,7 +21,8 @@ import cmpt276.group16.requisites.Requirement.Special;
 
 // Turns a course's prerequisite text into RequisiteRule rows.
 // Rules entered by hand (MANUAL, from ManualRules) replace the imported ones instead of sitting beside them:
-// if a course has any, its imported rules aren't saved, so a re-import can't bring back a rule someone fixed.
+// if the manual rules file has the course, its imported rules aren't saved, so a re-import can't bring back
+// a rule someone fixed.
 // That way a course only ever has one tree, which findByCourseIdAndRuleKindAndParentIsNull relies on
 @Service
 public class RequisiteImportService {
