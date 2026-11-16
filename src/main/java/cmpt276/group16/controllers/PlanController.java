@@ -78,7 +78,12 @@ public class PlanController {
         if (student.isEmpty()) {
             return "redirect:/login";
         }
-        return backToPlan(planService.addCourse(student.get(), termId, code), redirectAttributes);
+        PlanChange change = planService.addCourse(student.get(), termId, code);
+        // On an error the code goes back into the box, so fixing one digit doesn't mean typing it all again
+        if (!change.isSaved()) {
+            redirectAttributes.addFlashAttribute("typedCode", code);
+        }
+        return backToPlan(change, redirectAttributes);
     }
 
     @PostMapping("/student/plan/courses/{courseId}/remove")

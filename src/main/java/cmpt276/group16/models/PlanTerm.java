@@ -1,7 +1,6 @@
 package cmpt276.group16.models;
 
 import java.util.Comparator;
-import java.util.Locale;
 
 import jakarta.persistence.*;
 
@@ -55,7 +54,6 @@ public class PlanTerm {
     }
 
     public static String nameOf(int year, Season season) {
-        String name = season.name();
-        return year + " " + name.charAt(0) + name.substring(1).toLowerCase(Locale.ROOT);
+        return year + " " + season.getShowName();
     }
 }
