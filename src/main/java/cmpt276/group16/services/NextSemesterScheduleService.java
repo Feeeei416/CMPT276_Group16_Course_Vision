@@ -33,24 +33,27 @@ public class NextSemesterScheduleService {
     private final SectionRepository sectionRepository;
     private final CourseOfferingRepository courseOfferingRepository;
     private final TermRepository termRepository;
+    private final StudentProfileRepository studentProfileRepository;
     private final Clock clock;
 
     public NextSemesterScheduleService(NextSemesterScheduleRepository scheduleRepository,
             ScheduledCourseRepository scheduledCourseRepository,
             SectionRepository sectionRepository, TermRepository termRepository,
-            CourseOfferingRepository courseOfferingRepository, Clock clock) {
+            CourseOfferingRepository courseOfferingRepository, StudentProfileRepository studentProfileRepository,
+            Clock clock) {
         this.scheduleRepository = scheduleRepository;
         this.scheduledCourseRepository = scheduledCourseRepository;
         this.sectionRepository = sectionRepository;
         this.termRepository = termRepository;
         this.courseOfferingRepository = courseOfferingRepository;
+        this.studentProfileRepository = studentProfileRepository;
         this.clock = clock;
     }
 
     public Optional<Term> nextSemesterTerm() {
 
         PlanRules.YearAndSeason next = PlanRules.nextSemesterYearAndSeason(LocalDate.now(clock));
-    return termRepository.findByTermYearAndSeason(next.year(), next.season());
+        return termRepository.findByTermYearAndSeason(next.year(), next.season());
     }
 
     // Returns the courses in the student's next semester schedule, or empty if the
@@ -75,6 +78,10 @@ public class NextSemesterScheduleService {
     @Transactional
     public List<String> addCourse(StudentProfile student, Long offeringId,
             Long primarySectionId, Long attachedSectionId) {
+                
+        // Locks the student so a double click waits for the first request instead of
+        // failing
+        studentProfileRepository.findLockedByUserId(student.getUser().getId());
 
         // Which semester is next? Stop if its data isn't loaded yet
         Optional<Term> term = nextSemesterTerm();

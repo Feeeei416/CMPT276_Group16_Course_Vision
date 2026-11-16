@@ -28,6 +28,7 @@ public class NextSemesterScheduleServiceTest {
     @Autowired private SectionRepository sectionRepository;
     @Autowired private NextSemesterScheduleRepository scheduleRepository;
     @Autowired private ScheduledCourseRepository scheduledCourseRepository;
+    
 
     private NextSemesterScheduleService service;
     private StudentProfile priya;
@@ -38,7 +39,7 @@ public class NextSemesterScheduleServiceTest {
     @BeforeEach
     void setUp() {
         service = new NextSemesterScheduleService(scheduleRepository, scheduledCourseRepository,
-        sectionRepository, termRepository, courseOfferingRepository, NOV_9_2026);
+        sectionRepository, termRepository, courseOfferingRepository, studentProfileRepository, NOV_9_2026);
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
 
