@@ -61,7 +61,8 @@ public final class RequisiteParser {
             "Please consult .*",
             "Recommended: .*",
             // CMPT 120's whole prerequisite is "BC Math 12 or equivalent is recommended."
-            ".* is recommended\\.",
+            // Not when the sentence has a ; or , since a requirement could share it, so those fail instead
+            "[^;,]* is recommended\\.",
             // Corequisites are their own rule kind instead of being part of the prerequisite
             "(Recommended )?Corequisite: .*")
             .map(note -> Pattern.compile(note, Pattern.CASE_INSENSITIVE))

@@ -57,6 +57,15 @@ class RequisiteParserTest {
         assertThat(RequisiteParser.parse("BC Math 12 or equivalent is recommended.")).isEmpty();
     }
 
+    // Leaving out the whole sentence would leave out CMPT 225 too, so a student could be shown as eligible
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "CMPT 225 with a minimum grade of C-; MATH 151 is recommended.",
+            "CMPT 225, with a minimum grade of C-, and CMPT 295 is recommended."})
+    void recommendedSharingASentenceWithARequirementFails(String text) {
+        assertThatThrownBy(() -> RequisiteParser.parse(text)).isInstanceOf(RequisiteParseException.class);
+    }
+
     @Test
     void oneCourseWithoutAGrade() {
         assertThat(parse("CMPT 125.")).isEqualTo("CMPT 125");
