@@ -20,10 +20,17 @@ public class NextSemesterSchedule {
     @ManyToOne
     @JoinColumn(name = "term_id", nullable = false)
     private Term term;
+
+    @Column(nullable = false)
+    private String name; 
+
+    @Column(name = "is_main", nullable = false)
+    private boolean main;
     
-    public NextSemesterSchedule(StudentProfile student, Term term) {
+    public NextSemesterSchedule(StudentProfile student, Term term, boolean main) {
         this.student = student;
         this.term = term;
+        this.main= main;
     }
 
     public Long getId() {
@@ -39,5 +46,13 @@ public class NextSemesterSchedule {
     }
 
     protected NextSemesterSchedule() {
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean isMain() {
+        return main;
     }
 }

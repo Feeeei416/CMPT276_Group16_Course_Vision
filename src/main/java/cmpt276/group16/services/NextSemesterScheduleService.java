@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 //Empty if the term's course data hasn't been loaded yet
 @Service
 public class NextSemesterScheduleService {
+    
+    public static final String MAIN_PLAN_NAME = "My plan";
 
     public record ClassTime(String course, String section, SectionType type,
             LocalTime start, LocalTime end) {
@@ -68,7 +70,7 @@ public class NextSemesterScheduleService {
         if (term.isEmpty()) {
             return List.of();
         }
-        Optional<NextSemesterSchedule> schedule = scheduleRepository.findByStudentAndTerm(student, term.get());
+        Optional<NextSemesterSchedule> schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student, term.get());
         if (schedule.isEmpty()) {
             return List.of();
         }
@@ -139,7 +141,7 @@ public class NextSemesterScheduleService {
         }
 
         // Find the student's schedule, or create it if this is their first course
-        NextSemesterSchedule schedule = scheduleRepository.findByStudentAndTerm(student, term.get())
+        NextSemesterSchedule schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student, term.get())
                 .orElseGet(() -> scheduleRepository.save(new NextSemesterSchedule(student, term.get())));
 
         // Stop if the course is already in the schedule

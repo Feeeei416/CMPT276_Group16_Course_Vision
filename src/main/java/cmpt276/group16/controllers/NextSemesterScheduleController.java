@@ -28,7 +28,7 @@ public class NextSemesterScheduleController {
         this.scheduleService = scheduleService;
     }
 
-    @PostMapping("/students/schedule/next-semester/courses/{id}/remove")
+    @PostMapping("/student/schedule/next-semester/courses/{id}/remove")
     public String removeCourse(@PathVariable Long id, HttpSession session, RedirectAttributes redirectAttributes) {
         Optional<StudentProfile> student = currentStudent.find(session);
         if (student.isEmpty()) {
