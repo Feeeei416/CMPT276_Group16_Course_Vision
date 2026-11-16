@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 //Empty if the term's course data hasn't been loaded yet
 @Service
 public class NextSemesterScheduleService {
-    
+
     public static final String MAIN_PLAN_NAME = "My plan";
     public static final String MAIN_SCHEDULE_NAME = "My schedule";
 
@@ -49,18 +49,8 @@ public class NextSemesterScheduleService {
 
     public Optional<Term> nextSemesterTerm() {
 
-        LocalDate today = LocalDate.now(clock);
-        int month = today.getMonthValue();
-        int year = today.getYear();
-
-        if (month <= 4) {
-            return termRepository.findByTermYearAndSeason(year, Season.SUMMER);
-        }
-        if (month <= 8) {
-            return termRepository.findByTermYearAndSeason(year, Season.FALL);
-        }
-        return termRepository.findByTermYearAndSeason(year + 1, Season.SPRING);
-
+        PlanRules.YearAndSeason next = PlanRules.nextSemesterYearAndSeason(LocalDate.now(clock));
+    return termRepository.findByTermYearAndSeason(next.year(), next.season());
     }
 
     // Returns the courses in the student's next semester schedule, or empty if the
@@ -71,7 +61,8 @@ public class NextSemesterScheduleService {
         if (term.isEmpty()) {
             return List.of();
         }
-        Optional<NextSemesterSchedule> schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student, term.get());
+        Optional<NextSemesterSchedule> schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student,
+                term.get());
         if (schedule.isEmpty()) {
             return List.of();
         }
@@ -141,7 +132,8 @@ public class NextSemesterScheduleService {
 
         // Find the student's schedule, or create it if this is their first course
         NextSemesterSchedule schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student, term.get())
-                .orElseGet(() -> scheduleRepository.save(new NextSemesterSchedule(student, term.get(), MAIN_SCHEDULE_NAME, true)));
+                .orElseGet(() -> scheduleRepository
+                        .save(new NextSemesterSchedule(student, term.get(), MAIN_SCHEDULE_NAME, true)));
 
         // Stop if the course is already in the schedule
         if (scheduledCourseRepository.existsByScheduleAndOffering(schedule, offering)) {
@@ -243,15 +235,17 @@ public class NextSemesterScheduleService {
     }
 
     // Checks that the chosen lab or tutorial belongs to the chosen lecture
-    // A lecture and its labs/tutorials share the same group number(associated class)
-    // If the lecture has no group number, any lab or tutorial of the course can be selected
+    // A lecture and its labs/tutorials share the same group number(associated
+    // class)
+    // If the lecture has no group number, any lab or tutorial of the course can be
+    // selected
     private static boolean goesWith(Section attached, Section lecture) {
-    if (attached.isPrimarySection()) {
-        return false;
+        if (attached.isPrimarySection()) {
+            return false;
+        }
+        if (lecture.getAssociatedClass() == null) {
+            return true;
+        }
+        return Objects.equals(attached.getAssociatedClass(), lecture.getAssociatedClass());
     }
-    if (lecture.getAssociatedClass() == null) {
-        return true;
-    }
-    return Objects.equals(attached.getAssociatedClass(), lecture.getAssociatedClass());
-}
 }
