@@ -144,6 +144,17 @@ class CourseRefreshControllerTest {
                        .session(sessionFor(Role.IT_MANAGER)))
                .andExpect(flash().attribute("error", containsString("already running")));
     }
+
+    // Anything else that goes wrong still ends on the page with a message instead of an error page
+    @Test
+    void unexpectedFailureShowsAnError() throws Exception {
+        when(importService.importTerm(2027, Season.SPRING)).thenThrow(new IllegalStateException("database is down"));
+
+        mockMvc.perform(post("/it/course-refresh/refresh").param("term", "2027-SPRING")
+                       .session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(redirectedUrl("/it/course-refresh"))
+               .andExpect(flash().attribute("error", containsString("nothing was changed")));
+    }
  
     // Only terms from the dropdown are imported, so a changed form can't start any other import
     @Test

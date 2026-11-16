@@ -224,4 +224,44 @@ class CourseImportServiceTest {
         assertThat(CourseImportService.isUndergraduate("725")).isFalse();
         assertThat(CourseImportService.isUndergraduate("500")).isFalse();
     }
+
+    // A course whose sections all answer 404 has nothing to take its title or units from, so it is skipped
+    @Test
+    void courseWithNoOutlineIsSkipped() {
+        when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), any())).thenReturn(Optional.empty());
+
+        ImportRun run = importService.importTerm(2027, Season.SPRING);
+
+        assertThat(run.courses()).isZero();
+        assertThat(run.notes()).contains("CMPT 225 has no outline, skipped");
+        assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
+    }
+
+    // A new course needs units, which the courses table requires
+    @Test
+    void newCourseWithoutUnitsIsSkipped() {
+        when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), any()))
+                .thenReturn(Optional.of("{\"info\": {\"title\": \"Data Structures and Programming\"}}"));
+
+        ImportRun run = importService.importTerm(2027, Season.SPRING);
+
+        assertThat(run.courses()).isZero();
+        assertThat(run.notes()).contains("CMPT 225 has no title or units, skipped");
+        assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
+    }
+
+    // A database error while saving (here units too big for the column) is recorded as a failed run,
+    // and another refresh can start afterwards
+    @Test
+    void failureWhileSavingIsRecorded() {
+        when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), any()))
+                .thenReturn(Optional.of("{\"info\": {\"title\": \"Too Many Units\", \"units\": \"12345\"}}"));
+
+        assertThatThrownBy(() -> importService.importTerm(2027, Season.SPRING))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThat(importService.lastRun()).map(ImportRun::error)
+                .hasValueSatisfying(error -> assertThat(error).contains("nothing was changed"));
+        assertThat(importService.isRunning()).isFalse();
+    }
 }
