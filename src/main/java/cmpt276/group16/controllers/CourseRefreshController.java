@@ -82,6 +82,10 @@ public class CourseRefreshController {
         } catch (ImportAlreadyRunningException e) {
             redirectAttributes.addFlashAttribute("error",
                     "A refresh is already running. Wait for it to finish, then reload this page.");
+        } catch (RuntimeException e) {
+            // The service has already logged it and recorded it as a failed refresh
+            redirectAttributes.addFlashAttribute("error",
+                    "The refresh failed, so nothing was changed. Try again, and check the server log if it keeps failing.");
         }
         return "redirect:/it/course-refresh";
     }

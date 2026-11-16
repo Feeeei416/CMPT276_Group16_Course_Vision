@@ -132,6 +132,13 @@ public class CourseImportService {
             log.warn("Import of {} {} stopped: {}", year, season, e.getMessage());
             lastRun.set(ImportRun.failed(year, season, Instant.now(clock), e.getMessage()));
             throw e;
+        } catch (RuntimeException e) {
+            // For example a database error while saving. The save transaction is rolled back,
+            // so nothing was changed; the details go to the server log
+            log.error("Import of {} {} failed", year, season, e);
+            lastRun.set(ImportRun.failed(year, season, Instant.now(clock), 
+                    "Saving the course data failed, so nothing was changed. Details are in the server log."));
+            throw e;
         } finally {
             running.set(false);
         }
