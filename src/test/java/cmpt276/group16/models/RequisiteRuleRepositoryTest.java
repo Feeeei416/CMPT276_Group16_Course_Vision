@@ -77,7 +77,21 @@ class RequisiteRuleRepositoryTest {
         assertThat(found.getReqNumber()).isEqualTo("125");
         assertThat(found.getRequiredCourse().getId()).isEqualTo(cmpt125.getId());
         assertThat(found.getMinGrade()).isEqualTo("C-");
+        assertThat(found.isConcurrentOk()).isFalse();
         assertThat(found.isGroup()).isFalse();
+    }
+
+    // "MATH 260 may be taken concurrently."
+    @Test
+    void courseNodeKeepsConcurrentOk() {
+        Course ensc220 = saveCourse("ENSC", "220");
+        RequisiteRule node = new RequisiteRule(ensc220, null, RuleKind.PREREQUISITE, NodeType.COURSE);
+        node.setRequiredSubjectAndNumber("MATH", "260");
+        node.setConcurrentOk(true);
+        RequisiteRule saved = requisiteRuleRepository.saveAndFlush(node);
+        entityManager.clear();
+
+        assertThat(requisiteRuleRepository.findById(saved.getId()).orElseThrow().isConcurrentOk()).isTrue();
     }
 
     // The required course code is stored uppercase, like courses.subject and courses.course_number

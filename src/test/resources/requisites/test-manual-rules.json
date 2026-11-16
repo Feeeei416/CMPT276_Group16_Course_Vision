@@ -1,0 +1,21 @@
+{
+  "rules": [
+    {
+      "course": "MATH 260",
+      "reason": "Used by RequisiteImportServiceTest, so it doesn't depend on the real file",
+      "prerequisite": {
+        "and": [
+          { "or": [
+            { "course": "MATH 152", "minGrade": "C-" },
+            { "course": "MATH 155", "minGrade": "B" },
+            { "course": "MATH 158", "minGrade": "B" }
+          ] },
+          { "or": [
+            { "course": "MATH 232", "minGrade": "C-" },
+            { "course": "MATH 240", "minGrade": "C-" }
+          ] }
+        ]
+      }
+    }
+  ]
+}
