@@ -18,4 +18,8 @@ public interface RequisiteRuleRepository extends JpaRepository<RequisiteRule, Lo
 
     // Every rule that requires this course, for example to see which courses CMPT 125 unlocks
     List<RequisiteRule> findByRequiredCourseId(Long courseId);
+
+    // Newest first, so children come before the groups they point at and can be deleted in this order
+    List<RequisiteRule> findByCourseIdAndRuleKindAndSourceOrderByIdDesc(Long courseId, RuleKind ruleKind,
+            RequisiteRule.Source source);
 }
