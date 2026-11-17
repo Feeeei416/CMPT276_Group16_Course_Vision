@@ -140,4 +140,18 @@ class PlanRulesTest {
     void rejectsUnknownTermKinds(String text) {
         assertThat(PlanRules.parseTermKind(text)).isEmpty();
     }
+
+    // CMPT Practicum I to V and the ENSC internships, from the SFU calendar
+    @ParameterizedTest
+    @CsvSource({"CMPT, 426", "CMPT, 430", "ENSC, 195", "ENSC, 395"})
+    void knowsCoopWorkTermCourses(String subject, String number) {
+        assertThat(PlanRules.isCoopCourse(subject, number)).isTrue();
+    }
+
+    // Normal courses, and CMPT 493 Digital Media Practicum, which is a taught course and not a work term
+    @ParameterizedTest
+    @CsvSource({"CMPT, 225", "CMPT, 425", "CMPT, 431", "CMPT, 493", "ENSC, 251"})
+    void otherCoursesArentCoopCourses(String subject, String number) {
+        assertThat(PlanRules.isCoopCourse(subject, number)).isFalse();
+    }
 }

@@ -57,7 +57,7 @@
                 <div>
                     <h2 class="section-label">
                         <span th:text="${term.name}">2027 Fall</span>
-                        <span class="badge badge-muted" th:unless="${term.kind.takesCourses()}"
+                        <span class="badge badge-muted" th:if="${term.kind.name() != 'STUDY'}"
                               th:text="${term.kind.showName}">Co-op</span>
                     </h2>
                     <span class="muted" th:if="${term.kind.takesCourses()}" th:text="${termPlan.unitsText()}">9 units</span>
@@ -96,10 +96,12 @@
                 </div>
             </dialog>
 
-            <!-- Co-op and gap terms hold no courses, so they say what the term is instead of offering Add course -->
-            <p th:unless="${term.kind.takesCourses()}" class="muted"
-               th:text="|${term.kind.showName} term. No courses are planned for it.|">Co-op term. No courses are planned for it.</p>
-            <p th:if="${term.kind.takesCourses() and courses.isEmpty()}" class="muted">No courses yet.</p>
+            <!-- A gap term holds no courses, so it says what the term is instead of offering Add course.
+                 A co-op term says which course goes in it -->
+            <p th:unless="${term.kind.takesCourses()}" class="muted">Gap term. No courses are planned for it.</p>
+            <p th:if="${term.kind.name() == 'COOP' and courses.isEmpty()}" class="muted">Co-op term. Add its work term
+                course, like CMPT 426 or ENSC 195.</p>
+            <p th:if="${term.kind.name() == 'STUDY' and courses.isEmpty()}" class="muted">No courses yet.</p>
             <ul class="plan-courses" th:unless="${courses.isEmpty()}">
                 <li th:each="course : ${courses}">
                     <span>
@@ -117,7 +119,8 @@
                   th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
                 <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <!-- Starts with what was typed when adding a course to this term just failed -->
-                <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
+                <input type="text" name="code" class="input" maxlength="20"
+                       th:placeholder="${term.kind.name() == 'COOP' ? 'Co-op course, e.g. CMPT 426' : 'Course code, e.g. CMPT 225'}"
                        th:aria-label="|Course code for ${term.name}|"
                        th:value="${changedTermId == term.id ? typedCode : null}" required>
                 <button type="submit" class="btn btn-primary">Add course</button>

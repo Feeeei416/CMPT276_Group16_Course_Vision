@@ -143,7 +143,7 @@ public class PlanService {
             return PlanChange.rejected(name + " is already in your plan.");
         }
         PlanTerm added = planTermRepository.save(new PlanTerm(plan, term, kind.get()));
-        if (!kind.get().takesCourses()) {
+        if (kind.get() != TermKind.STUDY) {
             return PlanChange.saved("Added " + name + " to your plan as a "
                     + kind.get().getShowName().toLowerCase(Locale.ROOT) + " term.", added);
         }
@@ -178,7 +178,7 @@ public class PlanService {
         if (term.isEmpty()) {
             return PlanChange.rejected("That term isn't in your plan.");
         }
-        // The page hides Add course on these terms, but the form can still be sent by hand
+        // The page hides Add course on gap terms, but the form can still be sent by hand
         if (!term.get().getKind().takesCourses()) {
             return PlanChange.rejected(term.get().getName() + " is a "
                     + term.get().getKind().getShowName().toLowerCase(Locale.ROOT) + " term, so it doesn't hold courses.",
@@ -193,6 +193,10 @@ public class PlanService {
             return PlanChange.rejected(parsed.get().subject() + " " + parsed.get().number()
                     + " isn't in the course list.", term.get());
         }
+        Optional<String> wrongKind = wrongKindOfTerm(course.get(), term.get());
+        if (wrongKind.isPresent()) {
+            return PlanChange.rejected(wrongKind.get(), term.get());
+        }
         // Checks the whole plan, not just this term, since a course only needs to be taken once
         Optional<PlannedCourse> alreadyPlanned = plannedCourseRepository
                 .findByTermPlanAndCourse(term.get().getPlan(), course.get());
@@ -201,6 +205,22 @@ public class PlanService {
         }
         PlannedCourse added = plannedCourseRepository.save(new PlannedCourse(term.get(), course.get()));
         return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ".", term.get());
+    }
+
+    // A co-op term only holds its work term course, and that course only goes in a co-op term, so the plan
+    // always shows which terms are work terms. Empty when the course fits the term
+    private static Optional<String> wrongKindOfTerm(Course course, PlanTerm term) {
+        boolean coopCourse = PlanRules.isCoopCourse(course.getSubject(), course.getNumber());
+        String code = course.getSubject() + " " + course.getNumber();
+        if (term.getKind() == TermKind.COOP && !coopCourse) {
+            return Optional.of(term.getName() + " is a co-op term, so it only holds a co-op work term course, "
+                    + "like CMPT 426 or ENSC 195.");
+        }
+        if (term.getKind() == TermKind.STUDY && coopCourse) {
+            return Optional.of(code + " is a co-op work term, so it goes in a co-op term. Add a co-op term for it, "
+                    + "then add " + code + " there.");
+        }
+        return Optional.empty();
     }
 
     // Says which term the course is already in, and how to move it when that's a different term

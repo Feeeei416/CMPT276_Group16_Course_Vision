@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -44,6 +45,17 @@ public final class PlanRules {
             return Optional.empty();
         }
         return Optional.of(new CourseCode(m.group(1).toUpperCase(Locale.ROOT), m.group(2).toUpperCase(Locale.ROOT)));
+    }
+
+    // Co-op work terms from the SFU calendar: CMPT Practicum I to V and the ENSC internships.
+    // They're 3 units, pass/fail, and don't count towards the units an SFU degree needs
+    private static final Set<String> COOP_COURSES = Set.of(
+            "CMPT 426", "CMPT 427", "CMPT 428", "CMPT 429", "CMPT 430",
+            "ENSC 194", "ENSC 195", "ENSC 196", "ENSC 295", "ENSC 296", "ENSC 395", "ENSC 396");
+
+    // Takes the subject and number as stored in courses, which are uppercase
+    public static boolean isCoopCourse(String subject, String number) {
+        return COOP_COURSES.contains(subject + " " + number);
     }
 
     // Empty when the text isn't Study, Co-op or Gap. The form sends COOP, but any case works.

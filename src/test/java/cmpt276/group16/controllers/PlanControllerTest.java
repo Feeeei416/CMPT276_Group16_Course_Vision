@@ -550,21 +550,21 @@ class PlanControllerTest {
         assertThat(planService.termPlans(priya).get(0).term().getKind()).isEqualTo(TermKind.COOP);
     }
 
-    // A co-op term says what it is and has no Add course box or units, while a study term keeps both
+    // A gap term has no Add course box or units. A co-op term keeps Add course, asking for its work term course
     @Test
-    void coopTermShowsALabelInsteadOfAddCourse() throws Exception {
-        planService.addTerm(priya, 2027, "FALL");
+    void gapTermHasNoAddCourseAndCoopTermAsksForItsCourse() throws Exception {
         planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
-        Long fall = termId(priya, "2027 Fall");
+        planService.addTerm(priya, null, 2028, "FALL", "GAP");
         Long summer = termId(priya, "2028 Summer");
+        Long fall = termId(priya, "2028 Fall");
 
         String page = mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(page).contains("Co-op term. No courses are planned for it.")
-                .contains("/student/plan/terms/" + fall + "/courses")
-                .doesNotContain("/student/plan/terms/" + summer + "/courses")
-                .contains("Course code for 2027 Fall")
-                .doesNotContain("Course code for 2028 Summer");
+        assertThat(page).contains("Gap term. No courses are planned for it.")
+                .doesNotContain("/student/plan/terms/" + fall + "/courses")
+                .contains("/student/plan/terms/" + summer + "/courses")
+                .contains("Co-op term. Add its work term")
+                .contains("placeholder=\"Co-op course, e.g. CMPT 426\"");
     }
 }

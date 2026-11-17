@@ -13,10 +13,11 @@ class TermKindTest {
         assertThat(TermKind.GAP.getShowName()).isEqualTo("Gap");
     }
 
+    // A co-op term holds its work term course, so only a gap term holds nothing
     @Test
-    void onlyStudyTermsTakeCourses() {
+    void onlyGapTermsTakeNoCourses() {
         assertThat(TermKind.STUDY.takesCourses()).isTrue();
-        assertThat(TermKind.COOP.takesCourses()).isFalse();
+        assertThat(TermKind.COOP.takesCourses()).isTrue();
         assertThat(TermKind.GAP.takesCourses()).isFalse();
     }
 }

@@ -456,18 +456,50 @@ class PlanServiceTest {
         assertThat(planTermRepository.count()).isZero();
     }
 
-    // The page hides Add course on these terms; this is the check behind it, for a form sent by hand
+    // The page hides Add course on gap terms; this is the check behind it, for a form sent by hand
     @Test
-    void coopAndGapTermsDontTakeCourses() {
-        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+    void gapTermsDontTakeCourses() {
         planService.addTerm(priya, null, 2028, "FALL", "GAP");
 
-        PlanChange coop = planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "CMPT 225");
-        PlanChange gap = planService.addCourse(priya, termPlan(priya, "2028 Fall").term().getId(), "CMPT 225");
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2028 Fall").term().getId(), "CMPT 225");
 
-        assertThat(coop.problems()).containsExactly("2028 Summer is a co-op term, so it doesn't hold courses.");
-        assertThat(coop.termId()).isEqualTo(termPlan(priya, "2028 Summer").term().getId());
-        assertThat(gap.problems()).containsExactly("2028 Fall is a gap term, so it doesn't hold courses.");
+        assertThat(change.problems()).containsExactly("2028 Fall is a gap term, so it doesn't hold courses.");
+        assertThat(change.termId()).isEqualTo(termPlan(priya, "2028 Fall").term().getId());
+        assertThat(plannedCourseRepository.count()).isZero();
+    }
+
+    @Test
+    void coopTermTakesItsWorkTermCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "cmpt 426");
+
+        assertThat(change.message()).isEqualTo("Added CMPT 426 to 2028 Summer.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 426")));
+    }
+
+    @Test
+    void coopTermTurnsDownNormalCourses() {
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "CMPT 225");
+
+        assertThat(change.problems()).containsExactly("2028 Summer is a co-op term, so it only holds a co-op work "
+                + "term course, like CMPT 426 or ENSC 195.");
+        assertThat(plannedCourseRepository.count()).isZero();
+    }
+
+    // A work term in a study term would make the plan look like the student is in class that term
+    @Test
+    void studyTermSendsWorkTermCoursesToACoopTerm() {
+        saveCourse("ENSC", "195", "3.00");
+        planService.addTerm(priya, 2027, "FALL");
+
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2027 Fall").term().getId(), "ENSC 195");
+
+        assertThat(change.problems()).containsExactly("ENSC 195 is a co-op work term, so it goes in a co-op term. "
+                + "Add a co-op term for it, then add ENSC 195 there.");
         assertThat(plannedCourseRepository.count()).isZero();
     }
 }
