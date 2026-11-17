@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NextSemesterScheduleService {
 
-    public static final String MAIN_PLAN_NAME = "My plan";
     public static final String MAIN_SCHEDULE_NAME = "My schedule";
 
     public record ClassTime(String course, String section, SectionType type,
@@ -157,6 +156,8 @@ public class NextSemesterScheduleService {
     // remove someone else's
     @Transactional
     public List<String> removeCourse(StudentProfile student, Long scheduledCourseId) {
+        // Locks the student so a double click waits for the first request instead of failing
+        studentProfileRepository.findLockedByUserId(student.getUser().getId());
         Optional<ScheduledCourse> course = scheduledCourseRepository.findByIdAndScheduleStudent(scheduledCourseId,
                 student);
         if (course.isEmpty()) {

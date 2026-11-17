@@ -1,37 +1,39 @@
 package cmpt276.group16.models;
 
 import jakarta.persistence.*;
-// A student's schedule for one upcoming term. One per student per term
+
+// A student's schedule for one upcoming term. A student can have several per term,
+// // each one with its own name; the main one is shown on My Schedule page
 @Entity
 @Table(name = "next_semester_schedule", uniqueConstraints = @UniqueConstraint(columnNames = { "student_id",
-        "term_id" }))
+        "term_id", "name" }))
 public class NextSemesterSchedule {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     // Many schedules belong to one student (one per term)
     @ManyToOne
     @JoinColumn(name = "student_id", nullable = false)
     private StudentProfile student;
-    
+
     // The term this schedule is for, one per student per term
     @ManyToOne
     @JoinColumn(name = "term_id", nullable = false)
     private Term term;
 
     @Column(nullable = false)
-    private String name; 
+    private String name;
 
     @Column(name = "is_main", nullable = false)
     private boolean main;
-    
+
     public NextSemesterSchedule(StudentProfile student, Term term, String name, boolean main) {
         this.student = student;
         this.term = term;
         this.name = name;
-        this.main= main;
+        this.main = main;
     }
 
     public Long getId() {
