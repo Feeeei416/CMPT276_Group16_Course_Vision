@@ -18,7 +18,18 @@ public final class Grades {
     public static final List<String> OTHER = List.of(
             "P", "W", "AE", "AU", "CC", "CF", "CN", "CR", "FX", "WD", "WE", "DE");
 
+    // Grades that complete a course and earn its units: A+ to D, a pass, transfer credit, and the Calendar's
+    // credit notations: CR (credit from another institution), CC (course challenge passed) and
+    // AE (aegrotat, a compassionate pass). F, FD, N, withdrawals, audits and the deferred grade earn nothing
+    public static final List<String> EARNS_CREDIT = List.of(
+            "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "P", "CR", "CC", "AE", TRANSFER);
+
     private Grades() {
+    }
+
+    // False for null, which means the course is still in progress
+    public static boolean earnsCredit(String grade) {
+        return grade != null && EARNS_CREDIT.contains(grade);
     }
 
     // TR counts as valid here; a missing grade (in progress) is checked by the caller
