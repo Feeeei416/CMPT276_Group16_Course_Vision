@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import cmpt276.group16.models.Grades;
 import cmpt276.group16.models.NodeType;
+import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.RequisiteRule;
 import cmpt276.group16.models.TranscriptCourse;
 
@@ -31,13 +32,21 @@ public final class PrerequisiteCheck {
     //        RequisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc. Empty means no prerequisites.
     // record: every course in the student's record
     public static Result check(List<RequisiteRule> rules, List<TranscriptCourse> record) {
+        return check(rules, record, List.of());
+    }
+
+    // The same check for a course in a plan (#44).
+    // planned: the courses planned for terms before the one being checked. They count as taken by then,
+    //          but their grades aren't known yet, so each one used is passed on to confirm
+    public static Result check(List<RequisiteRule> rules, List<TranscriptCourse> record,
+            List<PlannedCourse> planned) {
         List<RequisiteRule> roots = rules.stream().filter(rule -> rule.getParent() == null).toList();
         if (roots.isEmpty()) {
             return new Result(true, List.of(), List.of());
         }
 
         // A tree has one root. If there are several, all of them must be met
-        List<Outcome> outcomes = roots.stream().map(root -> evaluate(root, rules, record)).toList();
+        List<Outcome> outcomes = roots.stream().map(root -> evaluate(root, rules, record, planned)).toList();
         Outcome whole = outcomes.size() == 1 ? outcomes.get(0) : and(outcomes);
 
         if (whole.unverifiable) {
@@ -64,12 +73,13 @@ public final class PrerequisiteCheck {
         List<String> toConfirm = new ArrayList<>();
     }
 
-    private static Outcome evaluate(RequisiteRule node, List<RequisiteRule> rules, List<TranscriptCourse> record) {
+    private static Outcome evaluate(RequisiteRule node, List<RequisiteRule> rules, List<TranscriptCourse> record,
+            List<PlannedCourse> planned) {
         if (node.getNodeType() == NodeType.COURSE) {
-            return course(node, record);
+            return course(node, record, planned);
         }
         if (node.getNodeType() == NodeType.MIN_UNITS) {
-            return units(node, record);
+            return units(node, record, planned);
         }
         if (node.getNodeType() == NodeType.SPECIAL) {
             Outcome special = new Outcome();
@@ -79,7 +89,7 @@ public final class PrerequisiteCheck {
         }
         List<Outcome> children = rules.stream()
                 .filter(rule -> rule.getParent() != null && sameNode(rule.getParent(), node))
-                .map(child -> evaluate(child, rules, record))
+                .map(child -> evaluate(child, rules, record, planned))
                 .toList();
         return node.getNodeType() == NodeType.AND ? and(children) : or(children);
     }
@@ -135,7 +145,7 @@ public final class PrerequisiteCheck {
         return result;
     }
 
-    private static Outcome course(RequisiteRule node, List<TranscriptCourse> record) {
+    private static Outcome course(RequisiteRule node, List<TranscriptCourse> record, List<PlannedCourse> planned) {
         String code = node.getReqSubject() + " " + node.getReqNumber();
         String minGrade = node.getMinGrade();
         List<TranscriptCourse> attempts = record.stream()
@@ -155,6 +165,16 @@ public final class PrerequisiteCheck {
             result.toConfirm.add(minGrade == null
                     ? code + " is still in progress."
                     : code + " is still in progress, and you need " + minGrade + " or better.");
+            return result;
+        }
+        // Planned for an earlier term, so it will be taken by then, with a grade nobody knows yet
+        Optional<PlannedCourse> plannedEarlier = planned.stream().filter(p -> code.equals(p.getCode())).findFirst();
+        if (plannedEarlier.isPresent()) {
+            String term = plannedEarlier.get().getTerm().getName();
+            result.met = true;
+            result.toConfirm.add(minGrade == null
+                    ? code + " is planned for " + term + "."
+                    : code + " is planned for " + term + ", and you need " + minGrade + " or better.");
             return result;
         }
         result.have = bestLetterGrade(attempts);
@@ -184,9 +204,10 @@ public final class PrerequisiteCheck {
                 .orElse(null);
     }
 
-    private static Outcome units(RequisiteRule node, List<TranscriptCourse> record) {
+    private static Outcome units(RequisiteRule node, List<TranscriptCourse> record, List<PlannedCourse> planned) {
         BigDecimal needed = node.getMinUnits();
         UnitTotals.Totals totals = UnitTotals.of(record);
+        BigDecimal plannedUnits = planned.stream().map(PlannedCourse::getUnits).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Outcome result = new Outcome();
         result.phrase = needed.stripTrailingZeros().toPlainString() + " units";
@@ -197,6 +218,10 @@ public final class PrerequisiteCheck {
             // Enough once this term's courses are finished
             result.met = true;
             result.toConfirm.add("Needs " + result.phrase + ", which you'll have after your courses in progress.");
+        } else if (totals.earned().add(totals.inProgress()).add(plannedUnits).compareTo(needed) >= 0) {
+            // Enough once the courses planned before this term are finished too
+            result.met = true;
+            result.toConfirm.add("Needs " + result.phrase + ", which you'll have after the courses planned before then.");
         } else {
             result.have = totals.earned().toPlainString();
         }
