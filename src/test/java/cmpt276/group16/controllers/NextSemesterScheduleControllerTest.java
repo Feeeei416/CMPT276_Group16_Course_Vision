@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 
 import cmpt276.group16.models.*;
 import cmpt276.group16.services.NextSemesterScheduleService;
@@ -123,23 +124,36 @@ class NextSemesterScheduleControllerTest {
                 .andExpect(content().string(containsString("Enter a course code like CMPT 225.")));
     }
 
-        @Test
+    @Test
     void removesACourse() throws Exception {
-    scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
-    Long courseId = scheduleService.coursesFor(priya).get(0).getId();
+        scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+        Long courseId = scheduleService.coursesFor(priya).get(0).getId();
 
-    mockMvc.perform(post("/student/schedule/next-semester/courses/{id}/remove", courseId)
-                    .session(sessionFor(priya)))
-           .andExpect(redirectedUrl("/student/schedule/next-semester"));
+        mockMvc.perform(post("/student/schedule/next-semester/courses/{id}/remove", courseId)
+                .session(sessionFor(priya)))
+                .andExpect(redirectedUrl("/student/schedule/next-semester"))
+                .andExpect(flash().attribute("message", "Course removed."));
 
-    assertThat(scheduleService.coursesFor(priya)).isEmpty();
-}
+        assertThat(scheduleService.coursesFor(priya)).isEmpty();
+    }
 
-@Test
-void showsTimesNotConfirmedWhenASectionHasNoTimes() throws Exception {
-    scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+    @Test
+    void showsTimesNotConfirmedWhenASectionHasNoTimes() throws Exception {
+        scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
 
-    mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
-           .andExpect(content().string(containsString("Times not confirmed")));
-}
+        mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
+                .andExpect(content().string(containsString("Times not confirmed")));
+    }
+
+    @Test
+    void addsACourseThroughTheForm() throws Exception {
+        mockMvc.perform(post("/student/schedule/next-semester/courses").session(sessionFor(priya))
+                .param("offeringId", cmpt225.getId().toString())
+                .param("primarySectionId", d100.getId().toString())
+                .param("attachedSectionId", d101.getId().toString()))
+                .andExpect(redirectedUrl("/student/schedule/next-semester"))
+                .andExpect(flash().attribute("message", "Course added."));
+
+        assertThat(scheduleService.coursesFor(priya)).hasSize(1);
+    }
 }
