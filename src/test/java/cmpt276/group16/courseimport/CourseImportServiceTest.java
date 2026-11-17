@@ -24,12 +24,15 @@ import org.springframework.test.context.transaction.AfterTransaction;
 import cmpt276.group16.config.ClockConfig;
 import cmpt276.group16.courseimport.CourseImportService.ImportRun;
 import cmpt276.group16.models.*;
+import cmpt276.group16.requisites.ManualRules;
+import cmpt276.group16.requisites.RequisiteImportService;
 import cmpt276.group16.services.TermCreator;
 
 // The client is replaced by a mock that answers with the real responses saved in src/test/resources/sfu,
 // so no test calls the SFU API. Each test runs in a transaction that is rolled back afterwards
 @DataJpaTest 
-@Import ({CourseImportService.class, SfuOutlineMapper.class, TermCreator.class, ClockConfig.class})
+@Import ({CourseImportService.class, SfuOutlineMapper.class, TermCreator.class, ClockConfig.class,
+        RequisiteImportService.class, ManualRules.class})
 class CourseImportServiceTest {
     
     // The test that adds a new term uses a year nothing else uses, so cleaning it up can't touch other data
@@ -61,6 +64,9 @@ class CourseImportServiceTest {
  
     @Autowired
     private SectionRepository sectionRepository;
+
+    @Autowired
+    private RequisiteRuleRepository requisiteRuleRepository;
  
     private Term spring;
 
@@ -132,6 +138,54 @@ class CourseImportServiceTest {
         assertThat(sections.get(2).getMeetings()).isEmpty();
     }
 
+    // CMPT 225's prerequisite text is turned into rules as it's saved
+    @Test
+    void parsesPrerequisitesIntoRules() {
+        importService.importTerm(2027, Season.SPRING);
+
+        assertThat(cmpt225().getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
+        assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindAndParentIsNull(cmpt225().getId(),
+                RuleKind.PREREQUISITE)).map(RequisiteRule::getNodeType).contains(NodeType.OR);
+    }
+
+    // Importing again replaces the rules, so the course still has one tree
+    @Test
+    void importingAgainReplacesThePrerequisiteRules() {
+        importService.importTerm(2027, Season.SPRING);
+        int rules = requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(cmpt225().getId(),
+                RuleKind.PREREQUISITE).size();
+
+        importService.importTerm(2027, Season.SPRING);
+
+        assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(cmpt225().getId(),
+                RuleKind.PREREQUISITE)).hasSize(rules);
+    }
+
+    // Text the parser can't read marks the course FAILED, and the rest of the import still saves
+    @Test
+    void prerequisitesThatDontParseDontStopTheImport() throws IOException {
+        String cmpt225Text = "(MACM 101 and (CMPT 125, CMPT 129 or CMPT 135)) or (ENSC 251 and ENSC 252), "
+                + "all with a minimum grade of C-.";
+        // CMPT 276's text, which the parser turns down (see SavedOutlinesTest)
+        String unreadable = "One W course, CMPT 225, (MACM 101 or (ENSC 251 and ENSC 252)) and (MATH 151 or "
+                + "MATH 150), all with a minimum grade of C-. MATH 154 or MATH 157 with at least a B+ may be "
+                + "substituted for MATH 151 or MATH 150.";
+        for (String section : List.of("D100", "D101")) {
+            String outline = saved("cmpt-225-" + section.toLowerCase() + ".json");
+            assertThat(outline).contains(cmpt225Text);
+            when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), eq(section)))
+                    .thenReturn(Optional.of(outline.replace(cmpt225Text, unreadable)));
+        }
+
+        ImportRun run = importService.importTerm(2027, Season.SPRING);
+
+        assertThat(run.error()).isNull();
+        assertThat(cmpt225().getParseStatus()).isEqualTo(Course.ParseStatus.FAILED);
+        assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(cmpt225().getId(),
+                RuleKind.PREREQUISITE)).isEmpty();
+        assertThat(cmpt225Sections()).hasSize(10);
+    }
+
     // Running the same import again updates the rows instead of adding new ones
     @Test
     void importingAgainDoesNotDuplicate() {
@@ -150,7 +204,7 @@ class CourseImportServiceTest {
     }
  
     // A course that is already saved, like a demo course, is updated in place,
-    // and its new prerequisite text has to be parsed again
+    // and its new prerequisite text is parsed again straight away
     @Test
     void updatesACourseThatIsAlreadySaved() {
         Course old = new Course("CMPT", "225", "Old title", new BigDecimal("4.00"), null, "Old prerequisites", null);
@@ -163,7 +217,9 @@ class CourseImportServiceTest {
         Course course = cmpt225();
         assertThat(course.getTitle()).isEqualTo("Data Structures and Programming");
         assertThat(course.getUnits()).isEqualByComparingTo("3");
-        assertThat(course.getParseStatus()).isEqualTo(Course.ParseStatus.NOT_PARSED);
+        assertThat(course.getParseStatus()).isEqualTo(Course.ParseStatus.PARSED);
+        assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindAndParentIsNull(course.getId(),
+                RuleKind.PREREQUISITE)).map(RequisiteRule::getNodeType).contains(NodeType.OR);
     }
  
     // When the API fails partway, nothing is saved and the saved data stays as it was
