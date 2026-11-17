@@ -11,6 +11,7 @@ import cmpt276.group16.models.Grades;
 import cmpt276.group16.models.NodeType;
 import cmpt276.group16.models.RequisiteRule;
 import cmpt276.group16.models.TranscriptCourse;
+import cmpt276.group16.transcript.Terms;
 
 // Checks one course's prerequisite tree against a student's record.
 // Used to list the courses a student can take (#38) and to say why they can't take the others (#39)
@@ -215,5 +216,15 @@ public final class PrerequisiteCheck {
         }
         String have = outcome.have == null ? "" : ", you have " + outcome.have;
         return List.of("Needs " + outcome.phrase + have + ".");
+    }
+
+    // The part of a record that can count towards a course taken in this term: only courses from earlier terms.
+    // A course from this term or a later one is left out, even while it's in progress, so a course added
+    // for next term can't meet a prerequisite for next term. Call check() with this, for example
+    // check(rules, takenBefore(record, "2027 Spring")). Rows whose term isn't in "2025 Fall" format are left out
+    public static List<TranscriptCourse> takenBefore(List<TranscriptCourse> record, String term) {
+        return record.stream()
+                .filter(course -> Terms.OLDEST_FIRST.compare(course.getTerm(), term) < 0)
+                .toList();
     }
 }
