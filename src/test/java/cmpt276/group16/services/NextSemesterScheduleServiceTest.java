@@ -4,32 +4,41 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
-
 import cmpt276.group16.models.*;
 
 // @DataJpaTest only loads repositories, so the service is built by hand with a fixed date
 @DataJpaTest
 public class NextSemesterScheduleServiceTest {
-     private static final Clock NOV_9_2026 =
-            Clock.fixed(Instant.parse("2026-11-09T20:00:00Z"), ZoneId.of("America/Vancouver"));
+    private static final Clock NOV_9_2026 = Clock.fixed(Instant.parse("2026-11-09T20:00:00Z"),
+            ZoneId.of("America/Vancouver"));
 
-    @Autowired private UserRepository userRepository;
-    @Autowired private StudentProfileRepository studentProfileRepository;
-    @Autowired private TermRepository termRepository;
-    @Autowired private CourseRepository courseRepository;
-    @Autowired private CourseOfferingRepository courseOfferingRepository;
-    @Autowired private SectionRepository sectionRepository;
-    @Autowired private NextSemesterScheduleRepository scheduleRepository;
-    @Autowired private ScheduledCourseRepository scheduledCourseRepository;
-    
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private StudentProfileRepository studentProfileRepository;
+    @Autowired
+    private TermRepository termRepository;
+    @Autowired
+    private CourseRepository courseRepository;
+    @Autowired
+    private CourseOfferingRepository courseOfferingRepository;
+    @Autowired
+    private SectionRepository sectionRepository;
+    @Autowired
+    private NextSemesterScheduleRepository scheduleRepository;
+    @Autowired
+    private ScheduledCourseRepository scheduledCourseRepository;
 
     private NextSemesterScheduleService service;
     private StudentProfile priya;
@@ -40,7 +49,7 @@ public class NextSemesterScheduleServiceTest {
     @BeforeEach
     void setUp() {
         service = new NextSemesterScheduleService(scheduleRepository, scheduledCourseRepository,
-        sectionRepository, termRepository, courseOfferingRepository, studentProfileRepository, NOV_9_2026);
+                sectionRepository, termRepository, courseOfferingRepository, studentProfileRepository, NOV_9_2026);
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
 
@@ -60,6 +69,19 @@ public class NextSemesterScheduleServiceTest {
         return studentProfileRepository.saveAndFlush(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
     }
 
+    // Saves a course offered next semester with one lecture at the given time, and
+    // returns the lecture
+    private Section saveLecture(String subject, String number, String units,
+            DayOfWeek day, LocalTime start, LocalTime end) {
+        Term spring2027 = termRepository.findByTermYearAndSeason(2027, Season.SPRING).orElseThrow();
+        Course course = courseRepository.save(
+                new Course(subject, number, subject + " " + number, new BigDecimal(units), null, null, null));
+        CourseOffering offering = courseOfferingRepository.save(new CourseOffering(course, spring2027, true));
+        Section lecture = new Section(offering, "D100", SectionType.LEC, true, "1");
+        lecture.replaceMeetings(List.of(new SectionMeeting(day, start, end, null)));
+        return sectionRepository.save(lecture);
+    }
+
     // Test 1: the happy path
     @Test
     void addsALectureAndItsTutorial() {
@@ -74,8 +96,9 @@ public class NextSemesterScheduleServiceTest {
                 .containsExactly("That lab or tutorial doesn't go with the lecture you chose.");
         assertThat(service.coursesFor(priya)).isEmpty();
     }
-    
-    // Test 3: a course can only be in the schedule once, even with different sections
+
+    // Test 3: a course can only be in the schedule once, even with different
+    // sections
     @Test
     void rejectsTheSameCourseTwice() {
         service.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
@@ -111,5 +134,52 @@ public class NextSemesterScheduleServiceTest {
         assertThat(service.addCourse(priya, cmpt225.getId(), d100.getId(), null))
                 .containsExactly("Choose a lab or tutorial for this lecture.");
         assertThat(service.coursesFor(priya)).isEmpty();
+    }
+
+    // #41: total units adds up every course in the schedule
+    @Test
+    void totalUnitsAddsUpCourses() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.TUESDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
+        Section math = saveLecture("MATH", "152", "4", DayOfWeek.WEDNESDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+        service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+
+        assertThat(service.totalUnits(priya)).isEqualByComparingTo("7");
+    }
+
+    // #41: Computer Engineering gets SFU's Engineering Science limit
+    @Test
+    void unitLimitDependsOnProgram() {
+        User user = userRepository.saveAndFlush(new User("ana@example.com", "hash", "Student", Role.STUDENT));
+        StudentProfile engineer = studentProfileRepository.saveAndFlush(
+                new StudentProfile(user, Program.COMPUTER_ENGINEERING, 2024));
+
+        assertThat(service.unitLimitFor(priya)).isEqualByComparingTo("18");
+        assertThat(service.unitLimitFor(engineer)).isEqualByComparingTo("22");
+    }
+
+    // #41: classes that overlap on the same day are found, and adding still works
+    // (it only warns)
+    @Test
+    void findsOverlappingClassesButStillSaves() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        Section math = saveLecture("MATH", "152", "4", DayOfWeek.MONDAY, LocalTime.of(11, 0), LocalTime.of(12, 0));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+
+        assertThat(service.addCourse(priya, math.getOffering().getId(), math.getId(), null)).isEmpty();
+        assertThat(service.conflicts(priya)).hasSize(1);
+        assertThat(service.conflicts(priya).get(0).first().course()).isEqualTo("MACM 201");
+        assertThat(service.conflicts(priya).get(0).second().course()).isEqualTo("MATH 152");
+    }
+
+    // #41: back-to-back classes don't overlap
+    @Test
+    void backToBackClassesDontConflict() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        Section math = saveLecture("MATH", "152", "4", DayOfWeek.MONDAY, LocalTime.of(11, 20), LocalTime.of(12, 20));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+        service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+
+        assertThat(service.conflicts(priya)).isEmpty();
     }
 }
