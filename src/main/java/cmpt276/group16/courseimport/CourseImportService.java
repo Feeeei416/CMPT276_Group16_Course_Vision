@@ -29,6 +29,7 @@ import cmpt276.group16.models.SectionMeeting;
 import cmpt276.group16.models.SectionRepository;
 import cmpt276.group16.models.Term;
 import cmpt276.group16.models.TermRepository;
+import cmpt276.group16.requisites.RequisiteImportService;
 import cmpt276.group16.services.TermCreator;
 
 // Imports one term's CMPT, ENSC, MACM and MATH undergraduate courses from the SFU Course Outlines API.
@@ -78,6 +79,7 @@ public class CourseImportService {
     private final CourseDesignationRepository designationRepository;
     private final CourseOfferingRepository offeringRepository;
     private final SectionRepository sectionRepository;
+    private final RequisiteImportService requisiteImportService;
     private final TransactionTemplate transaction;
     private final Clock clock;
 
@@ -90,7 +92,8 @@ public class CourseImportService {
     public CourseImportService(SfuCourseOutlinesClient client, SfuOutlineMapper mapper,
             TermRepository termRepository, TermCreator termCreator, CourseRepository courseRepository,
             CourseDesignationRepository designationRepository, CourseOfferingRepository offeringRepository,
-            SectionRepository sectionRepository, PlatformTransactionManager transactionManager, Clock clock) {
+            SectionRepository sectionRepository, RequisiteImportService requisiteImportService,
+            PlatformTransactionManager transactionManager, Clock clock) {
         this.client = client;
         this.mapper = mapper;
         this.termRepository = termRepository;
@@ -99,6 +102,7 @@ public class CourseImportService {
         this.designationRepository = designationRepository;
         this.offeringRepository = offeringRepository;
         this.sectionRepository = sectionRepository;
+        this.requisiteImportService = requisiteImportService;
         // Runs only the save step in a transaction, so the slow API calls before it don't hold a database connection,
         // and a failure while saving rolls back everything saved in this import
         this.transaction = new TransactionTemplate(transactionManager);
@@ -235,6 +239,9 @@ public class CourseImportService {
                 continue;
             }
             saveDesignations(course.get(), f.details().designations());
+            // Turns the prerequisite text just saved into rules. Text that doesn't parse marks the course
+            // FAILED instead of stopping the import, so students are shown the Calendar text for it
+            requisiteImportService.importPrerequisites(course.get());
             CourseOffering offering = saveOffering(course.get(), term);
             offeringIds.add(offering.getId());
             removedSections += saveSections(offering, f.sections());
