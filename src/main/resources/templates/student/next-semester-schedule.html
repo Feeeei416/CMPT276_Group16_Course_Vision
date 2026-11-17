@@ -70,11 +70,11 @@
 
           <label
             >Lecture
-            <select name="primarySectionId" class="input" required>
+            <select name="primarySectionId" id="lecture-select" class="input" required></select>
               <option value="">-- Choose a lecture --</option>
               <option
                 th:each="s : ${lectures}"
-                th:value="${s.id}"
+                th:data-group="${s.associatedClass}"
                 th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
               >
                 D100 LEC – MONDAY 10:30-11:20
@@ -84,11 +84,12 @@
 
           <label th:unless="${attachedSections.isEmpty()}"
             >Lab or tutorial
-            <select name="attachedSectionId" class="input">
+            <select name="attachedSectionId" id="attached-select" class="input"></select>
               <option value="">-- Choose a lab or tutorial --</option>
               <option
                 th:each="s : ${attachedSections}"
                 th:value="${s.id}"
+                th:data-group="${s.associatedClass}"
                 th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
               >
                 D101 TUT – FRIDAY 9:30-10:20
@@ -146,5 +147,29 @@
         <a th:href="@{/student/home}" class="link">Back to home</a>
       </div>
     </main>
+    <script>
+    // Shows only the labs and tutorials that go with the chosen lecture (same group number).
+    // Without JavaScript every one is listed, and the server still rejects a pair that doesn't match
+    const lectureSelect = document.getElementById('lecture-select');
+    const attachedSelect = document.getElementById('attached-select');
+    if (lectureSelect && attachedSelect) {
+        const showMatching = () => {
+            const group = lectureSelect.selectedOptions[0].dataset.group;
+            for (const option of attachedSelect.options) {
+                if (!option.value) {
+                    continue;
+                }
+                const matches = !group || option.dataset.group === group;
+                option.hidden = !matches;
+                option.disabled = !matches;
+            }
+            if (attachedSelect.selectedOptions[0].disabled) {
+                attachedSelect.value = '';
+            }
+        };
+        lectureSelect.addEventListener('change', showMatching);
+        showMatching();
+    }
+</script>
   </body>
 </html>
