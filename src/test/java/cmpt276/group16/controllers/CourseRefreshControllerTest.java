@@ -74,8 +74,10 @@ class CourseRefreshControllerTest {
         return session;
     }
  
+    // Finished in July, when Vancouver is UTC-7 under both the old and new time zone rules.
+    // BC stopped changing its clocks in 2026, so a November time shows an hour later on newer Java versions
     private static ImportRun run(List<String> notes, String error) {
-        return new ImportRun(2027, Season.SPRING, Instant.parse("2026-11-09T23:10:00Z"), 52, 310, 2, 1, notes, error);
+        return new ImportRun(2027, Season.SPRING, Instant.parse("2026-07-09T22:10:00Z"), 52, 310, 2, 1, notes, error);
     }
 
     // -- The page --
@@ -98,7 +100,7 @@ class CourseRefreshControllerTest {
         when(importService.lastRun()).thenReturn(Optional.of(run(List.of("MATH 495 has no outline, skipped"), null)));
  
         mockMvc.perform(get("/it/course-refresh").session(sessionFor(Role.IT_MANAGER)))
-               .andExpect(content().string(containsString("Nov 9, 2026, 3:10 PM")))
+               .andExpect(content().string(containsString("Jul 9, 2026, 3:10 PM")))
                .andExpect(content().string(containsString("52 courses and 310 sections saved")))
                .andExpect(content().string(containsString("MATH 495 has no outline, skipped")));
     }
