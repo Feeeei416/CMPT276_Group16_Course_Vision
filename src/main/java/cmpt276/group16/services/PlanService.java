@@ -5,10 +5,12 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.Term;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
@@ -43,24 +46,30 @@ public class PlanService {
     private final TermRepository termRepository;
     private final CourseRepository courseRepository;
     private final StudentProfileRepository studentProfileRepository;
+    private final TermCreator termCreator;
     private final Clock clock;
 
     public PlanService(PlanRepository planRepository, PlanTermRepository planTermRepository,
             PlannedCourseRepository plannedCourseRepository, TermRepository termRepository,
-            CourseRepository courseRepository, StudentProfileRepository studentProfileRepository, Clock clock) {
+            CourseRepository courseRepository, StudentProfileRepository studentProfileRepository,
+            TermCreator termCreator, Clock clock) {
         this.planRepository = planRepository;
         this.planTermRepository = planTermRepository;
         this.plannedCourseRepository = plannedCourseRepository;
         this.termRepository = termRepository;
         this.courseRepository = courseRepository;
         this.studentProfileRepository = studentProfileRepository;
+        this.termCreator = termCreator;
         this.clock = clock;
     }
 
     // One term as the My plan page shows it: the term, its courses in the order they were added, and their units
     public record TermPlan(PlanTerm term, List<PlannedCourse> courses) {
 
-        // For example "9 units", or "1 unit"
+        // For example "9 units", or "1 unit".
+        // Counts every course in the term, including a co-op work term course like CMPT 426. Those units don't
+        // count towards an SFU degree, so anything that totals planned units for a degree (the Graduation Report,
+        // or the unit check in #44) has to leave them out with PlanRules.isCoopCourse
         public String unitsText() {
             BigDecimal total = courses.stream().map(PlannedCourse::getUnits).reduce(BigDecimal.ZERO, BigDecimal::add);
             String units = total.stripTrailingZeros().toPlainString();
@@ -68,26 +77,60 @@ public class PlanService {
         }
     }
 
+    // The plan My plan opens to. Empty until the student adds their first term or makes their first plan
+    @Transactional(readOnly = true)
+    public Optional<Plan> mainPlan(StudentProfile student) {
+        return planRepository.findByStudentAndMainTrue(student);
+    }
+
     // Every term in the student's main plan, oldest first.
     // Empty until the student adds their first term, so opening the page never writes to the database
     @Transactional(readOnly = true)
     public List<TermPlan> termPlans(StudentProfile student) {
-        Optional<Plan> plan = planRepository.findByStudentAndMainTrue(student);
-        if (plan.isEmpty()) {
-            return List.of();
-        }
-        Map<Long, List<PlannedCourse>> coursesByTermId = plannedCourseRepository.findByTermPlan(plan.get()).stream()
+        return mainPlan(student).map(this::termPlans).orElse(List.of());
+    }
+
+    // Every term in this plan, oldest first, with its courses in the order they were added
+    @Transactional(readOnly = true)
+    public List<TermPlan> termPlans(Plan plan) {
+        Map<Long, List<PlannedCourse>> coursesByTermId = plannedCourseRepository.findByTermPlan(plan).stream()
                 .sorted(Comparator.comparing(PlannedCourse::getId))
                 .collect(Collectors.groupingBy(course -> course.getTerm().getId()));
-        return planTermRepository.findByPlan(plan.get()).stream()
+        return planTermRepository.findByPlan(plan).stream()
                 .sorted(PlanTerm.OLDEST_FIRST)
                 .map(term -> new TermPlan(term, coursesByTermId.getOrDefault(term.getId(), List.of())))
                 .toList();
     }
 
+    // Adds a study term to the main plan, making the plan if the student doesn't have one yet
     @Transactional
     public PlanChange addTerm(StudentProfile student, int year, String seasonText) {
+        return addTerm(student, null, year, seasonText, "");
+    }
+
+    // Adds a study term to this plan, or to the main plan when planId is null
+    @Transactional
+    public PlanChange addTerm(StudentProfile student, Long planId, int year, String seasonText) {
+        return addTerm(student, planId, year, seasonText, "");
+    }
+
+    // planId is the plan to add the term to, or null for the main plan.
+    // Removing and adding courses don't need one: the term or course id already says which plan it's in.
+    // kindText is STUDY, COOP or GAP; blank means a study term
+    @Transactional
+    public PlanChange addTerm(StudentProfile student, Long planId, int year, String seasonText, String kindText) {
         lock(student);
+        Optional<TermKind> kind = PlanRules.parseTermKind(kindText);
+        if (kind.isEmpty()) {
+            return PlanChange.rejected("Choose Study, Co-op or Gap.");
+        }
+        Optional<Plan> chosenPlan = Optional.empty();
+        if (planId != null) {
+            chosenPlan = planRepository.findByIdAndStudent(planId, student);
+            if (chosenPlan.isEmpty()) {
+                return PlanChange.rejected("That plan isn't one of yours.");
+            }
+        }
         Optional<Season> season = PlanRules.parseSeason(seasonText);
         if (season.isEmpty()) {
             return PlanChange.rejected("Choose Spring, Summer or Fall.");
@@ -97,12 +140,16 @@ public class PlanService {
             return PlanChange.rejected(problems);
         }
         String name = PlanTerm.nameOf(year, season.get());
-        Plan plan = mainPlanFor(student);
+        Plan plan = chosenPlan.orElseGet(() -> mainPlanFor(student));
         Term term = termFor(year, season.get());
         if (planTermRepository.existsByPlanAndTerm(plan, term)) {
             return PlanChange.rejected(name + " is already in your plan.");
         }
-        PlanTerm added = planTermRepository.save(new PlanTerm(plan, term));
+        PlanTerm added = planTermRepository.save(new PlanTerm(plan, term, kind.get()));
+        if (kind.get() != TermKind.STUDY) {
+            return PlanChange.saved("Added " + name + " to your plan as a "
+                    + kind.get().getShowName().toLowerCase(Locale.ROOT) + " term.", added);
+        }
         return PlanChange.saved("Added " + name + " to your plan.", added);
     }
 
@@ -134,6 +181,12 @@ public class PlanService {
         if (term.isEmpty()) {
             return PlanChange.rejected("That term isn't in your plan.");
         }
+        // The page hides Add course on gap terms, but the form can still be sent by hand
+        if (!term.get().getKind().takesCourses()) {
+            return PlanChange.rejected(term.get().getName() + " is a "
+                    + term.get().getKind().getShowName().toLowerCase(Locale.ROOT) + " term, so it doesn't hold courses.",
+                    term.get());
+        }
         Optional<CourseCode> parsed = PlanRules.parseCourseCode(code);
         if (parsed.isEmpty()) {
             return PlanChange.rejected("Enter a course code like CMPT 225.", term.get());
@@ -143,6 +196,10 @@ public class PlanService {
             return PlanChange.rejected(parsed.get().subject() + " " + parsed.get().number()
                     + " isn't in the course list.", term.get());
         }
+        Optional<String> wrongKind = wrongKindOfTerm(course.get(), term.get());
+        if (wrongKind.isPresent()) {
+            return PlanChange.rejected(wrongKind.get(), term.get());
+        }
         // Checks the whole plan, not just this term, since a course only needs to be taken once
         Optional<PlannedCourse> alreadyPlanned = plannedCourseRepository
                 .findByTermPlanAndCourse(term.get().getPlan(), course.get());
@@ -150,7 +207,42 @@ public class PlanService {
             return PlanChange.rejected(alreadyPlannedMessage(alreadyPlanned.get(), term.get()), term.get());
         }
         PlannedCourse added = plannedCourseRepository.save(new PlannedCourse(term.get(), course.get()));
+        // A course during a work term is allowed, but only with approval, so the student is told when it's saved
+        if (term.get().getKind() == TermKind.COOP
+                && !PlanRules.isCoopCourse(course.get().getSubject(), course.get().getNumber())) {
+            return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ". Taking a course "
+                    + "during a work term needs your employer's and co-op coordinator's approval.", term.get());
+        }
         return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ".", term.get());
+    }
+
+    // A work term course only goes in a co-op term, so the plan always shows which terms are work terms.
+    // A co-op term holds one work term course and at most one other course, which is SFU's limit during a work term.
+    // Empty when the course fits the term
+    private Optional<String> wrongKindOfTerm(Course course, PlanTerm term) {
+        boolean coopCourse = PlanRules.isCoopCourse(course.getSubject(), course.getNumber());
+        String code = course.getSubject() + " " + course.getNumber();
+        if (term.getKind() == TermKind.STUDY && coopCourse) {
+            return Optional.of(code + " is a co-op work term, so it goes in a co-op term. Add a co-op term for it, "
+                    + "then add " + code + " there.");
+        }
+        if (term.getKind() != TermKind.COOP) {
+            return Optional.empty();
+        }
+        // A co-op term holds one work term course, and SFU allows at most one other course during a work term
+        Optional<PlannedCourse> sameKind = plannedCourseRepository.findByTermOrderByIdAsc(term).stream()
+                .filter(planned -> PlanRules.isCoopCourse(planned.getCourse().getSubject(),
+                        planned.getCourse().getNumber()) == coopCourse)
+                .findFirst();
+        if (sameKind.isEmpty()) {
+            return Optional.empty();
+        }
+        if (coopCourse) {
+            return Optional.of(term.getName() + " already has " + sameKind.get().getCode()
+                    + ". A co-op term holds one work term course.");
+        }
+        return Optional.of(term.getName() + " already has " + sameKind.get().getCode() + ". SFU allows at most one "
+                + "course during a work term, and only with your employer's and co-op coordinator's approval.");
     }
 
     // Says which term the course is already in, and how to move it when that's a different term
@@ -192,9 +284,19 @@ public class PlanService {
     }
 
     // Plans reach terms the course import hasn't seen yet, so the shared term is created if it's missing
+    // The student lock doesn't cover this: two different students can add the same new term at the same moment.
+    // Whoever saves second gets the unique-rule error, and then finds the row the other one just saved.
+    // If there's no row, the save failed for some other reason, so that error is thrown again instead of being lost
     private Term termFor(int year, Season season) {
-        return termRepository.findByTermYearAndSeason(year, season)
-                .orElseGet(() -> termRepository.save(new Term(year, season)));
+        Optional<Term> existing = termRepository.findByTermYearAndSeason(year, season);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return termCreator.create(year, season);
+        } catch (DataIntegrityViolationException e) {
+            return termRepository.findByTermYearAndSeason(year, season).orElseThrow(() -> e);
+        }
     }
 
     // Held until the change's transaction ends; another change for the same student waits here

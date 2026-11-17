@@ -77,30 +77,41 @@ class SimultaneousPlanChangesTest {
     private CourseRepository courseRepository;
 
     private StudentProfile priya;
+    private StudentProfile marcus;
     private Course macm101;
     private final ExecutorService pool = Executors.newFixedThreadPool(2);
 
     @BeforeEach
-    void savePriya() {
-        User user = userRepository.save(new User("simultaneous.plan@example.com", "hash", "Priya", Role.STUDENT));
-        priya = studentProfileRepository.save(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
+    void saveStudents() {
+        priya = saveStudent("simultaneous.plan@example.com", "Priya");
+        marcus = saveStudent("simultaneous.plan2@example.com", "Marcus");
         macm101 = courseRepository.save(new Course("MACM", "101", "Discrete Mathematics I", new BigDecimal("3.00"),
                 null, null, null));
+    }
+
+    private StudentProfile saveStudent(String email, String name) {
+        User user = userRepository.save(new User(email, "hash", name, Role.STUDENT));
+        return studentProfileRepository.save(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
     }
 
     // Children first, since each row points at the one before it
     @AfterEach
     void deleteEverything() {
         pool.shutdown();
-        planRepository.findByStudentAndMainTrue(priya).ifPresent(plan -> {
-            plannedCourseRepository.deleteAll(plannedCourseRepository.findByTermPlan(plan));
-            planTermRepository.deleteAll(planTermRepository.findByPlan(plan));
-            planRepository.delete(plan);
-        });
+        for (StudentProfile student : List.of(priya, marcus)) {
+            planRepository.findByStudentAndMainTrue(student).ifPresent(plan -> {
+                plannedCourseRepository.deleteAll(plannedCourseRepository.findByTermPlan(plan));
+                planTermRepository.deleteAll(planTermRepository.findByPlan(plan));
+                planRepository.delete(plan);
+            });
+        }
         termRepository.findByTermYearAndSeason(2027, Season.FALL).ifPresent(termRepository::delete);
+        termRepository.findByTermYearAndSeason(2030, Season.FALL).ifPresent(termRepository::delete);
         courseRepository.delete(macm101);
-        studentProfileRepository.delete(priya);
-        userRepository.delete(priya.getUser());
+        for (StudentProfile student : List.of(priya, marcus)) {
+            studentProfileRepository.delete(student);
+            userRepository.delete(student.getUser());
+        }
     }
 
     // The barrier holds both threads until both are ready, so the two changes really do overlap
@@ -127,6 +138,23 @@ class SimultaneousPlanChangesTest {
 
         assertThat(results).containsExactlyInAnyOrder(List.of(), List.of("2027 Fall is already in your plan."));
         assertThat(planService.termPlans(priya)).hasSize(1);
+    }
+
+    // Two different students, so the student lock doesn't make them wait for each other. Both miss 2030 Fall in
+    // terms and try to save it; the second save breaks the unique rule and has to find the first one's row
+    @Test
+    void twoStudentsAddingTheSameNewTermAtOnceBothSucceed() throws Exception {
+        List<List<String>> results = atOnce(() -> planService.addTerm(priya, 2030, "FALL").problems(),
+                () -> planService.addTerm(marcus, 2030, "FALL").problems());
+
+        assertThat(results).containsExactly(List.of(), List.of());
+        assertThat(termRepository.findAll())
+                .filteredOn(term -> term.getTermYear() == 2030 && term.getSeason() == Season.FALL)
+                .hasSize(1);
+        assertThat(planService.termPlans(priya)).extracting(termPlan -> termPlan.term().getName())
+                .containsExactly("2030 Fall");
+        assertThat(planService.termPlans(marcus)).extracting(termPlan -> termPlan.term().getName())
+                .containsExactly("2030 Fall");
     }
 
     @Test

@@ -3,6 +3,8 @@ package cmpt276.group16.models;
 import java.util.Objects;
 import java.math.BigDecimal;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import jakarta.persistence.*;
 
 // One node in a course's requisite tree. For example, CMPT 225's prerequisites are stored as:
@@ -61,6 +63,13 @@ public class RequisiteRule {
 
     // Only for course nodes: the lowest grade that counts, for example "C-"; null if any passing grade counts
     private String minGrade;
+
+    // Only for course nodes: true if the required course can also be taken in the same term,
+    // from Calendar text like "MATH 260 may be taken concurrently."
+    // The default lets the column be added to a table that already has rows
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private boolean concurrentOk;
 
     // Only for special nodes: requirement text that can't be turned into courses,
     // for example "permission of the instructor"
@@ -165,6 +174,14 @@ public class RequisiteRule {
 
     public void setMinGrade(String minGrade) {
         this.minGrade = minGrade;
+    }
+
+    public boolean isConcurrentOk() {
+        return concurrentOk;
+    }
+
+    public void setConcurrentOk(boolean concurrentOk) {
+        this.concurrentOk = concurrentOk;
     }
 
     public String getSpecialText() {

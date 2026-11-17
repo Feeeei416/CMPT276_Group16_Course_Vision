@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
+import cmpt276.group16.services.UnitTotals;
 import cmpt276.group16.transcript.CourseInput;
 import cmpt276.group16.transcript.Terms;
 import cmpt276.group16.transcript.TranscriptService;
@@ -74,8 +75,8 @@ public class ViewMyCoursesController {
         Map<String, List<TranscriptCourse>> coursesByTerm = courses.stream().collect(
                 Collectors.groupingBy(TranscriptCourse::getTerm, () -> new TreeMap<>(Terms.OLDEST_FIRST), Collectors.toList()));
         model.addAttribute("coursesByTerm", coursesByTerm);
+        model.addAttribute("units", UnitTotals.of(courses));
         CourseForms.addTo(model, form, errors);
         return "student/view-courses";
     }
 }
-

@@ -1,7 +1,8 @@
 package cmpt276.group16.models;
 
 import java.util.Comparator;
-import java.util.Locale;
+
+import org.hibernate.annotations.ColumnDefault;
 
 import jakarta.persistence.*;
 
@@ -30,11 +31,26 @@ public class PlanTerm {
     @JoinColumn(name = "term_id", nullable = false)
     private Term term;
 
+    // The default fills in rows saved before this column existed, which were all study terms
+    @Enumerated(EnumType.STRING)
+    @ColumnDefault("'STUDY'")
+    @Column(nullable = false)
+    private TermKind kind;
+
     protected PlanTerm() {}
 
     public PlanTerm(Plan plan, Term term) {
+        this(plan, term, TermKind.STUDY);
+    }
+
+    public PlanTerm(Plan plan, Term term, TermKind kind) {
         this.plan = plan;
         this.term = term;
+        this.kind = kind;
+    }
+
+    public TermKind getKind() {
+        return kind;
     }
 
     public Long getId() {
@@ -55,7 +71,6 @@ public class PlanTerm {
     }
 
     public static String nameOf(int year, Season season) {
-        String name = season.name();
-        return year + " " + name.charAt(0) + name.substring(1).toLowerCase(Locale.ROOT);
+        return year + " " + season.getShowName();
     }
 }

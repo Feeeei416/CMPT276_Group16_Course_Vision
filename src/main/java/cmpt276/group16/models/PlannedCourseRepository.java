@@ -21,4 +21,7 @@ public interface PlannedCourseRepository extends JpaRepository<PlannedCourse, Lo
 
     // Used when a term is removed, so its courses go with it
     long deleteByTerm(PlanTerm term);
+
+    // Used when a plan is deleted, so every course in every term goes with it
+    long deleteByTermPlan(Plan plan);
 }

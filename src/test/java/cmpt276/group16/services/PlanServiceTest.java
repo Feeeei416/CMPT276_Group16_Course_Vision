@@ -1,6 +1,7 @@
 package cmpt276.group16.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.math.BigDecimal;
@@ -18,9 +19,11 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.CourseRepository;
+import cmpt276.group16.models.Plan;
 import cmpt276.group16.models.PlanRepository;
 import cmpt276.group16.models.PlanTermRepository;
 import cmpt276.group16.models.PlannedCourse;
@@ -30,6 +33,8 @@ import cmpt276.group16.models.Role;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
+import cmpt276.group16.models.Term;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.models.TermRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
@@ -75,7 +80,7 @@ class PlanServiceTest {
     @BeforeEach
     void setUp() {
         planService = new PlanService(planRepository, planTermRepository, plannedCourseRepository, termRepository,
-                courseRepository, studentProfileRepository, NOV_9_2026);
+                courseRepository, studentProfileRepository, new TermCreator(termRepository), NOV_9_2026);
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
         // The courses the tests plan; anything else isn't in the course list
@@ -152,6 +157,55 @@ class PlanServiceTest {
         assertThat(planRepository.count()).isEqualTo(1);
     }
 
+    // -- Other plans (#43) --
+
+    // A term added from another plan's page goes into that plan, and the main plan stays as it was
+    @Test
+    void termGoesIntoTheChosenPlan() {
+        planService.addTerm(priya, 2027, "FALL");
+        Plan coop = planRepository.saveAndFlush(new Plan(priya, "Co-op plan", false));
+
+        PlanChange change = planService.addTerm(priya, coop.getId(), 2028, "SPRING");
+
+        assertThat(change.isSaved()).isTrue();
+        assertThat(planOf(priya).keySet()).containsExactly("2027 Fall");
+        assertThat(planService.termPlans(coop)).extracting(termPlan -> termPlan.term().getName())
+            .containsExactly("2028 Spring");
+    }
+
+    // Each plan has its own terms, so the same term can be in two of a student's plans
+    @Test
+    void sameTermCanBeInTwoOfAStudentsPlans() {
+        planService.addTerm(priya, 2027, "FALL");
+        Plan coop = planRepository.saveAndFlush(new Plan(priya, "Co-op plan", false));
+
+        assertThat(planService.addTerm(priya, coop.getId(), 2027, "FALL").isSaved()).isTrue();
+    }
+
+    @Test
+    void cantAddATermToAnotherStudentsPlan() {
+        Plan marcusPlan = planRepository.saveAndFlush(new Plan(marcus, "My plan", true));
+
+        PlanChange change = planService.addTerm(priya, marcusPlan.getId(), 2027, "FALL");
+
+        assertThat(change.problems()).containsExactly("That plan isn't one of yours.");
+        assertThat(planTermRepository.count()).isZero();
+        // Priya didn't get a plan made for her either
+        assertThat(planService.mainPlan(priya)).isEmpty();
+    }
+
+    // A course only has to be planned once per plan, so another plan can have it in a different term
+    @Test
+    void sameCourseCanBeInDifferentTermsOfDifferentPlans() {
+        planService.addTerm(priya, 2027, "FALL");
+        planService.addCourse(priya, termPlan(priya, "2027 Fall").term().getId(), "CMPT 225");
+        Plan lighter = planRepository.saveAndFlush(new Plan(priya, "Lighter load", false));
+        planService.addTerm(priya, lighter.getId(), 2028, "SPRING");
+        Long lighterSpring = planService.termPlans(lighter).get(0).term().getId();
+
+        assertThat(planService.addCourse(priya, lighterSpring, "CMPT 225").isSaved()).isTrue();
+    }
+
     // The import may not have reached a term yet, so adding it to a plan creates the shared row.
     // A second student planning the same term reuses that row
     @Test
@@ -165,6 +219,24 @@ class PlanServiceTest {
             .filteredOn(term -> term.getTermYear() == 2028 && term.getSeason() == Season.FALL)
             .hasSize(1);
         assertThat(planOf(marcus).keySet()).containsExactly("2028 Fall");
+    }
+
+    // When saving the term fails for a reason other than another student saving it first, there's no row to
+    // fall back on, so the database's own error comes out instead of a bare "No value present"
+    @Test
+    void otherTermSaveErrorsArentHidden() {
+        TermCreator failingCreator = new TermCreator(termRepository) {
+            @Override
+            public Term create(int year, Season season) {
+                throw new DataIntegrityViolationException("NULL not allowed for column \"season\"");
+            }
+        };
+        PlanService failingService = new PlanService(planRepository, planTermRepository, plannedCourseRepository,
+                termRepository, courseRepository, studentProfileRepository, failingCreator, NOV_9_2026);
+
+        assertThatThrownBy(() -> failingService.addTerm(priya, 2028, "FALL"))
+            .isInstanceOf(DataIntegrityViolationException.class)
+            .hasMessageContaining("NULL not allowed");
     }
 
     // The rules are tested in PlanRulesTest; this checks the service uses them and saves nothing on an error
@@ -358,5 +430,120 @@ class PlanServiceTest {
     void usesTheClockForNextSemesterAndYears() {
         assertThat(planService.nextSemester()).isEqualTo("2027 Spring");
         assertThat(planService.plannableYears()).startsWith(2027).endsWith(2033);
+    }
+
+    // -- Co-op and gap terms (#43) --
+
+    @Test
+    void addsACoopTerm() {
+        PlanChange change = planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+
+        assertThat(change.message()).isEqualTo("Added 2028 Summer to your plan as a co-op term.");
+        assertThat(termPlan(priya, "2028 Summer").term().getKind()).isEqualTo(TermKind.COOP);
+    }
+
+    @Test
+    void termsAreStudyTermsByDefault() {
+        planService.addTerm(priya, 2027, "FALL");
+
+        assertThat(termPlan(priya, "2027 Fall").term().getKind()).isEqualTo(TermKind.STUDY);
+    }
+
+    @Test
+    void rejectsAnUnknownKindAndSavesNothing() {
+        assertThat(planService.addTerm(priya, null, 2028, "SUMMER", "INTERNSHIP").problems())
+            .containsExactly("Choose Study, Co-op or Gap.");
+        assertThat(planTermRepository.count()).isZero();
+    }
+
+    // The page hides Add course on gap terms; this is the check behind it, for a form sent by hand
+    @Test
+    void gapTermsDontTakeCourses() {
+        planService.addTerm(priya, null, 2028, "FALL", "GAP");
+
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2028 Fall").term().getId(), "CMPT 225");
+
+        assertThat(change.problems()).containsExactly("2028 Fall is a gap term, so it doesn't hold courses.");
+        assertThat(change.termId()).isEqualTo(termPlan(priya, "2028 Fall").term().getId());
+        assertThat(plannedCourseRepository.count()).isZero();
+    }
+
+    @Test
+    void coopTermTakesItsWorkTermCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "cmpt 426");
+
+        assertThat(change.message()).isEqualTo("Added CMPT 426 to 2028 Summer.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 426")));
+    }
+
+    // SFU allows one course during a work term with approval, so it's saved with a note saying so
+    @Test
+    void coopTermTakesOneOtherCourseWithANote() {
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "CMPT 225");
+
+        assertThat(change.message()).isEqualTo("Added CMPT 225 to 2028 Summer. Taking a course during a work term "
+                + "needs your employer's and co-op coordinator's approval.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 225")));
+    }
+
+    @Test
+    void coopTermTurnsDownASecondOtherCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        Long summer = termPlan(priya, "2028 Summer").term().getId();
+        planService.addCourse(priya, summer, "CMPT 426");
+        planService.addCourse(priya, summer, "CMPT 225");
+
+        PlanChange change = planService.addCourse(priya, summer, "CMPT 276");
+
+        assertThat(change.problems()).containsExactly("2028 Summer already has CMPT 225. SFU allows at most one "
+                + "course during a work term, and only with your employer's and co-op coordinator's approval.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 426", "CMPT 225")));
+    }
+
+    @Test
+    void coopTermHoldsOneWorkTermCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        saveCourse("CMPT", "427", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        Long summer = termPlan(priya, "2028 Summer").term().getId();
+        planService.addCourse(priya, summer, "CMPT 426");
+
+        PlanChange change = planService.addCourse(priya, summer, "CMPT 427");
+
+        assertThat(change.problems())
+            .containsExactly("2028 Summer already has CMPT 426. A co-op term holds one work term course.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 426")));
+    }
+
+    // The limits are per term, so a second co-op term takes the next work term course
+    @Test
+    void eachCoopTermHasItsOwnWorkTermCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        saveCourse("CMPT", "427", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        planService.addTerm(priya, null, 2029, "SPRING", "COOP");
+        planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "CMPT 426");
+
+        assertThat(planService.addCourse(priya, termPlan(priya, "2029 Spring").term().getId(), "CMPT 427").isSaved())
+            .isTrue();
+    }
+
+    // A work term in a study term would make the plan look like the student is in class that term
+    @Test
+    void studyTermSendsWorkTermCoursesToACoopTerm() {
+        saveCourse("ENSC", "195", "3.00");
+        planService.addTerm(priya, 2027, "FALL");
+
+        PlanChange change = planService.addCourse(priya, termPlan(priya, "2027 Fall").term().getId(), "ENSC 195");
+
+        assertThat(change.problems()).containsExactly("ENSC 195 is a co-op work term, so it goes in a co-op term. "
+                + "Add a co-op term for it, then add ENSC 195 there.");
+        assertThat(plannedCourseRepository.count()).isZero();
     }
 }

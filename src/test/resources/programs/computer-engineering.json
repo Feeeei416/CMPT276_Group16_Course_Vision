@@ -1,0 +1,35 @@
+{
+  "program": "COMPUTER_ENGINEERING",
+  "calendar": "2027 Spring",
+  "source": "https://www.sfu.ca/students/calendar/2027/spring/programs/engineering-science-computer-engineering-option/major/bachelor-of-applied-science.html",
+  "requirements": [
+    {
+      "choose": "all",
+      "courses": ["CHEM 121", "CMPT 225", "CMPT 276", "CMPT 303", "ECON 103",
+                  "ENSC 100", "ENSC 105W", "ENSC 120", "ENSC 151", "ENSC 180", "ENSC 204", "ENSC 220", "ENSC 225",
+                  "ENSC 251", "ENSC 252", "ENSC 254", "ENSC 280", "ENSC 320", "ENSC 324", "ENSC 327", "ENSC 350",
+                  "ENSC 351", "ENSC 380", "ENSC 405W", "ENSC 406", "ENSC 429", "ENSC 440",
+                  "MACM 201", "MACM 316", "MATH 152", "MATH 232", "MATH 251", "MATH 260", "PHYS 120", "PHYS 121"],
+      "note": "ENSC 100 was ENSC 100W until Fall 2026"
+    },
+    {
+      "choose": 1,
+      "courses": ["MATH 151", "MATH 150"],
+      "note": "MATH 150 if you don't meet the MATH 151 prerequisites"
+    },
+    {
+      "choose": 1,
+      "courses": ["ENSC 410", "ENSC 411"]
+    },
+    {
+      "choose": 2,
+      "courses": ["ENSC 450", "ENSC 452", "ENSC 453"]
+    }
+  ],
+  "notCovered": [
+    "12 units of engineering science and design (ESD) electives, at most two of them 300 level, including one of ENSC 383, ENSC 386, ENSC 413, ENSC 427, ENSC 428, or whichever of ENSC 450, ENSC 452 and ENSC 453 wasn't taken",
+    "One science elective from the pre-approved list",
+    "Complementary studies: three breadth courses with at least one B-Hum and one B-Soc (ECON 103 counts as one B-Soc)",
+    "Co-op terms"
+  ]
+}
