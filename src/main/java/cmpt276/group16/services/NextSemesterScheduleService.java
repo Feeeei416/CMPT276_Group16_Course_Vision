@@ -30,6 +30,10 @@ public class NextSemesterScheduleService {
             LocalTime start, LocalTime end) {
     }
 
+    // Two classes that meet at the same time on the same day
+    public record Conflict(DayOfWeek day, ClassTime first, ClassTime second) {
+    }
+
     private final NextSemesterScheduleRepository scheduleRepository;
     private final ScheduledCourseRepository scheduledCourseRepository;
     private final SectionRepository sectionRepository;
@@ -260,6 +264,28 @@ public class NextSemesterScheduleService {
             return MAX_UNITS_COMPUTER_ENGINEERING;
         }
         return MAX_UNITS;
+    }
+
+    // Every pair of the student's classes that overlap on the same day, for the
+    // warnings
+    @Transactional(readOnly = true)
+    public List<Conflict> conflicts(StudentProfile student) {
+        List<Conflict> conflicts = new ArrayList<>();
+        for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(student).entrySet()) {
+            List<ClassTime> classes = day.getValue();
+            for (int i = 0; i < classes.size(); i++) {
+                for (int j = i + 1; j < classes.size(); j++) {
+                    if (overlaps(classes.get(i), classes.get(j))) {
+                        conflicts.add(new Conflict(day.getKey(), classes.get(i), classes.get(j)));
+                    }
+                }
+            }
+        }
+        return conflicts;
+    }
+
+    private static boolean overlaps(ClassTime a, ClassTime b) {
+        return a.start().isBefore(b.end()) && b.start().isBefore(a.end());
     }
 
     // Checks that the chosen lab or tutorial belongs to the chosen lecture
