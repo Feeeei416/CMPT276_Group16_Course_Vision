@@ -14,7 +14,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.services.PlanChange;
+import cmpt276.group16.services.PlanPrerequisites;
 import cmpt276.group16.services.PlanService;
+import cmpt276.group16.services.PlanService.TermPlan;
 import jakarta.servlet.http.HttpSession;
 
 // My plan: the courses a student plans to take in the terms after next semester.
@@ -24,10 +26,13 @@ public class PlanController {
 
     private final CurrentStudent currentStudent;
     private final PlanService planService;
+    private final PlanPrerequisites planPrerequisites;
 
-    public PlanController(CurrentStudent currentStudent, PlanService planService) {
+    public PlanController(CurrentStudent currentStudent, PlanService planService,
+            PlanPrerequisites planPrerequisites) {
         this.currentStudent = currentStudent;
         this.planService = planService;
+        this.planPrerequisites = planPrerequisites;
     }
 
     @GetMapping("/student/plan")
@@ -36,7 +41,10 @@ public class PlanController {
         if (student.isEmpty()) {
             return "redirect:/login";
         }
-        model.addAttribute("termPlans", planService.termPlans(student.get()));
+        List<TermPlan> termPlans = planService.termPlans(student.get());
+        model.addAttribute("termPlans", termPlans);
+        // Worked out again on every visit, so adding or moving a missing course clears its flag
+        model.addAttribute("missing", planPrerequisites.missingFor(student.get(), termPlans));
         model.addAttribute("nextSemester", planService.nextSemester());
         model.addAttribute("years", planService.plannableYears());
         model.addAttribute("seasons", Season.values());

@@ -84,6 +84,9 @@
                     <span>
                         <span th:text="${course.code}">CMPT 225</span>
                         <span class="muted" th:text="${course.title}">Data Structures and Programming</span>
+                        <!-- Prerequisites that won't be met by this term; nothing when they all are -->
+                        <span class="plan-course-flag" th:each="sentence : ${missing[course.id]}"
+                              th:text="${sentence}">Needs CMPT 125 with C- or better.</span>
                     </span>
                     <form method="post" th:action="@{/student/plan/courses/{id}/remove(id=${course.id})}">
                         <button type="submit" class="link">Remove</button>

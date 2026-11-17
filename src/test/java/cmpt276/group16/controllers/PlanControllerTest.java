@@ -35,10 +35,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.CourseRepository;
+import cmpt276.group16.models.NodeType;
 import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.Program;
+import cmpt276.group16.models.RequisiteRule;
+import cmpt276.group16.models.RequisiteRuleRepository;
 import cmpt276.group16.models.Role;
+import cmpt276.group16.models.RuleKind;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.User;
@@ -78,6 +82,9 @@ class PlanControllerTest {
 
     @Autowired
     private PlanService planService;
+
+    @Autowired
+    private RequisiteRuleRepository requisiteRuleRepository;
 
     private StudentProfile priya;
     private StudentProfile marcus;
@@ -373,6 +380,27 @@ class PlanControllerTest {
         mockMvc.perform(post("/student/plan/terms/{id}/courses", termId(priya, "2027 Fall")).session(sessionFor(priya))
                         .param("code", "CMPT 225"))
                .andExpect(flash().attributeCount(2));
+    }
+
+    // #44: a course planned before its prerequisite says what's missing, and the flag goes once it's planned earlier
+    @Test
+    void coursePlannedBeforeItsPrerequisiteIsFlagged() throws Exception {
+        Course cmpt276 = courseRepository.findBySubjectAndNumber("CMPT", "276").orElseThrow();
+        RequisiteRule rule = new RequisiteRule(cmpt276, null, RuleKind.PREREQUISITE, NodeType.COURSE);
+        rule.setRequiredSubjectAndNumber("CMPT", "225");
+        rule.setMinGrade("C-");
+        requisiteRuleRepository.save(rule);
+        planService.addTerm(priya, 2027, "SUMMER");
+        planService.addTerm(priya, 2027, "FALL");
+        planService.addCourse(priya, termId(priya, "2027 Fall"), "CMPT 276");
+
+        mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
+               .andExpect(content().string(containsString("Needs CMPT 225 with C- or better.")));
+
+        planService.addCourse(priya, termId(priya, "2027 Summer"), "CMPT 225");
+
+        mockMvc.perform(get("/student/plan").session(sessionFor(priya)))
+               .andExpect(content().string(not(containsString("Needs CMPT 225"))));
     }
 
     @Test
