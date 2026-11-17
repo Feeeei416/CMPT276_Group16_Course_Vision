@@ -111,7 +111,11 @@ class PlanPrerequisitesTest {
     }
 
     private void took(StudentProfile student, String subject, String number, String grade) {
-        transcriptCourseRepository.saveAndFlush(new TranscriptCourse(student, "2025 Fall", subject, number,
+        took(student, "2025 Fall", subject, number, grade);
+    }
+
+    private void took(StudentProfile student, String term, String subject, String number, String grade) {
+        transcriptCourseRepository.saveAndFlush(new TranscriptCourse(student, term, subject, number,
                 "Title", new BigDecimal("3.00"), grade));
     }
 
@@ -239,6 +243,26 @@ class PlanPrerequisitesTest {
                 .findFirst().orElseThrow().getId();
         planService.removeCourse(priya, planned225);
         plan("2027 Summer", "CMPT 225");
+
+        assertThat(flags()).isEmpty();
+    }
+
+    // A course can be added by hand for up to next year, which can be after a planned term
+    @Test
+    void recordCourseFromALaterTermDoesntCount() {
+        took(priya, "2027 Fall", "CMPT", "225", "B");
+        planService.addTerm(priya, 2027, "SUMMER");
+        plan("2027 Summer", "CMPT 276");
+
+        assertThat(flags()).containsOnlyKeys("CMPT 276");
+    }
+
+    // The same course counts once its term is before the planned one
+    @Test
+    void recordCourseFromAnEarlierTermCounts() {
+        took(priya, "2027 Fall", "CMPT", "225", "B");
+        planService.addTerm(priya, 2028, "SPRING");
+        plan("2028 Spring", "CMPT 276");
 
         assertThat(flags()).isEmpty();
     }
