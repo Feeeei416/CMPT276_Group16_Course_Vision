@@ -17,7 +17,9 @@ import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TermKind;
 import cmpt276.group16.services.PlanChange;
 import cmpt276.group16.services.PlanListService;
+import cmpt276.group16.services.PlanPrerequisites;
 import cmpt276.group16.services.PlanService;
+import cmpt276.group16.services.PlanService.TermPlan;
 import jakarta.servlet.http.HttpSession;
 
 // My plan: the courses a student plans to take in the terms after next semester.
@@ -29,11 +31,14 @@ public class PlanController {
     private final CurrentStudent currentStudent;
     private final PlanService planService;
     private final PlanListService planListService;
+    private final PlanPrerequisites planPrerequisites;
 
-    public PlanController(CurrentStudent currentStudent, PlanService planService, PlanListService planListService) {
+    public PlanController(CurrentStudent currentStudent, PlanService planService, PlanListService planListService,
+            PlanPrerequisites planPrerequisites) {
         this.currentStudent = currentStudent;
         this.planService = planService;
         this.planListService = planListService;
+        this.planPrerequisites = planPrerequisites;
     }
 
     @GetMapping("/student/plan")
@@ -42,7 +47,7 @@ public class PlanController {
         if (student.isEmpty()) {
             return "redirect:/login";
         }
-        return showPlanPage(planService.mainPlan(student.get()).orElse(null), null, model);
+        return showPlanPage(student.get(), planService.mainPlan(student.get()).orElse(null), null, model);
     }
 
     @GetMapping("/student/plans/{planId}")
@@ -57,15 +62,18 @@ public class PlanController {
             redirectAttributes.addFlashAttribute("errors", List.of("That plan isn't one of yours."));
             return "redirect:/student/plans";
         }
-        return showPlanPage(plan.get(), planId, model);
+        return showPlanPage(student.get(), plan.get(), planId, model);
     }
 
     // plan is null when the student has no plan yet. viewedPlanId is set when the page was opened as
     // /student/plans/5, so its forms send it back and each change returns to that plan
-    private String showPlanPage(Plan plan, Long viewedPlanId, Model model) {
+    private String showPlanPage(StudentProfile student, Plan plan, Long viewedPlanId, Model model) {
+        List<TermPlan> termPlans = plan == null ? List.of() : planService.termPlans(plan);
         model.addAttribute("plan", plan);
         model.addAttribute("viewedPlanId", viewedPlanId);
-        model.addAttribute("termPlans", plan == null ? List.of() : planService.termPlans(plan));
+        model.addAttribute("termPlans", termPlans);
+        // Worked out again on every visit, so adding or moving a missing course clears its flag
+        model.addAttribute("missing", planPrerequisites.missingFor(student, termPlans));
         model.addAttribute("nextSemester", planService.nextSemester());
         model.addAttribute("years", planService.plannableYears());
         model.addAttribute("seasons", Season.values());

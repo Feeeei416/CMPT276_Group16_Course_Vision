@@ -10,8 +10,12 @@ import org.junit.jupiter.api.Test;
 import cmpt276.group16.models.Course;
 import cmpt276.group16.models.Grades;
 import cmpt276.group16.models.NodeType;
+import cmpt276.group16.models.PlanTerm;
+import cmpt276.group16.models.PlannedCourse;
 import cmpt276.group16.models.RequisiteRule;
 import cmpt276.group16.models.RuleKind;
+import cmpt276.group16.models.Season;
+import cmpt276.group16.models.Term;
 import cmpt276.group16.models.TranscriptCourse;
 
 // Plain unit tests: no Spring or database. Each test builds a small prerequisite tree by hand
@@ -52,6 +56,12 @@ class PrerequisiteCheckTest {
     // The student isn't needed to check prerequisites, so it's left null
     private static TranscriptCourse took(String term, String subject, String number, String grade) {
         return new TranscriptCourse(null, term, subject, number, "Title", new BigDecimal("3.00"), grade);
+    }
+
+    // A course planned for a term; the plan isn't needed either
+    private static PlannedCourse planned(int year, Season season, String subject, String number) {
+        Course course = new Course(subject, number, "Title", new BigDecimal("3.00"), null, null, null);
+        return new PlannedCourse(new PlanTerm(null, new Term(year, season)), course);
     }
 
     @Test
@@ -366,5 +376,131 @@ class PrerequisiteCheckTest {
         assertThat(result.met()).isTrue();
         assertThat(result.missing()).isEmpty();
         assertThat(result.toConfirm()).containsExactly("Permission of the department");
+    }
+
+    // #44 A prerequisite planned for an earlier term counts, but its grade still has to be earned
+    @Test
+    void prerequisitePlannedEarlierCountsButIsFlagged() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.missing()).isEmpty();
+        assertThat(result.toConfirm())
+                .containsExactly("CMPT 225 is planned for 2027 Summer, and you need C- or better.");
+    }
+
+    // Already passed, so planning it again doesn't add anything to confirm
+    @Test
+    void passedPrerequisiteWinsOverPlanningIt() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "225", "B")),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm()).isEmpty();
+    }
+
+    // Failed once and planned again: the retake counts
+    @Test
+    void retakePlannedEarlierCounts() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "225", "D")),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
+
+        assertThat(result.met()).isTrue();
+    }
+
+    // Only what's planned is counted; the missing part of an AND group is still named
+    @Test
+    void plannedCourseOnlyCoversItself() {
+        RequisiteRule and = group(null, NodeType.AND);
+        requires(and, "CMPT", "225", "C-");
+        requires(and, "MACM", "201", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs MACM 201 with C- or better.");
+    }
+
+    @Test
+    void unitRequirementCountsCoursesPlannedEarlierButIsFlagged() {
+        requiresUnits(null, "6");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "120", "A")),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "125")), List.of());
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm())
+                .containsExactly("Needs 6 units, which you'll have after the courses planned before then.");
+    }
+
+    // A co-op work term doesn't count towards a degree, so its units don't help with a unit requirement
+    @Test
+    void unitRequirementLeavesOutCoopWorkTerms() {
+        requiresUnits(null, "6");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "120", "A")),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "426")), List.of());
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs 6 units, you have 3.00.");
+    }
+
+    // Left out of units only: a work term still counts when a course prerequisite names it
+    @Test
+    void coopWorkTermStillCountsAsACoursePrerequisite() {
+        requires(null, "CMPT", "426", null);
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "426")), List.of());
+
+        assertThat(result.met()).isTrue();
+    }
+
+    // "CMPT 225 may be taken concurrently": planning it for the same term is enough
+    @Test
+    void concurrentPrerequisiteInTheSameTermCountsButIsFlagged() {
+        requires(null, "CMPT", "225", "C-").setConcurrentOk(true);
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(), List.of(),
+                List.of(planned(2027, Season.FALL, "CMPT", "225")));
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm())
+                .containsExactly("CMPT 225 is planned for 2027 Fall too, and you need C- or better.");
+    }
+
+    @Test
+    void prerequisiteInTheSameTermDoesntCountUnlessConcurrent() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(), List.of(),
+                List.of(planned(2027, Season.FALL, "CMPT", "225")));
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs CMPT 225 with C- or better.");
+    }
+
+    // Units have no "concurrently", so courses in the same term don't count towards them
+    @Test
+    void unitRequirementDoesntCountTheSameTerm() {
+        requiresUnits(null, "6");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "120", "A")), List.of(),
+                List.of(planned(2027, Season.FALL, "CMPT", "125")));
+
+        assertThat(result.met()).isFalse();
     }
 }
