@@ -154,18 +154,25 @@ public class CourseImportService {
  
     private List<FetchedCourse> fetch(int year, Season season, List<String> notes) {
         List<FetchedCourse> result = new ArrayList<>();
+        boolean anyDepartment = false;
         for (String dept : DEPARTMENTS) {
             Optional<String> list = client.listCourses(year, season, dept);
             if (list.isEmpty()) {
                 notes.add(dept + " has no courses this term");
                 continue;
             }
+            anyDepartment = true;
             for (CourseListing course : mapper.readCourses(list.get())) {
                 // Graduate courses (500 and up) aren't part of any undergraduate plan
                 if (course.number() != null && isUndergraduate(course.number())) {
                     fetchCourse(year, season, dept, course.number(), notes).ifPresent(result::add);
                 }
             }
+        }
+        // Every department answering 404 means SFU hasn't published the term yet. Stopping here means the term
+        // isn't added and its saved courses aren't all marked not offered
+        if (!anyDepartment) {
+            throw new SfuApiException("SFU hasn't published " + year + " " + season.getShowName() + " yet", null);
         }
         return result;
     }

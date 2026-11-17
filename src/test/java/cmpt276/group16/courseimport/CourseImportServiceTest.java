@@ -300,6 +300,31 @@ class CourseImportServiceTest {
         assertThat(cmpt225Offering().isOffered()).isFalse();
     }
  
+    // A term SFU hasn't published answers 404 for every department, so the import stops without adding the term
+    @Test
+    void stopsWhenSfuHasntPublishedTheTerm() {
+        when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> importService.importTerm(NEW_TERM_YEAR, Season.FALL))
+                .isInstanceOf(SfuApiException.class)
+                .hasMessage("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
+
+        assertThat(termRepository.findByTermYearAndSeason(NEW_TERM_YEAR, Season.FALL)).isEmpty();
+        assertThat(importService.lastRun()).map(ImportRun::error)
+                .contains("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
+    }
+
+    // Courses already saved for the term stay offered, instead of all being marked not offered
+    @Test
+    void unpublishedTermKeepsTheSavedCoursesOffered() {
+        importService.importTerm(2027, Season.SPRING);
+        when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> importService.importTerm(2027, Season.SPRING)).isInstanceOf(SfuApiException.class);
+
+        assertThat(cmpt225Offering().isOffered()).isTrue();
+    }
+
     // A term that isn't saved yet is added
     @Test
     void addsTheTermIfItIsNew() {
