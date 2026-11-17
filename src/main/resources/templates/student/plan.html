@@ -100,7 +100,8 @@
                  A co-op term says which course goes in it -->
             <p th:unless="${term.kind.takesCourses()}" class="muted">Gap term. No courses are planned for it.</p>
             <p th:if="${term.kind.name() == 'COOP' and courses.isEmpty()}" class="muted">Co-op term. Add its work term
-                course, like CMPT 426 or ENSC 195.</p>
+                course, like CMPT 426 or ENSC 195. You can also plan one other course, if your employer and co-op
+                coordinator approve it.</p>
             <p th:if="${term.kind.name() == 'STUDY' and courses.isEmpty()}" class="muted">No courses yet.</p>
             <ul class="plan-courses" th:unless="${courses.isEmpty()}">
                 <li th:each="course : ${courses}">

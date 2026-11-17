@@ -479,15 +479,59 @@ class PlanServiceTest {
         assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 426")));
     }
 
+    // SFU allows one course during a work term with approval, so it's saved with a note saying so
     @Test
-    void coopTermTurnsDownNormalCourses() {
+    void coopTermTakesOneOtherCourseWithANote() {
         planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
 
         PlanChange change = planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "CMPT 225");
 
-        assertThat(change.problems()).containsExactly("2028 Summer is a co-op term, so it only holds a co-op work "
-                + "term course, like CMPT 426 or ENSC 195.");
-        assertThat(plannedCourseRepository.count()).isZero();
+        assertThat(change.message()).isEqualTo("Added CMPT 225 to 2028 Summer. Taking a course during a work term "
+                + "needs your employer's and co-op coordinator's approval.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 225")));
+    }
+
+    @Test
+    void coopTermTurnsDownASecondOtherCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        Long summer = termPlan(priya, "2028 Summer").term().getId();
+        planService.addCourse(priya, summer, "CMPT 426");
+        planService.addCourse(priya, summer, "CMPT 225");
+
+        PlanChange change = planService.addCourse(priya, summer, "CMPT 276");
+
+        assertThat(change.problems()).containsExactly("2028 Summer already has CMPT 225. SFU allows at most one "
+                + "course during a work term, and only with your employer's and co-op coordinator's approval.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 426", "CMPT 225")));
+    }
+
+    @Test
+    void coopTermHoldsOneWorkTermCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        saveCourse("CMPT", "427", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        Long summer = termPlan(priya, "2028 Summer").term().getId();
+        planService.addCourse(priya, summer, "CMPT 426");
+
+        PlanChange change = planService.addCourse(priya, summer, "CMPT 427");
+
+        assertThat(change.problems())
+            .containsExactly("2028 Summer already has CMPT 426. A co-op term holds one work term course.");
+        assertThat(planOf(priya)).containsExactly(entry("2028 Summer", List.of("CMPT 426")));
+    }
+
+    // The limits are per term, so a second co-op term takes the next work term course
+    @Test
+    void eachCoopTermHasItsOwnWorkTermCourse() {
+        saveCourse("CMPT", "426", "3.00");
+        saveCourse("CMPT", "427", "3.00");
+        planService.addTerm(priya, null, 2028, "SUMMER", "COOP");
+        planService.addTerm(priya, null, 2029, "SPRING", "COOP");
+        planService.addCourse(priya, termPlan(priya, "2028 Summer").term().getId(), "CMPT 426");
+
+        assertThat(planService.addCourse(priya, termPlan(priya, "2029 Spring").term().getId(), "CMPT 427").isSaved())
+            .isTrue();
     }
 
     // A work term in a study term would make the plan look like the student is in class that term

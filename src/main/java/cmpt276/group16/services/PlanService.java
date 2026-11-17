@@ -66,7 +66,10 @@ public class PlanService {
     // One term as the My plan page shows it: the term, its courses in the order they were added, and their units
     public record TermPlan(PlanTerm term, List<PlannedCourse> courses) {
 
-        // For example "9 units", or "1 unit"
+        // For example "9 units", or "1 unit".
+        // Counts every course in the term, including a co-op work term course like CMPT 426. Those units don't
+        // count towards an SFU degree, so anything that totals planned units for a degree (the Graduation Report,
+        // or the unit check in #44) has to leave them out with PlanRules.isCoopCourse
         public String unitsText() {
             BigDecimal total = courses.stream().map(PlannedCourse::getUnits).reduce(BigDecimal.ZERO, BigDecimal::add);
             String units = total.stripTrailingZeros().toPlainString();
@@ -204,23 +207,42 @@ public class PlanService {
             return PlanChange.rejected(alreadyPlannedMessage(alreadyPlanned.get(), term.get()), term.get());
         }
         PlannedCourse added = plannedCourseRepository.save(new PlannedCourse(term.get(), course.get()));
+        // A course during a work term is allowed, but only with approval, so the student is told when it's saved
+        if (term.get().getKind() == TermKind.COOP
+                && !PlanRules.isCoopCourse(course.get().getSubject(), course.get().getNumber())) {
+            return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ". Taking a course "
+                    + "during a work term needs your employer's and co-op coordinator's approval.", term.get());
+        }
         return PlanChange.saved("Added " + added.getCode() + " to " + term.get().getName() + ".", term.get());
     }
 
-    // A co-op term only holds its work term course, and that course only goes in a co-op term, so the plan
-    // always shows which terms are work terms. Empty when the course fits the term
-    private static Optional<String> wrongKindOfTerm(Course course, PlanTerm term) {
+    // A work term course only goes in a co-op term, so the plan always shows which terms are work terms.
+    // A co-op term holds one work term course and at most one other course, which is SFU's limit during a work term.
+    // Empty when the course fits the term
+    private Optional<String> wrongKindOfTerm(Course course, PlanTerm term) {
         boolean coopCourse = PlanRules.isCoopCourse(course.getSubject(), course.getNumber());
         String code = course.getSubject() + " " + course.getNumber();
-        if (term.getKind() == TermKind.COOP && !coopCourse) {
-            return Optional.of(term.getName() + " is a co-op term, so it only holds a co-op work term course, "
-                    + "like CMPT 426 or ENSC 195.");
-        }
         if (term.getKind() == TermKind.STUDY && coopCourse) {
             return Optional.of(code + " is a co-op work term, so it goes in a co-op term. Add a co-op term for it, "
                     + "then add " + code + " there.");
         }
-        return Optional.empty();
+        if (term.getKind() != TermKind.COOP) {
+            return Optional.empty();
+        }
+        // A co-op term holds one work term course, and SFU allows at most one other course during a work term
+        Optional<PlannedCourse> sameKind = plannedCourseRepository.findByTermOrderByIdAsc(term).stream()
+                .filter(planned -> PlanRules.isCoopCourse(planned.getCourse().getSubject(),
+                        planned.getCourse().getNumber()) == coopCourse)
+                .findFirst();
+        if (sameKind.isEmpty()) {
+            return Optional.empty();
+        }
+        if (coopCourse) {
+            return Optional.of(term.getName() + " already has " + sameKind.get().getCode()
+                    + ". A co-op term holds one work term course.");
+        }
+        return Optional.of(term.getName() + " already has " + sameKind.get().getCode() + ". SFU allows at most one "
+                + "course during a work term, and only with your employer's and co-op coordinator's approval.");
     }
 
     // Says which term the course is already in, and how to move it when that's a different term

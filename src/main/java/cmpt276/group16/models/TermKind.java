@@ -1,8 +1,8 @@
 package cmpt276.group16.models;
 
-// What a student does in a planned term. Study terms hold normal courses, co-op terms hold only the co-op
-// work term course (like CMPT 426), and gap terms hold nothing; they keep the term in the plan so the student
-// can see where it falls. PlanRules.isCoopCourse says which courses are co-op work terms
+// What a student does in a planned term. Study terms hold normal courses, co-op terms hold the co-op
+// work term course (like CMPT 426) and at most one other course, and gap terms hold nothing; they keep the term
+// in the plan so the student can see where it falls. PlanRules.isCoopCourse says which courses are co-op work terms
 public enum TermKind {
     STUDY("Study"),
     COOP("Co-op"),
