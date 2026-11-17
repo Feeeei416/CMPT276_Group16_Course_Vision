@@ -1,0 +1,110 @@
+package cmpt276.group16.controllers;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import cmpt276.group16.courseimport.CourseImportService;
+import cmpt276.group16.courseimport.CourseImportService.ImportAlreadyRunningException;
+import cmpt276.group16.courseimport.CourseImportService.ImportRun;
+import cmpt276.group16.courseimport.SfuApiException;
+import cmpt276.group16.models.Season;
+
+// The IT manager's course refresh page: refresh one term's courses from the SFU API and see what the last refresh did.
+@Controller 
+public class CourseRefreshController {
+
+    // One choice in the dropdown; value is what the form sends, for example "2027-SPRING"
+    public record TermOption(int year, Season season) {
+        public String value() {
+            return year + "-" + season.name();
+        }
+ 
+        public String name() {
+            return year + " " + season.getShowName();
+        }
+    }
+
+    // for example "Nov 15, 2026, 3:10 PM", in the clock's time zone (Vancouver).
+    // English rather than Canadian English, which would write "p.m."
+    private static final DateTimeFormatter FINISHED_AT = DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a", Locale.ENGLISH);
+ 
+    private final CourseImportService importService;
+    private final Clock clock;
+ 
+    public CourseRefreshController(CourseImportService importService, Clock clock) {
+        this.importService = importService;
+        this.clock = clock;
+    }
+
+    /** GET /it/course-refresh : the refresh form and the result of the last refresh. */
+    @GetMapping("/it/course-refresh")
+    public String showCourseRefresh(Model model) {
+        List<TermOption> terms = termOptions(LocalDate.now(clock));
+        model.addAttribute("terms", terms);
+        // Next semester is the one students are registering for, so it is picked to start with
+        model.addAttribute("selectedTerm", terms.get(1).value());
+        model.addAttribute("running", importService.isRunning());
+        Optional<ImportRun> lastRun = importService.lastRun();
+        model.addAttribute("lastRun", lastRun.orElse(null));
+        model.addAttribute("lastRunTime",
+                lastRun.map(run -> FINISHED_AT.format(run.finishedAt().atZone(clock.getZone()))).orElse(null));
+        return "it/course-refresh";
+    }
+
+    /** POST /it/course-refresh/refresh : imports the chosen term's courses from the SFU Course Outlines API. */
+    @PostMapping("/it/course-refresh/refresh")
+    public String refresh(@RequestParam(defaultValue = "") String term, RedirectAttributes redirectAttributes) {
+        // Only the terms in the dropdown are accepted, so a changed form can't import some other term
+        Optional<TermOption> chosen = termOptions(LocalDate.now(clock)).stream()
+                .filter(option -> option.value().equals(term))
+                .findFirst();
+        if (chosen.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Choose a term from the list.");
+            return "redirect:/it/course-refresh";
+        }
+        TermOption option = chosen.get();
+        try {
+            ImportRun run = importService.importTerm(option.year(), option.season());
+            redirectAttributes.addFlashAttribute("message",
+                    "Refreshed " + run.termName() + ": " + run.courses() + " courses and " + run.sections() + " sections.");
+        } catch (SfuApiException e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Couldn't get course data from SFU, so nothing was changed. Try again later.");
+        } catch (ImportAlreadyRunningException e) {
+            redirectAttributes.addFlashAttribute("error",
+                    "A refresh is already running. Wait for it to finish, then reload this page.");
+        } catch (RuntimeException e) {
+            // The service has already logged it and recorded it as a failed refresh
+            redirectAttributes.addFlashAttribute("error",
+                    "The refresh failed, so nothing was changed. Try again, and check the server log if it keeps failing.");
+        }
+        return "redirect:/it/course-refresh";
+    }
+ 
+    // This term and the next two, for example 2026 Fall, 2027 Spring and 2027 Summer in November 2026.
+    // Spring is January to April, Summer is May to August, and Fall is September to December
+    static List<TermOption> termOptions(LocalDate today) {
+        Season[] seasons = Season.values();
+        int year = today.getYear();
+        int index = (today.getMonthValue() - 1) / 4;
+        List<TermOption> options = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            options.add(new TermOption(year, seasons[index]));
+            index++;
+            if (index == seasons.length) {
+                index = 0;
+                year++;
+            }
+        }
+        return options;
+    }
+}

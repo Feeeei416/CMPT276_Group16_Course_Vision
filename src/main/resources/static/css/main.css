@@ -278,6 +278,12 @@ a.btn {
     border-bottom: 1px solid var(--color-border);
 }
 
+/* A prerequisite a planned course is missing, on its own line under the course */
+.plan-course-flag {
+    display: block;
+    color: var(--color-error);
+}
+
 /* A text box or dropdowns and a button on one line, like Add course */
 .inline-form {
     display: flex;

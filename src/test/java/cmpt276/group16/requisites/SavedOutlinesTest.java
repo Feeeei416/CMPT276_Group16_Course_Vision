@@ -41,6 +41,7 @@ class SavedOutlinesTest {
             cmpt-201-d100.json  | AND(OR(CMPT 125 (C-), CMPT 135 (C-)), MACM 101 (C-))
             cmpt-210-d100.json  | FAILED
             cmpt-225-d100.json  | OR(AND(MACM 101 (C-), OR(CMPT 125 (C-), CMPT 129 (C-), CMPT 135 (C-))), AND(ENSC 251 (C-), ENSC 252 (C-)))
+            cmpt-225-d101.json  | OR(AND(MACM 101 (C-), OR(CMPT 125 (C-), CMPT 129 (C-), CMPT 135 (C-))), AND(ENSC 251 (C-), ENSC 252 (C-)))
             cmpt-276-d100.json  | FAILED
             cmpt-295-d100.json  | FAILED
             cmpt-303-d100.json  | AND(CMPT 225 (C-), OR(CMPT 295 (C-), ENSC 254 (C-)), OR(CMPT 201 (C-), ENSC 351 (C-)))
