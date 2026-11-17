@@ -78,6 +78,9 @@ public class NextSemesterScheduleController {
         model.addAttribute("courses", scheduleService.coursesFor(student.get()));
         model.addAttribute("meetingsByDay", scheduleService.meetingsByDay(student.get()));
         model.addAttribute("offerings", scheduleService.offeredNextSemester());
+        model.addAttribute("totalUnits", scheduleService.totalUnits(student.get()));
+        model.addAttribute("unitLimits", scheduleService.unitLimitFor(student.get()));
+        model.addAttribute("conflicts", scheduleService.conflicts(student.get()));
         if (!model.containsAttribute("errors")) {
             model.addAttribute("errors", List.of());
         }
