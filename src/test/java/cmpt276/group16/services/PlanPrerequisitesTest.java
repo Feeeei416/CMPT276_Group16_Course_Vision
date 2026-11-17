@@ -81,6 +81,9 @@ class PlanPrerequisitesTest {
 
     private StudentProfile priya;
 
+    // CMPT 276's one prerequisite rule, so a test can change it
+    private RequisiteRule needs225;
+
     @BeforeEach
     void setUp() {
         planService = new PlanService(planRepository, planTermRepository, plannedCourseRepository, termRepository,
@@ -94,7 +97,7 @@ class PlanPrerequisitesTest {
         RequisiteRule rule = new RequisiteRule(cmpt276, null, RuleKind.PREREQUISITE, NodeType.COURSE);
         rule.setRequiredSubjectAndNumber("CMPT", "225");
         rule.setMinGrade("C-");
-        requisiteRuleRepository.saveAndFlush(rule);
+        needs225 = requisiteRuleRepository.saveAndFlush(rule);
     }
 
     private StudentProfile saveStudent(String email) {
@@ -176,12 +179,36 @@ class PlanPrerequisitesTest {
         assertThat(flags()).isEmpty();
     }
 
-    // Taking both in the same term needs "may be taken concurrently", which the rules don't have yet
+    // The rule doesn't say CMPT 225 may be taken concurrently, so both in the same term isn't enough
     @Test
     void prerequisiteInTheSameTermDoesntMeetIt() {
         planService.addTerm(priya, 2027, "FALL");
         plan("2027 Fall", "CMPT 225");
         plan("2027 Fall", "CMPT 276");
+
+        assertThat(flags()).containsOnlyKeys("CMPT 276");
+    }
+
+    @Test
+    void prerequisiteThatMayBeTakenConcurrentlyMeetsItInTheSameTerm() {
+        needs225.setConcurrentOk(true);
+        requisiteRuleRepository.saveAndFlush(needs225);
+        planService.addTerm(priya, 2027, "FALL");
+        plan("2027 Fall", "CMPT 225");
+        plan("2027 Fall", "CMPT 276");
+
+        assertThat(flags()).isEmpty();
+    }
+
+    // May be taken concurrently, but not later
+    @Test
+    void prerequisiteThatMayBeTakenConcurrentlyStillCantBeLater() {
+        needs225.setConcurrentOk(true);
+        requisiteRuleRepository.saveAndFlush(needs225);
+        planService.addTerm(priya, 2027, "FALL");
+        planService.addTerm(priya, 2028, "SPRING");
+        plan("2027 Fall", "CMPT 276");
+        plan("2028 Spring", "CMPT 225");
 
         assertThat(flags()).containsOnlyKeys("CMPT 276");
     }

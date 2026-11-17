@@ -331,7 +331,7 @@ class PrerequisiteCheckTest {
         requires(null, "CMPT", "225", "C-");
 
         PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(),
-                List.of(planned(2027, Season.SUMMER, "CMPT", "225")));
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
 
         assertThat(result.met()).isTrue();
         assertThat(result.missing()).isEmpty();
@@ -346,7 +346,7 @@ class PrerequisiteCheckTest {
 
         PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
                 List.of(took("2025 Fall", "CMPT", "225", "B")),
-                List.of(planned(2027, Season.SUMMER, "CMPT", "225")));
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
 
         assertThat(result.met()).isTrue();
         assertThat(result.toConfirm()).isEmpty();
@@ -359,7 +359,7 @@ class PrerequisiteCheckTest {
 
         PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
                 List.of(took("2025 Fall", "CMPT", "225", "D")),
-                List.of(planned(2027, Season.SUMMER, "CMPT", "225")));
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
 
         assertThat(result.met()).isTrue();
     }
@@ -372,7 +372,7 @@ class PrerequisiteCheckTest {
         requires(and, "MACM", "201", "C-");
 
         PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(),
-                List.of(planned(2027, Season.SUMMER, "CMPT", "225")));
+                List.of(planned(2027, Season.SUMMER, "CMPT", "225")), List.of());
 
         assertThat(result.met()).isFalse();
         assertThat(result.missing()).containsExactly("Needs MACM 201 with C- or better.");
@@ -384,10 +384,46 @@ class PrerequisiteCheckTest {
 
         PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
                 List.of(took("2025 Fall", "CMPT", "120", "A")),
-                List.of(planned(2027, Season.SUMMER, "CMPT", "125")));
+                List.of(planned(2027, Season.SUMMER, "CMPT", "125")), List.of());
 
         assertThat(result.met()).isTrue();
         assertThat(result.toConfirm())
                 .containsExactly("Needs 6 units, which you'll have after the courses planned before then.");
+    }
+
+    // "CMPT 225 may be taken concurrently": planning it for the same term is enough
+    @Test
+    void concurrentPrerequisiteInTheSameTermCountsButIsFlagged() {
+        requires(null, "CMPT", "225", "C-").setConcurrentOk(true);
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(), List.of(),
+                List.of(planned(2027, Season.FALL, "CMPT", "225")));
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm())
+                .containsExactly("CMPT 225 is planned for 2027 Fall too, and you need C- or better.");
+    }
+
+    @Test
+    void prerequisiteInTheSameTermDoesntCountUnlessConcurrent() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(), List.of(),
+                List.of(planned(2027, Season.FALL, "CMPT", "225")));
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs CMPT 225 with C- or better.");
+    }
+
+    // Units have no "concurrently", so courses in the same term don't count towards them
+    @Test
+    void unitRequirementDoesntCountTheSameTerm() {
+        requiresUnits(null, "6");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "120", "A")), List.of(),
+                List.of(planned(2027, Season.FALL, "CMPT", "125")));
+
+        assertThat(result.met()).isFalse();
     }
 }

@@ -32,21 +32,23 @@ public final class PrerequisiteCheck {
     //        RequisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc. Empty means no prerequisites.
     // record: every course in the student's record
     public static Result check(List<RequisiteRule> rules, List<TranscriptCourse> record) {
-        return check(rules, record, List.of());
+        return check(rules, record, List.of(), List.of());
     }
 
     // The same check for a course in a plan (#44).
     // planned: the courses planned for terms before the one being checked. They count as taken by then,
     //          but their grades aren't known yet, so each one used is passed on to confirm
+    // sameTerm: the other courses planned for the same term. They only count for a prerequisite
+    //           the Calendar says may be taken concurrently
     public static Result check(List<RequisiteRule> rules, List<TranscriptCourse> record,
-            List<PlannedCourse> planned) {
+            List<PlannedCourse> planned, List<PlannedCourse> sameTerm) {
         List<RequisiteRule> roots = rules.stream().filter(rule -> rule.getParent() == null).toList();
         if (roots.isEmpty()) {
             return new Result(true, List.of(), List.of());
         }
 
         // A tree has one root. If there are several, all of them must be met
-        List<Outcome> outcomes = roots.stream().map(root -> evaluate(root, rules, record, planned)).toList();
+        List<Outcome> outcomes = roots.stream().map(root -> evaluate(root, rules, record, planned, sameTerm)).toList();
         Outcome whole = outcomes.size() == 1 ? outcomes.get(0) : and(outcomes);
 
         if (whole.unverifiable) {
@@ -74,9 +76,9 @@ public final class PrerequisiteCheck {
     }
 
     private static Outcome evaluate(RequisiteRule node, List<RequisiteRule> rules, List<TranscriptCourse> record,
-            List<PlannedCourse> planned) {
+            List<PlannedCourse> planned, List<PlannedCourse> sameTerm) {
         if (node.getNodeType() == NodeType.COURSE) {
-            return course(node, record, planned);
+            return course(node, record, planned, sameTerm);
         }
         if (node.getNodeType() == NodeType.MIN_UNITS) {
             return units(node, record, planned);
@@ -89,7 +91,7 @@ public final class PrerequisiteCheck {
         }
         List<Outcome> children = rules.stream()
                 .filter(rule -> rule.getParent() != null && sameNode(rule.getParent(), node))
-                .map(child -> evaluate(child, rules, record, planned))
+                .map(child -> evaluate(child, rules, record, planned, sameTerm))
                 .toList();
         return node.getNodeType() == NodeType.AND ? and(children) : or(children);
     }
@@ -145,7 +147,8 @@ public final class PrerequisiteCheck {
         return result;
     }
 
-    private static Outcome course(RequisiteRule node, List<TranscriptCourse> record, List<PlannedCourse> planned) {
+    private static Outcome course(RequisiteRule node, List<TranscriptCourse> record, List<PlannedCourse> planned,
+            List<PlannedCourse> sameTerm) {
         String code = node.getReqSubject() + " " + node.getReqNumber();
         String minGrade = node.getMinGrade();
         List<TranscriptCourse> attempts = record.stream()
@@ -175,6 +178,18 @@ public final class PrerequisiteCheck {
             result.toConfirm.add(minGrade == null
                     ? code + " is planned for " + term + "."
                     : code + " is planned for " + term + ", and you need " + minGrade + " or better.");
+            return result;
+        }
+        // Planned for the same term, which is only enough when the Calendar says it may be taken concurrently
+        Optional<PlannedCourse> plannedSameTerm = node.isConcurrentOk()
+                ? sameTerm.stream().filter(p -> code.equals(p.getCode())).findFirst()
+                : Optional.empty();
+        if (plannedSameTerm.isPresent()) {
+            String term = plannedSameTerm.get().getTerm().getName();
+            result.met = true;
+            result.toConfirm.add(minGrade == null
+                    ? code + " is planned for " + term + " too."
+                    : code + " is planned for " + term + " too, and you need " + minGrade + " or better.");
             return result;
         }
         result.have = bestLetterGrade(attempts);

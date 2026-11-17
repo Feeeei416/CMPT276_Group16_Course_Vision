@@ -19,8 +19,8 @@ import cmpt276.group16.services.PlanService.TermPlan;
 
 // Flags the courses in a student's plan whose prerequisites won't be met by the term they're planned for (#44).
 // A prerequisite counts as met if it's in the student's record (courses in progress included) or planned for
-// an earlier term. Courses in the same term don't count yet: that needs the "may be taken concurrently" flag
-// on the rules, which comes with the stored prerequisite rules (#37)
+// an earlier term. A course planned for the same term only counts when the Calendar says it may be taken
+// concurrently
 @Service
 public class PlanPrerequisites {
 
@@ -45,7 +45,9 @@ public class PlanPrerequisites {
             for (PlannedCourse planned : termPlan.courses()) {
                 List<RequisiteRule> rules = requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(
                         planned.getCourse().getId(), RuleKind.PREREQUISITE);
-                PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, record, List.copyOf(earlier));
+                // The course itself is left out, so it can't count towards its own prerequisites
+                List<PlannedCourse> sameTerm = termPlan.courses().stream().filter(other -> other != planned).toList();
+                PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, record, List.copyOf(earlier), sameTerm);
                 if (!result.met()) {
                     missing.put(planned.getId(), result.missing());
                 }
