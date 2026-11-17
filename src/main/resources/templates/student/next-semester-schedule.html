@@ -70,10 +70,11 @@
 
           <label
             >Lecture
-            <select name="primarySectionId" id="lecture-select" class="input" required></select>
+            <select name="primarySectionId" id="lecture-select" class="input" required>
               <option value="">-- Choose a lecture --</option>
               <option
                 th:each="s : ${lectures}"
+                th:value="${s.id}"
                 th:data-group="${s.associatedClass}"
                 th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
               >
@@ -84,7 +85,7 @@
 
           <label th:unless="${attachedSections.isEmpty()}"
             >Lab or tutorial
-            <select name="attachedSectionId" id="attached-select" class="input"></select>
+            <select name="attachedSectionId" id="attached-select" class="input">
               <option value="">-- Choose a lab or tutorial --</option>
               <option
                 th:each="s : ${attachedSections}"
