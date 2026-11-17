@@ -222,7 +222,12 @@ public final class PrerequisiteCheck {
     private static Outcome units(RequisiteRule node, List<TranscriptCourse> record, List<PlannedCourse> planned) {
         BigDecimal needed = node.getMinUnits();
         UnitTotals.Totals totals = UnitTotals.of(record);
-        BigDecimal plannedUnits = planned.stream().map(PlannedCourse::getUnits).reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Co-op work term courses (like CMPT 426) don't count towards an SFU degree, so their units are left out.
+        // Only here: they still count when a course prerequisite names one
+        BigDecimal plannedUnits = planned.stream()
+                .filter(p -> !PlanRules.isCoopCourse(p.getCourse().getSubject(), p.getCourse().getNumber()))
+                .map(PlannedCourse::getUnits)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Outcome result = new Outcome();
         result.phrase = needed.stripTrailingZeros().toPlainString() + " units";

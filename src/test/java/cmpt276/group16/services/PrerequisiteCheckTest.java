@@ -391,6 +391,30 @@ class PrerequisiteCheckTest {
                 .containsExactly("Needs 6 units, which you'll have after the courses planned before then.");
     }
 
+    // A co-op work term doesn't count towards a degree, so its units don't help with a unit requirement
+    @Test
+    void unitRequirementLeavesOutCoopWorkTerms() {
+        requiresUnits(null, "6");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "120", "A")),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "426")), List.of());
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs 6 units, you have 3.00.");
+    }
+
+    // Left out of units only: a work term still counts when a course prerequisite names it
+    @Test
+    void coopWorkTermStillCountsAsACoursePrerequisite() {
+        requires(null, "CMPT", "426", null);
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules, List.of(),
+                List.of(planned(2027, Season.SUMMER, "CMPT", "426")), List.of());
+
+        assertThat(result.met()).isTrue();
+    }
+
     // "CMPT 225 may be taken concurrently": planning it for the same term is enough
     @Test
     void concurrentPrerequisiteInTheSameTermCountsButIsFlagged() {
