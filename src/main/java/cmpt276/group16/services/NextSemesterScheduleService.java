@@ -2,6 +2,7 @@ package cmpt276.group16.services;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.util.Optional;
@@ -22,9 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class NextSemesterScheduleService {
 
     public static final String MAIN_SCHEDULE_NAME = "My schedule";
+    public static final BigDecimal MAX_UNITS = new BigDecimal("18");
+    public static final BigDecimal MAX_UNITS_COMPUTER_ENGINEERING = new BigDecimal("22");
 
     public record ClassTime(String course, String section, SectionType type,
             LocalTime start, LocalTime end) {
+    }
+
+    // Two classes that meet at the same time on the same day
+    public record Conflict(DayOfWeek day, ClassTime first, ClassTime second) {
     }
 
     private final NextSemesterScheduleRepository scheduleRepository;
@@ -157,7 +164,8 @@ public class NextSemesterScheduleService {
     // remove someone else's
     @Transactional
     public List<String> removeCourse(StudentProfile student, Long scheduledCourseId) {
-        // Locks the student so a double click waits for the first request instead of failing
+        // Locks the student so a double click waits for the first request instead of
+        // failing
         studentProfileRepository.findLockedByUserId(student.getUser().getId());
         Optional<ScheduledCourse> course = scheduledCourseRepository.findByIdAndScheduleStudent(scheduledCourseId,
                 student);
@@ -242,6 +250,47 @@ public class NextSemesterScheduleService {
         return days;
     }
 
+    // The total units of every course in the student's schedule next semester
+    @Transactional(readOnly = true)
+    public BigDecimal totalUnits(StudentProfile student) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (ScheduledCourse course : coursesFor(student)) {
+            total = total.add(course.getOffering().getCourse().getUnits());
+        }
+        return total;
+    }
+
+    // The student's unit limit for a term: 22 for Computer Engineering (an
+    // Engineering Science program), 18 otherwise
+    public BigDecimal unitLimitFor(StudentProfile student) {
+        if (student.getProgram() == Program.COMPUTER_ENGINEERING) {
+            return MAX_UNITS_COMPUTER_ENGINEERING;
+        }
+        return MAX_UNITS;
+    }
+
+    // Every pair of the student's classes that overlap on the same day, for the
+    // warnings
+    @Transactional(readOnly = true)
+    public List<Conflict> conflicts(StudentProfile student) {
+        List<Conflict> conflicts = new ArrayList<>();
+        for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(student).entrySet()) {
+            List<ClassTime> classes = day.getValue();
+            for (int i = 0; i < classes.size(); i++) {
+                for (int j = i + 1; j < classes.size(); j++) {
+                    if (overlaps(classes.get(i), classes.get(j))) {
+                        conflicts.add(new Conflict(day.getKey(), classes.get(i), classes.get(j)));
+                    }
+                }
+            }
+        }
+        return conflicts;
+    }
+
+    private static boolean overlaps(ClassTime a, ClassTime b) {
+        return a.start().isBefore(b.end()) && b.start().isBefore(a.end());
+    }
+
     // Checks that the chosen lab or tutorial belongs to the chosen lecture
     // A lecture and its labs/tutorials share the same group number(associated
     // class)
@@ -256,4 +305,5 @@ public class NextSemesterScheduleService {
         }
         return Objects.equals(attached.getAssociatedClass(), lecture.getAssociatedClass());
     }
+
 }
