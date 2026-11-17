@@ -66,6 +66,7 @@
             CMPT 225 – Data Structures
           </h3>
           <input type="hidden" name="offeringId" th:value="${chosen.id}" />
+          <input type="hidden" name="code" th:value="|${chosen.course.subject} ${chosen.course.number}|">
 
           <label
             >Lecture

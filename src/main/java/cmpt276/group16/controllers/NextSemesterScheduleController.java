@@ -37,15 +37,18 @@ public class NextSemesterScheduleController {
             return "redirect:/login";
         }
         List<String> problems = scheduleService.removeCourse(student.get(), id);
-        return backToSchedule(problems, "Course removed.", redirectAttributes);
+        return backToSchedule(problems, "Course removed.", null, redirectAttributes);
     }
 
-    private static String backToSchedule(List<String> problems, String success,
+    private static String backToSchedule(List<String> problems, String success, String code,
             RedirectAttributes redirectAttributes) {
         if (problems.isEmpty()) {
             redirectAttributes.addFlashAttribute("message", success);
         } else {
             redirectAttributes.addFlashAttribute("errors", problems);
+            if (code != null && !code.isBlank()) {
+                redirectAttributes.addAttribute("code", code);
+            }
         }
         return "redirect:/student/schedule/next-semester";
     }
@@ -54,6 +57,7 @@ public class NextSemesterScheduleController {
     public String addCourse(@RequestParam(required = false) Long offeringId,
             @RequestParam(required = false) Long primarySectionId,
             @RequestParam(required = false) Long attachedSectionId,
+            @RequestParam(required = false) String code,
             HttpSession session, RedirectAttributes redirectAttributes) {
         Optional<StudentProfile> student = currentStudent.find(session);
         if (student.isEmpty()) {
@@ -61,7 +65,7 @@ public class NextSemesterScheduleController {
         }
         List<String> problems = scheduleService.addCourse(student.get(),
                 offeringId, primarySectionId, attachedSectionId);
-        return backToSchedule(problems, "Course added.", redirectAttributes);
+        return backToSchedule(problems, "Course added.", code, redirectAttributes);
     }
 
     @GetMapping("/student/schedule/next-semester")
