@@ -104,7 +104,7 @@ public class NextSemesterScheduleService {
         CourseOffering offering = primary.get().getOffering();
         if (!offering.getId().equals(offeringId)
                 || !offering.getTerm().getId().equals(term.get().getId())
-                || !offering.isOffered()) {
+                || !offering.isOffered() || !primary.get().isOffered()) {
             return List.of("That section isn't part of this course next semester.");
         }
 
@@ -117,7 +117,7 @@ public class NextSemesterScheduleService {
         // If this lecture has labs or tutorials, the student must pick one
         boolean lectureHasAttached = sectionRepository
                 .findByOfferingIdOrderBySectionCodeAsc(offering.getId()).stream()
-                .anyMatch(s -> goesWith(s, primary.get()));
+                .anyMatch(s -> s.isOffered() && goesWith(s, primary.get()));
         if (lectureHasAttached && attachedSectionId == null) {
             return List.of("Choose a lab or tutorial for this lecture.");
         }
@@ -127,7 +127,8 @@ public class NextSemesterScheduleService {
         Section attached = null;
         if (attachedSectionId != null) {
             Optional<Section> found = sectionRepository.findById(attachedSectionId);
-            if (found.isEmpty() || !found.get().getOffering().getId().equals(offering.getId())) {
+            if (found.isEmpty() || !found.get().getOffering().getId().equals(offering.getId())
+                    || !found.get().isOffered()) {
                 return List.of("That lab or tutorial isn't part of this course.");
             }
             if (!goesWith(found.get(), primary.get())) {
@@ -202,10 +203,12 @@ public class NextSemesterScheduleService {
     }
 
     // A course's sections, sorted by code, with their times loaded, for the lecture
-    // and tutorial dropdowns
+    // and tutorial dropdowns. Sections SFU has cancelled are kept by the import but left out here
     @Transactional(readOnly = true)
     public List<Section> sectionsOf(CourseOffering offering) {
-        return sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId());
+        return sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId()).stream()
+                .filter(Section::isOffered)
+                .toList();
     }
 
     // The student's class meetings next semester grouped by weekday, Monday to
