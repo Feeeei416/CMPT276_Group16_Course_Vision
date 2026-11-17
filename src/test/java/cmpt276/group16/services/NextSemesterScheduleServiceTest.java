@@ -128,6 +128,36 @@ public class NextSemesterScheduleServiceTest {
         assertThat(term.getSeason()).isEqualTo(Season.SPRING);
     }
 
+    // A tutorial SFU has cancelled can't be picked, even by editing the form
+    @Test
+    void rejectsACancelledTutorial() {
+        d101.setOffered(false);
+        sectionRepository.save(d101);
+
+        assertThat(service.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId()))
+                .containsExactly("That lab or tutorial isn't part of this course.");
+        assertThat(service.coursesFor(priya)).isEmpty();
+    }
+
+    // A lecture whose only tutorial was cancelled can be added on its own
+    @Test
+    void lectureWhoseTutorialWasCancelledNeedsNoTutorial() {
+        d101.setOffered(false);
+        sectionRepository.save(d101);
+
+        assertThat(service.addCourse(priya, cmpt225.getId(), d100.getId(), null)).isEmpty();
+    }
+
+    // A cancelled section isn't offered in the dropdowns
+    @Test
+    void sectionsOfLeavesOutCancelledSections() {
+        d201.setOffered(false);
+        sectionRepository.save(d201);
+
+        assertThat(service.sectionsOf(cmpt225)).extracting(Section::getSectionCode)
+                .containsExactly("D100", "D101", "D200");
+    }
+
     // Test 6: D100 has a tutorial, so it can't be added without one
     @Test
     void requiresATutorialWhenTheLectureHasOne() {

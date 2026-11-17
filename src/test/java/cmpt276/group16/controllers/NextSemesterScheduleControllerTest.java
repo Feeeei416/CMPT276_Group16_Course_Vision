@@ -145,6 +145,36 @@ class NextSemesterScheduleControllerTest {
                 .andExpect(content().string(containsString("Times not confirmed")));
     }
 
+    // The part of the page inside one dropdown, from its id to its closing tag
+    private static String dropdown(String html, String id) {
+        int start = html.indexOf("id=\"" + id + "\"");
+        return html.substring(start, html.indexOf("</select>", start));
+    }
+
+    // Choosing a course fills both dropdowns, and each option sends its section's id
+    @Test
+    void choosingACourseListsItsSections() throws Exception {
+        String html = mockMvc.perform(get("/student/schedule/next-semester").param("code", "CMPT 225")
+                .session(sessionFor(priya))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(dropdown(html, "lecture-select")).contains("value=\"" + d100.getId() + "\"", "D100");
+        assertThat(dropdown(html, "attached-select")).contains("value=\"" + d101.getId() + "\"", "D101");
+    }
+
+    // A tutorial SFU has cancelled isn't offered
+    @Test
+    void cancelledSectionsArentListed() throws Exception {
+        Section d102 = new Section(cmpt225, "D102", SectionType.TUT, false, "1");
+        d102.setOffered(false);
+        sectionRepository.save(d102);
+
+        String html = mockMvc.perform(get("/student/schedule/next-semester").param("code", "CMPT 225")
+                .session(sessionFor(priya))).andReturn().getResponse().getContentAsString();
+
+        assertThat(dropdown(html, "attached-select")).contains("D101").doesNotContain("D102");
+    }
+
     @Test
     void addsACourseThroughTheForm() throws Exception {
         mockMvc.perform(post("/student/schedule/next-semester/courses").session(sessionFor(priya))

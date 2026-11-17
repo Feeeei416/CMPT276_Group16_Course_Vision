@@ -11,6 +11,10 @@
     <main class="page-content">
       <h1 class="page-title" th:text="'Welcome, ' + ${user.displayName}"></h1>
       <section>
+        <h2 class="section-label">Course refresh</h2>
+        <p><a th:href="@{/it/course-refresh}" class="link">Refresh course data from SFU</a></p>
+      </section>
+      <section>
         <h2 class="section-label">All accounts</h2>
         <p
           th:text="|${users.size()} ${users.size() == 1 ? 'account' : 'accounts'}|"

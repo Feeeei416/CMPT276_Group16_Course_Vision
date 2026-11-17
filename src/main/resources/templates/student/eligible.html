@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>Eligible courses</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content" th:with="e=${eligibility}">
+        <h1 class="page-title" th:text="|Courses for ${e.term()}|">Courses for 2027 Spring</h1>
+        <p>Based on the courses in your record. Courses you've passed or are taking now aren't listed.</p>
+
+        <!-- No course data for next semester yet -->
+        <p th:unless="${e.termKnown()}"
+           th:text="|Course offerings for ${e.term()} have not been loaded yet. Check back once they are published.|">
+            Course offerings for 2027 Spring have not been loaded yet.</p>
+
+        <th:block th:if="${e.termKnown()}">
+            <section>
+                <h2 class="section-label">You can take</h2>
+                <p th:if="${e.eligible().isEmpty()}">None of next semester's courses match your record yet.</p>
+                <ul th:unless="${e.eligible().isEmpty()}" class="course-results">
+                    <li th:each="r : ${e.eligible()}">
+                        <strong th:text="|${r.course().subject} ${r.course().number}|">CMPT 276</strong>
+                        <span th:text="${r.course().title}">Intro Software Engineering</span>
+                        <ul th:unless="${r.notes().isEmpty()}" class="muted">
+                            <li th:each="note : ${r.notes()}" th:text="${note}">CMPT 225 is still in progress.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <hr>
+
+            <section>
+                <h2 class="section-label">Not yet</h2>
+                <p th:if="${e.notEligible().isEmpty()}">Nothing is blocked by a missing prerequisite.</p>
+                <ul th:unless="${e.notEligible().isEmpty()}" class="course-results">
+                    <li th:each="r : ${e.notEligible()}">
+                        <strong th:text="|${r.course().subject} ${r.course().number}|">CMPT 300</strong>
+                        <span th:text="${r.course().title}">Operating Systems I</span>
+                        <ul>
+                            <li th:each="note : ${r.notes()}" th:text="${note}">Needs CMPT 225 with C- or better, you have D.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <th:block th:unless="${e.unchecked().isEmpty()}">
+                <hr>
+                <section>
+                    <h2 class="section-label">Check these yourself</h2>
+                    <p>We couldn't read the prerequisites for these courses, so here they are from the Calendar.</p>
+                    <ul class="course-results">
+                        <li th:each="r : ${e.unchecked()}">
+                            <strong th:text="|${r.course().subject} ${r.course().number}|">CMPT 419</strong>
+                            <span th:text="${r.course().title}">Special Topics</span>
+                            <p class="muted" th:text="${r.notes()[0]}">Permission of the instructor.</p>
+                        </li>
+                    </ul>
+                </section>
+            </th:block>
+        </th:block>
+
+        <p class="actions"><a th:href="@{/student/home}" class="link">Back to home</a></p>
+    </main>
+</body>
+</html>
