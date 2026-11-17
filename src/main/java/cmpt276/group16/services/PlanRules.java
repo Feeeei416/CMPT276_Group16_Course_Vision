@@ -85,6 +85,15 @@ public final class PlanRules {
         return termName(currentTerm(today) + 1);
     }
 
+    // Holds a year and a season, for example 2027 and SPRING
+    public record YearAndSeason(int year, Season season) {}
+
+    // Returns next semester's year and season, using the same calculation as nextSemester()
+    public static YearAndSeason nextSemesterYearAndSeason(LocalDate today) {
+    int next = currentTerm(today) + 1;
+    return new YearAndSeason(next / TERMS_PER_YEAR, SEASONS[next % TERMS_PER_YEAR]);
+    }
+
     // The years to offer on the My plan page, from the first plannable term to the last
     public static List<Integer> plannableYears(LocalDate today) {
         int firstYear = (currentTerm(today) + 2) / TERMS_PER_YEAR;

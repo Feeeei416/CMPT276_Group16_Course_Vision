@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <title>My schedule</title>
+  </head>
+  <body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+      <h1 class="page-title">My schedule</h1>
+      <p>Choose your courses and sections for next semester.</p>
+
+      <!-- Shows "Course added." / "Course removed." or the problems from the last add or remove -->
+      <div
+        class="notice-message"
+        th:if="${message}"
+        th:text="${message}"
+        role="status"
+      >
+        Course added.
+      </div>
+      <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+        <div th:each="e : ${errors}" th:text="${e}"></div>
+      </div>
+
+      <section>
+        <h2 class="section-label">Add a course</h2>
+        <form
+          method="get"
+          class="inline-form"
+          th:action="@{/student/schedule/next-semester}"
+        >
+          <input
+            type="text"
+            name="code"
+            class="input"
+            list="course-suggestions"
+            autocomplete="off"
+            placeholder="Course code, e.g. CMPT 225"
+            aria-label="Course code"
+            th:value="${param.code}"
+            required
+          />
+          <datalist id="course-suggestions">
+            <option
+              th:each="o : ${offerings}"
+              th:value="|${o.course.subject} ${o.course.number}|"
+              th:text="${o.course.title}"
+            >
+              Data Structures
+            </option>
+          </datalist>
+          <button type="submit" class="btn btn-secondary">Choose</button>
+        </form>
+
+        <form
+          method="post"
+          th:if="${chosen != null}"
+          th:action="@{/student/schedule/next-semester/courses}"
+        >
+          <h3
+            th:text="|${chosen.course.subject} ${chosen.course.number} – ${chosen.course.title}|"
+          >
+            CMPT 225 – Data Structures
+          </h3>
+          <input type="hidden" name="offeringId" th:value="${chosen.id}" />
+          <input type="hidden" name="code" th:value="|${chosen.course.subject} ${chosen.course.number}|">
+
+          <label
+            >Lecture
+            <select name="primarySectionId" id="lecture-select" class="input" required>
+              <option value="">-- Choose a lecture --</option>
+              <option
+                th:each="s : ${lectures}"
+                th:value="${s.id}"
+                th:data-group="${s.associatedClass}"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+              >
+                D100 LEC – MONDAY 10:30-11:20
+              </option>
+            </select>
+          </label>
+
+          <label th:unless="${attachedSections.isEmpty()}"
+            >Lab or tutorial
+            <select name="attachedSectionId" id="attached-select" class="input">
+              <option value="">-- Choose a lab or tutorial --</option>
+              <option
+                th:each="s : ${attachedSections}"
+                th:value="${s.id}"
+                th:data-group="${s.associatedClass}"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+              >
+                D101 TUT – FRIDAY 9:30-10:20
+              </option>
+            </select>
+          </label>
+
+          <button type="submit" class="btn btn-primary">Add to schedule</button>
+        </form>
+      </section>
+
+      <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
+      <ul class="plan-courses" th:unless="${courses.isEmpty()}">
+        <li th:each="c : ${courses}">
+          <span
+            th:text="${c.offering.course.subject + ' ' + c.offering.course.number}"
+            >CMPT 225</span
+          >
+          <span th:text="${c.primarySection.sectionCode}">D100</span>
+          <span
+            th:if="${c.attachedSection != null}"
+            th:text="${c.attachedSection.sectionCode}"
+            >D101</span>
+          <span th:if="${c.primarySection.meetings.isEmpty()}" class="muted">Times not confirmed</span>
+          <form
+            method="post"
+            th:action="@{/student/schedule/next-semester/courses/{id}/remove(id=${c.id})}"
+          >
+            <button type="submit" class="link">Remove</button>
+          </form>
+        </li>
+      </ul>
+
+      <section th:unless="${courses.isEmpty()}">
+        <h2 class="section-label">Week</h2>
+        <div th:each="day : ${meetingsByDay}">
+          <h3
+            th:text="${#strings.capitalize(day.key.toString().toLowerCase())}"
+          >
+            Monday
+          </h3>
+          <p th:if="${day.value.isEmpty()}" class="muted">No classes</p>
+          <ul th:unless="${day.value.isEmpty()}">
+            <li
+              th:each="t : ${day.value}"
+              th:text="|${t.start}–${t.end} ${t.course} ${t.section} ${t.type}|"
+            >
+              10:30–11:20 CMPT 225 D100 LEC
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="actions">
+        <a th:href="@{/student/home}" class="link">Back to home</a>
+      </div>
+    </main>
+    <script>
+    // Shows only the labs and tutorials that go with the chosen lecture (same group number).
+    // Without JavaScript every one is listed, and the server still rejects a pair that doesn't match
+    const lectureSelect = document.getElementById('lecture-select');
+    const attachedSelect = document.getElementById('attached-select');
+    if (lectureSelect && attachedSelect) {
+        const showMatching = () => {
+            const group = lectureSelect.selectedOptions[0].dataset.group;
+            for (const option of attachedSelect.options) {
+                if (!option.value) {
+                    continue;
+                }
+                const matches = !group || option.dataset.group === group;
+                option.hidden = !matches;
+                option.disabled = !matches;
+            }
+            if (attachedSelect.selectedOptions[0].disabled) {
+                attachedSelect.value = '';
+            }
+        };
+        lectureSelect.addEventListener('change', showMatching);
+        showMatching();
+    }
+</script>
+  </body>
+</html>
