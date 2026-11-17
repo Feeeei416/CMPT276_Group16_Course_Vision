@@ -36,8 +36,11 @@
 
         <section>
             <h2 class="section-label">Your plan</h2>
-            <p>Plan the courses you want to take in the terms after next semester.</p>
-            <a class="btn btn-primary" th:href="@{/student/plan}">My plan</a>
+            <p>Plan the courses you want to take in the terms after next semester, and keep other versions to compare.</p>
+            <div class="actions">
+                <a class="btn btn-primary" th:href="@{/student/plan}">My plan</a>
+                <a class="link" th:href="@{/student/plans}">All my plans</a>
+            </div>
         </section>
     </main>
 </body>

@@ -222,6 +222,74 @@ class PlanRepositoryTest {
     }
 
     @Test
+    void termsAreStudyTermsUnlessSaidOtherwise() {
+        Plan plan = saveMainPlan(saveStudent("priya@example.com"));
+        PlanTerm fall = saveTerm(plan, 2027, Season.FALL);
+        PlanTerm summer = planTermRepository.saveAndFlush(
+                new PlanTerm(plan, term(2028, Season.SUMMER), TermKind.COOP));
+        entityManager.clear();
+
+        assertThat(planTermRepository.findById(fall.getId()).orElseThrow().getKind()).isEqualTo(TermKind.STUDY);
+        assertThat(planTermRepository.findById(summer.getId()).orElseThrow().getKind()).isEqualTo(TermKind.COOP);
+    }
+
+    @Test
+    void findsEveryPlanOfOneStudentInTheOrderTheyWereMade() {
+        StudentProfile priya = saveStudent("priya@example.com");
+        StudentProfile marcus = saveStudent("marcus@example.com");
+        saveMainPlan(priya);
+        planRepository.saveAndFlush(new Plan(priya, "Co-op plan", false));
+        saveMainPlan(marcus);
+
+        assertThat(planRepository.findByStudentOrderByIdAsc(priya))
+            .extracting(Plan::getName)
+            .containsExactly("My plan", "Co-op plan");
+    }
+
+    @Test
+    void anotherStudentCantFindMyPlan() {
+        StudentProfile priya = saveStudent("priya@example.com");
+        StudentProfile marcus = saveStudent("marcus@example.com");
+        Plan plan = saveMainPlan(priya);
+
+        assertThat(planRepository.findByIdAndStudent(plan.getId(), priya)).isPresent();
+        assertThat(planRepository.findByIdAndStudent(plan.getId(), marcus)).isEmpty();
+    }
+
+    @Test
+    void planNamesAreCheckedIgnoringCase() {
+        StudentProfile priya = saveStudent("priya@example.com");
+        saveMainPlan(priya);
+
+        assertThat(planRepository.existsByStudentAndNameIgnoreCase(priya, "MY PLAN")).isTrue();
+        assertThat(planRepository.existsByStudentAndNameIgnoreCase(priya, "Co-op plan")).isFalse();
+        assertThat(planRepository.existsByStudentAndNameIgnoreCase(saveStudent("marcus@example.com"), "My plan"))
+            .isFalse();
+    }
+
+    @Test
+    void deletingAPlansTermsAndCoursesLeavesOtherPlansAlone() {
+        StudentProfile student = saveStudent("priya@example.com");
+        Plan main = saveMainPlan(student);
+        Plan coop = planRepository.saveAndFlush(new Plan(student, "Co-op plan", false));
+        saveCourse(saveTerm(main, 2027, Season.FALL), "CMPT", "225");
+        saveCourse(saveTerm(coop, 2027, Season.FALL), "CMPT", "225");
+        saveCourse(saveTerm(coop, 2028, Season.SPRING), "CMPT", "276");
+
+        assertThat(plannedCourseRepository.deleteByTermPlan(coop)).isEqualTo(2);
+        assertThat(planTermRepository.deleteByPlan(coop)).isEqualTo(2);
+        planRepository.delete(coop);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(planRepository.findByStudentOrderByIdAsc(student)).extracting(Plan::getName)
+            .containsExactly("My plan");
+        assertThat(planTermRepository.findByPlan(main)).hasSize(1);
+        assertThat(plannedCourseRepository.findByTermPlan(main)).extracting(PlannedCourse::getCode)
+            .containsExactly("CMPT 225");
+    }
+
+    @Test
     void termsSortByWhenTheyHappen() {
         Plan plan = saveMainPlan(saveStudent("priya@example.com"));
         saveTerm(plan, 2028, Season.SPRING);

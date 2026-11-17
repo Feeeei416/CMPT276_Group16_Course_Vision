@@ -41,7 +41,10 @@ public class DataSeeder implements CommandLineRunner {
             new DemoCourse("MATH", "151", "Calculus I", "3"),
             new DemoCourse("MATH", "152", "Calculus II", "3"),
             new DemoCourse("ENSC", "251", "Software Design and Analysis for Engineers", "4"),
-            new DemoCourse("ENSC", "252", "Fundamentals of Digital Logic & Design", "4"));
+            new DemoCourse("ENSC", "252", "Fundamentals of Digital Logic & Design", "4"),
+            // Co-op work terms, so a co-op term on My plan can be tried before the course import
+            new DemoCourse("CMPT", "426", "Practicum I", "3"),
+            new DemoCourse("ENSC", "195", "Industrial Internship I", "3"));
 
     record DemoCourse(String subject, String number, String title, String units) {
     }

@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
-    <title>My plan</title>
+    <title th:text="${plan != null ? plan.name : 'My plan'}">My plan</title>
 </head>
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title">My plan</h1>
+        <h1 class="page-title">
+            <span th:text="${plan != null ? plan.name : 'My plan'}">My plan</span>
+            <span class="badge" th:if="${plan != null and plan.main}">Main plan</span>
+        </h1>
         <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
+        <!-- Opened from My plans, so say it isn't the one the Graduation Report uses -->
+        <p class="muted" th:if="${plan != null and !plan.main}">This isn't your main plan, so changes here don't
+            affect your main plan. You can make it your main plan on <a th:href="@{/student/plans}" class="link">My plans</a>.</p>
 
         <!-- Set by the last change, before redirecting back here. A change inside a term shows in that term instead -->
         <th:block th:if="${changedTermId == null}">
@@ -24,6 +30,8 @@
         <section class="plan-add-term">
             <h2 class="section-label">Add a term</h2>
             <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
+                <!-- Set when this page was opened from My plans, so the change goes to this plan and comes back here -->
+                <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <select name="year" class="input" aria-label="Year" required>
                     <option value="">-- Year --</option>
                     <option th:each="y : ${years}" th:value="${y}" th:text="${y}">2027</option>
@@ -31,6 +39,10 @@
                 <select name="season" class="input" aria-label="Term" required>
                     <option value="">-- Term --</option>
                     <option th:each="s : ${seasons}" th:value="${s.name()}" th:text="${s.showName}">Fall</option>
+                </select>
+                <!-- Study is first, so a term is a normal one unless the student picks Co-op or Gap -->
+                <select name="kind" class="input" aria-label="Kind of term">
+                    <option th:each="k : ${kinds}" th:value="${k.name()}" th:text="|${k.showName} term|">Study term</option>
                 </select>
                 <button type="submit" class="btn btn-primary">Add term</button>
             </form>
@@ -43,12 +55,17 @@
                  th:with="term=${termPlan.term}, courses=${termPlan.courses}" th:id="|term-${term.id}|">
             <div class="plan-term-header">
                 <div>
-                    <h2 class="section-label" th:text="${term.name}">2027 Fall</h2>
-                    <span class="muted" th:text="${termPlan.unitsText()}">9 units</span>
+                    <h2 class="section-label">
+                        <span th:text="${term.name}">2027 Fall</span>
+                        <span class="badge badge-muted" th:if="${term.kind.name() != 'STUDY'}"
+                              th:text="${term.kind.showName}">Co-op</span>
+                    </h2>
+                    <span class="muted" th:if="${term.kind.takesCourses()}" th:text="${termPlan.unitsText()}">9 units</span>
                 </div>
                 <!-- The script below opens the dialog instead of sending this form -->
                 <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}"
                       th:data-dialog="|remove-term-${term.id}|">
+                    <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                     <button type="submit" class="btn btn-secondary">Remove term</button>
                 </form>
             </div>
@@ -73,27 +90,41 @@
                         <button class="btn btn-secondary" autofocus>Cancel</button>
                     </form>
                     <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}">
+                        <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                         <button type="submit" class="btn btn-primary">Remove term</button>
                     </form>
                 </div>
             </dialog>
 
-            <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
+            <!-- A gap term holds no courses, so it says what the term is instead of offering Add course.
+                 A co-op term says which course goes in it -->
+            <p th:unless="${term.kind.takesCourses()}" class="muted">Gap term. No courses are planned for it.</p>
+            <p th:if="${term.kind.name() == 'COOP' and courses.isEmpty()}" class="muted">Co-op term. Add its work term
+                course, like CMPT 426 or ENSC 195. You can also plan one other course, if your employer and co-op
+                coordinator approve it.</p>
+            <p th:if="${term.kind.name() == 'STUDY' and courses.isEmpty()}" class="muted">No courses yet.</p>
             <ul class="plan-courses" th:unless="${courses.isEmpty()}">
                 <li th:each="course : ${courses}">
                     <span>
                         <span th:text="${course.code}">CMPT 225</span>
                         <span class="muted" th:text="${course.title}">Data Structures and Programming</span>
+                        <!-- Prerequisites that won't be met by this term; nothing when they all are -->
+                        <span class="plan-course-flag" th:each="sentence : ${missing[course.id]}"
+                              th:text="${sentence}">Needs CMPT 125 with C- or better.</span>
                     </span>
                     <form method="post" th:action="@{/student/plan/courses/{id}/remove(id=${course.id})}">
+                        <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                         <button type="submit" class="link">Remove</button>
                     </form>
                 </li>
             </ul>
 
-            <form method="post" class="inline-form" th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
+            <form method="post" class="inline-form" th:if="${term.kind.takesCourses()}"
+                  th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
+                <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <!-- Starts with what was typed when adding a course to this term just failed -->
-                <input type="text" name="code" class="input" maxlength="20" placeholder="Course code, e.g. CMPT 225"
+                <input type="text" name="code" class="input" maxlength="20"
+                       th:placeholder="${term.kind.name() == 'COOP' ? 'Co-op course, e.g. CMPT 426' : 'Course code, e.g. CMPT 225'}"
                        th:aria-label="|Course code for ${term.name}|"
                        th:value="${changedTermId == term.id ? typedCode : null}" required>
                 <button type="submit" class="btn btn-primary">Add course</button>
@@ -101,6 +132,7 @@
         </section>
 
         <div class="actions">
+            <a th:href="@{/student/plans}" class="link">All my plans</a>
             <a th:href="@{/student/home}" class="link">Back to home</a>
         </div>
     </main>
