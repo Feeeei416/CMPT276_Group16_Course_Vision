@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>My plans</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">My plans</h1>
+        <p>Keep other versions of your plan, like a lighter course load or one with a co-op term.
+            Your main plan is the one the Graduation Report uses.</p>
+
+        <!-- Set by the last change, before redirecting back here -->
+        <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Made Co-op plan.</div>
+        <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+            <div th:each="e : ${errors}" th:text="${e}"></div>
+        </div>
+
+        <!-- Above the plans, so it's in the same place however many plans there are -->
+        <section class="plan-add-term">
+            <h2 class="section-label">New plan</h2>
+            <form method="post" class="inline-form" th:action="@{/student/plans}">
+                <!-- Start with what was typed when making a plan just failed -->
+                <input type="text" name="name" class="input" maxlength="40" placeholder="Name, e.g. Co-op plan"
+                       aria-label="Plan name" th:value="${typedName}" required>
+                <select name="copyFrom" class="input" aria-label="Start from">
+                    <option value="">Start empty</option>
+                    <option th:each="summary : ${plans}" th:value="${summary.plan.id}"
+                            th:text="|Copy of ${summary.plan.name}|"
+                            th:selected="${chosenCopyFrom == #strings.toString(summary.plan.id)}">Copy of My plan</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Make plan</button>
+            </form>
+        </section>
+
+        <p th:if="${plans.isEmpty()}" class="muted">No plans yet. Make one above, or start adding terms on
+            <a th:href="@{/student/plan}" class="link">My plan</a>.</p>
+
+        <!-- One box per plan, the main plan first -->
+        <section class="plan-term" th:each="summary : ${plans}" th:with="plan=${summary.plan}"
+                 th:id="|plan-${plan.id}|">
+            <div class="plan-term-header">
+                <div>
+                    <h2 class="section-label">
+                        <span th:text="${plan.name}">My plan</span>
+                        <span class="badge" th:if="${plan.main}">Main plan</span>
+                    </h2>
+                    <span class="muted" th:text="${summary.sizeText()}">3 terms, 9 courses</span>
+                </div>
+                <div class="row-actions">
+                    <a class="btn btn-primary" th:href="@{/student/plans/{id}(id=${plan.id})}">Open</a>
+                    <form method="post" th:unless="${plan.main}"
+                          th:action="@{/student/plans/{id}/main(id=${plan.id})}">
+                        <button type="submit" class="btn btn-secondary">Make main plan</button>
+                    </form>
+                    <!-- The script below opens the dialog instead of sending this form.
+                         The main plan has no Delete, since there always has to be one -->
+                    <form method="post" th:unless="${plan.main}"
+                          th:action="@{/student/plans/{id}/delete(id=${plan.id})}"
+                          th:data-dialog="|delete-plan-${plan.id}|">
+                        <button type="submit" class="btn btn-secondary">Delete</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Asks before deleting, since every term and course in the plan goes with it -->
+            <dialog class="dialog" th:id="|delete-plan-${plan.id}|" th:unless="${plan.main}">
+                <h2 class="dialog-title" th:text="|Delete ${plan.name}?|">Delete Co-op plan?</h2>
+                <p th:text="|This deletes its ${summary.sizeText()}. Your other plans stay as they are.|">
+                    This deletes its 3 terms, 9 courses. Your other plans stay as they are.</p>
+                <div class="dialog-actions">
+                    <form method="dialog">
+                        <button class="btn btn-secondary" autofocus>Cancel</button>
+                    </form>
+                    <form method="post" th:action="@{/student/plans/{id}/delete(id=${plan.id})}">
+                        <button type="submit" class="btn btn-primary">Delete plan</button>
+                    </form>
+                </div>
+            </dialog>
+
+            <details class="plan-rename">
+                <summary class="link">Rename</summary>
+                <form method="post" class="inline-form" th:action="@{/student/plans/{id}/rename(id=${plan.id})}">
+                    <input type="text" name="name" class="input" maxlength="40" th:value="${plan.name}"
+                           th:aria-label="|New name for ${plan.name}|" required>
+                    <button type="submit" class="btn btn-primary">Save name</button>
+                </form>
+            </details>
+        </section>
+
+        <div class="actions">
+            <a th:href="@{/student/home}" class="link">Back to home</a>
+        </div>
+    </main>
+
+    <script>
+        // Delete opens its dialog instead of deleting straight away.
+        // Without JavaScript the form still works, it just doesn't ask first
+        document.querySelectorAll('form[data-dialog]').forEach(form => {
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                document.getElementById(form.dataset.dialog).showModal();
+            });
+        });
+    </script>
+</body>
+</html>

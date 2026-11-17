@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import cmpt276.group16.models.Season;
+import cmpt276.group16.models.TermKind;
 import cmpt276.group16.services.PlanRules.CourseCode;
 
 // Plain unit tests: no Spring or database, just the rules
@@ -104,9 +105,53 @@ class PlanRulesTest {
             .containsExactly(2027, 2028, 2029, 2030, 2031, 2032, 2033);
     }
 
+    @Test
+    void acceptsAPlanNameUpToTheLimit() {
+        assertThat(PlanRules.problemsWithPlanName("Co-op plan")).isEmpty();
+        assertThat(PlanRules.problemsWithPlanName("a".repeat(40))).isEmpty();
+    }
+
+    @Test
+    void rejectsABlankPlanName() {
+        assertThat(PlanRules.problemsWithPlanName("")).containsExactly("Give the plan a name.");
+    }
+
+    @Test
+    void rejectsAPlanNameOverTheLimit() {
+        assertThat(PlanRules.problemsWithPlanName("a".repeat(41)))
+            .containsExactly("Plan names can be at most 40 characters.");
+    }
+
     // In Fall 2027, next semester is Spring 2028, so 2027 has nothing left to plan
     @Test
     void skipsAYearWithNoPlannableTermsLeft() {
         assertThat(PlanRules.plannableYears(LocalDate.of(2027, 10, 1))).startsWith(2028);
+    }
+
+    // The form sends COOP, but any case is read the same way, and blank means a study term
+    @ParameterizedTest
+    @CsvSource({"COOP, COOP", "coop, COOP", " Gap , GAP", "STUDY, STUDY", "'', STUDY"})
+    void readsTermKinds(String text, TermKind kind) {
+        assertThat(PlanRules.parseTermKind(text)).contains(kind);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Co-op", "Internship", "Exchange"})
+    void rejectsUnknownTermKinds(String text) {
+        assertThat(PlanRules.parseTermKind(text)).isEmpty();
+    }
+
+    // CMPT Practicum I to V and the ENSC internships, from the SFU calendar
+    @ParameterizedTest
+    @CsvSource({"CMPT, 426", "CMPT, 430", "ENSC, 195", "ENSC, 395"})
+    void knowsCoopWorkTermCourses(String subject, String number) {
+        assertThat(PlanRules.isCoopCourse(subject, number)).isTrue();
+    }
+
+    // Normal courses, and CMPT 493 Digital Media Practicum, which is a taught course and not a work term
+    @ParameterizedTest
+    @CsvSource({"CMPT, 225", "CMPT, 425", "CMPT, 431", "CMPT, 493", "ENSC, 251"})
+    void otherCoursesArentCoopCourses(String subject, String number) {
+        assertThat(PlanRules.isCoopCourse(subject, number)).isFalse();
     }
 }
