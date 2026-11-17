@@ -14,4 +14,7 @@ public interface PlanTermRepository extends JpaRepository<PlanTerm, Long> {
     Optional<PlanTerm> findByIdAndPlanStudent(Long id, StudentProfile student);
 
     boolean existsByPlanAndTerm(Plan plan, Term term);
+
+    // Used when a plan is deleted, after its courses
+    long deleteByPlan(Plan plan);
 }

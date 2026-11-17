@@ -48,4 +48,12 @@ public class Plan {
     public boolean isMain() {
         return main;
     }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setMain(boolean main) {
+        this.main = main;
+    }
 }
