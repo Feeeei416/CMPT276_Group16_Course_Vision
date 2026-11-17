@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <style>
+    .conflict { color: #a6192e; font-weight: 600; }
+    </style>
     <title>My schedule</title>
   </head>
   <body class="page">
@@ -103,6 +106,17 @@
       </section>
 
       <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
+      <!-- Units and overlap warnings. They only warn; the schedule is still saved -->
+<div th:unless="${courses.isEmpty()}">
+    <p th:text="|Total: ${totalUnits.stripTrailingZeros().toPlainString()} of ${unitLimit} units|">Total: 15 of 18 units</p>
+    <div class="error-message" role="alert" th:if="${totalUnits.compareTo(unitLimit) > 0}"
+         th:text="|You're over the ${unitLimit}-unit limit for a term.|">You're over the 18-unit limit for a term.</div>
+    <div class="error-message" role="alert" th:unless="${conflicts.isEmpty()}">
+        <div th:each="c : ${conflicts}"
+             th:text="|${c.first.course} ${c.first.section} overlaps ${c.second.course} ${c.second.section} on ${#strings.capitalize(c.day.toString().toLowerCase())}.|">
+            CMPT 225 D100 overlaps MACM 201 D100 on Monday.</div>
+    </div>
+</div>
       <ul class="plan-courses" th:unless="${courses.isEmpty()}">
         <li th:each="c : ${courses}">
           <span
@@ -136,6 +150,7 @@
           <ul th:unless="${day.value.isEmpty()}">
             <li
               th:each="t : ${day.value}"
+              th:classappend="${#lists.contains(conflicts.![first], t) or #lists.contains(conflicts.![second], t)} ? 'conflict'"
               th:text="|${t.start}–${t.end} ${t.course} ${t.section} ${t.type}|"
             >
               10:30–11:20 CMPT 225 D100 LEC
