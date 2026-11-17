@@ -160,6 +160,59 @@ class PrerequisiteCheckTest {
                 .containsExactly("CMPT 225 is still in progress, and you need C- or better.");
     }
 
+    // A course added for the term being checked can't meet a prerequisite in that same term
+    @Test
+    void courseInTheSameTermDoesNotCount() {
+        requires(null, "CMPT", "225", "C-");
+        List<TranscriptCourse> record = List.of(took("2027 Spring", "CMPT", "225", null));
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                PrerequisiteCheck.takenBefore(record, "2027 Spring"));
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs CMPT 225 with C- or better.");
+    }
+
+    // This term's course in progress still counts for next term, flagged as before
+    @Test
+    void courseInProgressThisTermCountsForNextTerm() {
+        requires(null, "CMPT", "225", "C-");
+        List<TranscriptCourse> record = List.of(took("2026 Fall", "CMPT", "225", null));
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                PrerequisiteCheck.takenBefore(record, "2027 Spring"));
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm())
+                .containsExactly("CMPT 225 is still in progress, and you need C- or better.");
+    }
+
+    // Unit requirements only count units from earlier terms too
+    @Test
+    void unitRequirementIgnoresCoursesFromTheSameTerm() {
+        requiresUnits(null, "6");
+        List<TranscriptCourse> record = List.of(
+                took("2025 Fall", "CMPT", "120", "A"),
+                took("2027 Spring", "CMPT", "125", null));
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                PrerequisiteCheck.takenBefore(record, "2027 Spring"));
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs 6 units, you have 3.00.");
+    }
+
+    @Test
+    void takenBeforeKeepsOnlyEarlierTerms() {
+        TranscriptCourse earlier = took("2026 Fall", "CMPT", "120", "A");
+        TranscriptCourse same = took("2027 Spring", "CMPT", "125", null);
+        TranscriptCourse later = took("2027 Summer", "CMPT", "225", null);
+        TranscriptCourse unknownTerm = took("Not a term", "MATH", "100", "A");
+
+        assertThat(PrerequisiteCheck.takenBefore(List.of(earlier, same, later, unknownTerm), "2027 Spring"))
+                .containsExactly(earlier);
+    }
+
     @Test
     void courseCodesMatchIgnoringCase() {
         requires(null, "CMPT", "225", "C-");

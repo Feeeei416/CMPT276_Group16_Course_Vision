@@ -53,7 +53,7 @@ class UnitTotalsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "P"})
+    @ValueSource(strings = {"A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "P", "CR", "CC", "AE"})
     void passingGradesEarnUnits(String grade) {
         assertThat(UnitTotals.of(List.of(course("2025 Fall", "CMPT", "120", "3.00", grade))).earned())
                 .isEqualByComparingTo("3.00");
@@ -61,7 +61,7 @@ class UnitTotalsTest {
 
     // A failed course still stores 3.00 units, so the grade decides, not the units column
     @ParameterizedTest
-    @ValueSource(strings = {"F", "FD", "N", "W", "WD", "WE", "AU", "DE"})
+    @ValueSource(strings = {"F", "FD", "N", "W", "WD", "WE", "AU", "DE", "CF", "CN"})
     void failsWithdrawalsAndAuditsEarnNothing(String grade) {
         UnitTotals.Totals totals = UnitTotals.of(List.of(course("2025 Fall", "CMPT", "120", "3.00", grade)));
 
@@ -75,6 +75,17 @@ class UnitTotalsTest {
                 manual("2024 Fall", "CMPT", "1XX", "3.00", Grades.TRANSFER)));
 
         assertThat(totals.earned()).isEqualByComparingTo("3.00");
+    }
+
+    // Two unassigned transfer credits in the same subject are two different courses, not a retake
+    @Test
+    void unassignedTransferCreditsAreNotMerged() {
+        UnitTotals.Totals totals = UnitTotals.of(List.of(
+                manual("2024 Fall", "MATH", "1XX", "3.00", Grades.TRANSFER),
+                manual("2024 Fall", "MATH", "1XX", "3.00", Grades.TRANSFER),
+                manual("2024 Fall", "CMPT", "2xx", "4.00", Grades.TRANSFER)));
+
+        assertThat(totals.earned()).isEqualByComparingTo("10.00");
     }
 
     @Test

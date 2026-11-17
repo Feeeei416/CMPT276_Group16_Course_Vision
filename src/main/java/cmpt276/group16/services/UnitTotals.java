@@ -2,12 +2,13 @@ package cmpt276.group16.services;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import cmpt276.group16.models.Grades;
 import cmpt276.group16.models.TranscriptCourse;
@@ -37,7 +38,7 @@ public final class UnitTotals {
         BigDecimal earned = BigDecimal.ZERO;
         BigDecimal inProgress = BigDecimal.ZERO;
 
-        for (List<TranscriptCourse> attempts : byCourseCode(courses).values()) {
+        for (List<TranscriptCourse> attempts : byCourseCode(courses)) {
             Optional<TranscriptCourse> lastPass = attempts.stream()
                     .filter(c -> Grades.earnsCredit(c.getGrade()))
                     .max(OLDEST_FIRST);
@@ -55,10 +56,29 @@ public final class UnitTotals {
         return new Totals(twoDecimals(earned), twoDecimals(inProgress));
     }
 
-    // "CMPT 225" -> every attempt at CMPT 225. Uppercase so "cmpt 225" added by hand matches the transcript row
-    private static Map<String, List<TranscriptCourse>> byCourseCode(List<TranscriptCourse> courses) {
-        return courses.stream().collect(Collectors.groupingBy(
-                c -> (c.getSubject() + " " + c.getNumber()).toUpperCase(Locale.ROOT)));
+    // "CMPT 225" -> every attempt at CMPT 225. Uppercase so "cmpt 225" added by hand matches the transcript row.
+    // Unassigned transfer credit like "MATH 1XX" is never grouped: two of them are two different courses
+    private static List<List<TranscriptCourse>> byCourseCode(List<TranscriptCourse> courses) {
+        List<List<TranscriptCourse>> groups = new ArrayList<>();
+        Map<String, List<TranscriptCourse>> byCode = new LinkedHashMap<>();
+        for (TranscriptCourse course : courses) {
+            if (isUnassignedTransfer(course)) {
+                groups.add(List.of(course));
+            } else {
+                byCode.computeIfAbsent(code(course), key -> new ArrayList<>()).add(course);
+            }
+        }
+        groups.addAll(byCode.values());
+        return groups;
+    }
+
+    private static String code(TranscriptCourse course) {
+        return (course.getSubject() + " " + course.getNumber()).toUpperCase(Locale.ROOT);
+    }
+
+    // Transfer credit that doesn't match one SFU course gets a number like "1XX" or "2XX"
+    private static boolean isUnassignedTransfer(TranscriptCourse course) {
+        return course.getNumber().toUpperCase(Locale.ROOT).contains("XX");
     }
 
     // Always show units like the course table does, for example "45.00"
