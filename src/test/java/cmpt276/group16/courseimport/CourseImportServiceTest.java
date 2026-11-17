@@ -181,19 +181,55 @@ class CourseImportServiceTest {
         assertThat(importService.isRunning()).isFalse();
     }
  
-    // A section SFU no longer lists is deleted on the next import
-    @Test
-    void removesSectionsSfuNoLongerLists() throws IOException {
-        importService.importTerm(2027, Season.SPRING);
-        String withoutD104 = saved("cmpt-225-sections.json").replace("{\"text\":\"D104\",\"value\":\"d104\","
+    // CMPT 225's sections without D104, as if SFU cancelled that lab
+    private static String sectionsWithoutD104() throws IOException {
+        return saved("cmpt-225-sections.json").replace("{\"text\":\"D104\",\"value\":\"d104\","
                 + "\"title\":\"Data Structures and Programming\",\"classType\":\"n\",\"sectionCode\":\"LAB\","
                 + "\"associatedClass\":\"1\"},", "");
-        answerSections(withoutD104);
- 
+    }
+
+    private Section cmpt225Section(String code) {
+        return cmpt225Sections().stream().filter(s -> s.getSectionCode().equals(code)).findFirst().orElseThrow();
+    }
+
+    // A section SFU no longer lists is kept but marked not offered, since a schedule can point at it
+    @Test
+    void marksSectionsSfuNoLongerListsNotOffered() throws IOException {
+        importService.importTerm(2027, Season.SPRING);
+        answerSections(sectionsWithoutD104());
+
         ImportRun run = importService.importTerm(2027, Season.SPRING);
- 
+
         assertThat(run.removedSections()).isEqualTo(1);
-        assertThat(cmpt225Sections()).extracting(Section::getSectionCode).doesNotContain("D104").hasSize(9);
+        assertThat(cmpt225Sections()).hasSize(10);
+        assertThat(cmpt225Sections()).filteredOn(s -> !s.isOffered())
+                .extracting(Section::getSectionCode).containsExactly("D104");
+    }
+
+    // Only counted the first time: a section already marked isn't counted again on the next import
+    @Test
+    void sectionAlreadyMarkedNotOfferedIsntCountedAgain() throws IOException {
+        importService.importTerm(2027, Season.SPRING);
+        answerSections(sectionsWithoutD104());
+        importService.importTerm(2027, Season.SPRING);
+
+        ImportRun run = importService.importTerm(2027, Season.SPRING);
+
+        assertThat(run.removedSections()).isZero();
+        assertThat(cmpt225Section("D104").isOffered()).isFalse();
+    }
+
+    // A cancelled section that SFU lists again is offered again
+    @Test
+    void sectionListedAgainIsOfferedAgain() throws IOException {
+        importService.importTerm(2027, Season.SPRING);
+        answerSections(sectionsWithoutD104());
+        importService.importTerm(2027, Season.SPRING);
+        answerSections(saved("cmpt-225-sections.json"));
+
+        importService.importTerm(2027, Season.SPRING);
+
+        assertThat(cmpt225Section("D104").isOffered()).isTrue();
     }
  
     // A course missing from the next import is marked not offered, but the course itself is kept

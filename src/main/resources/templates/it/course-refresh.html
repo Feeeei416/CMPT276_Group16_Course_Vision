@@ -47,7 +47,7 @@
           <p class="error-message" th:if="${lastRun.error() != null}" th:text="|Stopped: ${lastRun.error()}|"></p>
           <ul th:if="${lastRun.error() == null}">
             <li th:text="|${lastRun.courses()} courses and ${lastRun.sections()} sections saved|"></li>
-            <li th:text="|${lastRun.removedSections()} sections SFU no longer lists were removed|"></li>
+            <li th:text="|${lastRun.removedSections()} sections are no longer offered this term|"></li>
             <li th:text="|${lastRun.notOffered()} courses are no longer offered this term|"></li>
           </ul>
           <div th:if="${lastRun.error() == null and !lastRun.notes().isEmpty()}">

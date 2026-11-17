@@ -124,7 +124,7 @@ public class CourseImportService {
             List<FetchedCourse> fetched = fetch(year, season, notes);
             Term term = findOrCreateTerm(year, season);
             ImportRun run = transaction.execute(status -> save(term, fetched, notes));
-            log.info("Imported {}: {} courses, {} sections, {} sections removed, {} courses no longer offered",
+            log.info("Imported {}: {} courses, {} sections, {} sections no longer offered, {} courses no longer offered",
                     run.termName(), run.courses(), run.sections(), run.removedSections(), run.notOffered());
             lastRun.set(run);
             return run;
@@ -295,7 +295,9 @@ public class CourseImportService {
         return offeringRepository.save(offering);
     }
  
-    // Updates or adds each section, then deletes the ones SFU no longer lists. Returns how many were deleted
+    // Updates or adds each section, then marks the ones SFU no longer lists as not offered.
+    // They're kept rather than deleted, since a student's schedule can point at them.
+    // Returns how many were newly marked
     private int saveSections(CourseOffering offering, List<FetchedSection> fetched) {
         Set<String> codes = new HashSet<>();
         for (FetchedSection f : fetched) {
@@ -308,13 +310,16 @@ public class CourseImportService {
             section.setPrimarySection(listing.primary());
             section.setAssociatedClass(listing.associatedClass());
             section.replaceMeetings(f.meetings());
+            // Listed again, for example a tutorial that was cancelled and then reopened
+            section.setOffered(true);
             section.markFetched();
             codes.add(sectionRepository.save(section).getSectionCode());
         }
         int removed = 0;
         for (Section saved : sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId())) {
-            if (!codes.contains(saved.getSectionCode())) {
-                sectionRepository.delete(saved);
+            if (saved.isOffered() && !codes.contains(saved.getSectionCode())) {
+                saved.setOffered(false);
+                saved.markFetched();
                 removed++;
             }
         }

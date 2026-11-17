@@ -3,6 +3,8 @@ package cmpt276.group16.models;
 import java.time.Instant;
 import java.util.*;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import jakarta.persistence.*;
 
 // One section of a course offering.
@@ -47,6 +49,13 @@ public class Section {
     @CollectionTable(name = "section_meetings", joinColumns = @JoinColumn(name = "section_id"))
     @OrderColumn(name = "meeting_order")
     private List<SectionMeeting> meetings = new ArrayList<>();
+
+    // False when SFU stopped listing the section after it was saved, for example a cancelled tutorial.
+    // The row is kept instead of deleted, since a student's schedule can point at it.
+    // The default fills in rows saved before this column existed, which were all listed
+    @Column(nullable = false)
+    @ColumnDefault("true")
+    private boolean offered = true;
 
     // When this section was last fetched from the API
     @Column(nullable = false)
@@ -119,6 +128,15 @@ public class Section {
     public void replaceMeetings(List<SectionMeeting> newMeetings) {
         meetings.clear();
         meetings.addAll(newMeetings);
+    }
+
+    public boolean isOffered() {
+        return offered;
+    }
+
+    // Lets a re-fetch update whether SFU still lists the section
+    public void setOffered(boolean offered) {
+        this.offered = offered;
     }
 
     public Instant getFetchedAt() {
