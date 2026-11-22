@@ -277,7 +277,7 @@ class NextSemesterScheduleControllerTest {
     @Test
     void removingFromAnOpenedScheduleComesBack() throws Exception {
         NextSemesterSchedule afternoon = saveSchedule(priya, "Afternoon labs", false);
-        scheduleService.addCourse(priya, afternoon.getId(), cmpt225.getId(), d100.getId(), d101.getId());
+        scheduleService.addCourseTo(priya, afternoon.getId(), cmpt225.getId(), d100.getId(), d101.getId());
         Long courseId = scheduleService.coursesFor(afternoon).get(0).getId();
 
         mockMvc.perform(post("/student/schedule/next-semester/courses/{id}/remove", courseId)

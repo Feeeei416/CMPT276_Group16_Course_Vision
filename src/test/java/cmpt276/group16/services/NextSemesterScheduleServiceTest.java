@@ -224,7 +224,7 @@ public class NextSemesterScheduleServiceTest {
         saveSchedule(priya, "My schedule", true);
         NextSemesterSchedule morning = saveSchedule(priya, "Morning labs", false);
 
-        assertThat(service.addCourse(priya, morning.getId(), cmpt225.getId(), d100.getId(), d101.getId())).isEmpty();
+        assertThat(service.addCourseTo(priya, morning.getId(), cmpt225.getId(), d100.getId(), d101.getId())).isEmpty();
 
         assertThat(service.coursesFor(morning)).hasSize(1);
         assertThat(service.coursesFor(priya)).isEmpty();
@@ -235,7 +235,7 @@ public class NextSemesterScheduleServiceTest {
     void cantAddToAnotherStudentsSchedule() {
         NextSemesterSchedule marcusSchedule = saveSchedule(marcus, "My schedule", true);
 
-        assertThat(service.addCourse(priya, marcusSchedule.getId(), cmpt225.getId(), d100.getId(), d101.getId()))
+        assertThat(service.addCourseTo(priya, marcusSchedule.getId(), cmpt225.getId(), d100.getId(), d101.getId()))
                 .containsExactly("That schedule isn't one of yours.");
         assertThat(service.coursesFor(marcusSchedule)).isEmpty();
         assertThat(service.mainSchedule(priya)).isEmpty();
@@ -249,7 +249,7 @@ public class NextSemesterScheduleServiceTest {
         service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
         service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
         NextSemesterSchedule justMacm = saveSchedule(priya, "Just MACM", false);
-        service.addCourse(priya, justMacm.getId(), macm.getOffering().getId(), macm.getId(), null);
+        service.addCourseTo(priya, justMacm.getId(), macm.getOffering().getId(), macm.getId(), null);
 
         List<ScheduledCourse> mainCourses = service.coursesFor(priya);
         List<ScheduledCourse> justMacmCourses = service.coursesFor(justMacm);

@@ -82,7 +82,7 @@ public class NextSemesterScheduleController {
             return "redirect:/login";
         }
         Long viewedScheduleId = parseScheduleId(scheduleId);
-        List<String> problems = scheduleService.addCourse(student.get(), viewedScheduleId,
+        List<String> problems = scheduleService.addCourseTo(student.get(), viewedScheduleId,
                 offeringId, primarySectionId, attachedSectionId);
         return backToSchedule(problems, "Course added.", code, viewedScheduleId, redirectAttributes);
     }

@@ -87,14 +87,15 @@ public class NextSemesterScheduleService {
     @Transactional
     public List<String> addCourse(StudentProfile student, Long offeringId,
             Long primarySectionId, Long attachedSectionId) {
-        return addCourse(student, null, offeringId, primarySectionId, attachedSectionId);
+        return addCourseTo(student, null, offeringId, primarySectionId, attachedSectionId);
     }
 
     // Adds a course to one of the student's schedules: lecture and its lab or tutorial if it has one.
     // scheduleId is the schedule to add it to, or null for the main schedule.
+    // Named differently from addCourse, so a call with one Long too many can't quietly pick the wrong one.
     // Returns every problem found
     @Transactional
-    public List<String> addCourse(StudentProfile student, Long scheduleId, Long offeringId,
+    public List<String> addCourseTo(StudentProfile student, Long scheduleId, Long offeringId,
             Long primarySectionId, Long attachedSectionId) {
 
         // Locks the student so a double click waits for the first request instead of
