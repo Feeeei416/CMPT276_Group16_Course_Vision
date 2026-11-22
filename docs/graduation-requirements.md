@@ -65,7 +65,7 @@ A student follows the Calendar of the year they entered, so each year is stored 
 
 ### BSc
 - `COURSE`: MACM 316
-- `CHOOSE` 2 from Table I, Table II or Table III. Table II is empty. Table III is MACM 316, MACM 401, MACM 442, MATH 308, MATH 340, MATH 343.
+- `CHOOSE` 2 from Table I, Table II or Table III. Table II is empty. Table III is MACM 316, MACM 401, MACM 442, MATH 308, MATH 340, MATH 343. MACM 316 is left out of this choice, since it's already required and the two courses must be additional.
 
 ### WQB
 - `DESIGNATION`: 6 units of W
@@ -92,7 +92,8 @@ The same as 2024, except:
 ## Computer Engineering, BASc, entry 2024
 
 ### Required courses
-- `COURSE` × 37:
+The Calendar numbers 37 core courses: these 35, plus the Calculus I and Business choices below.
+- `COURSE` × 35:
   - CHEM 121; CMPT 225, 276, 300; ECON 103
   - ENSC 100W, 105W, 120, 151, 180, 204, 220, 225, 251, 252, 254, 280, 320, 324, 327, 350, 351, 380, 405W, 406, 429, 440
   - MACM 201, 316; MATH 152, 232, 251, 260; PHYS 120, 121
@@ -109,6 +110,7 @@ The same as 2024, except:
   - ENSC 386, 413, 428, 383, 427, and whichever of ENSC 450, 452, 453 wasn't used as a constrained elective
   - any ENSC 300 or 400 course except ENSC 412
   - CMPT 305, 307, 308, 310, 354, 361, 363, 370, 373, 375, 379, 383, 384, 404, 405, 407, 408, 409, 411, 412, 414, 417, 418, 419, 431, 441, 454, 456, 459, 461, 464, 466, 467, 469, 470, 473, 474, 475, 477
+  - Not counted: the required ENSC 300 and 400 courses (320, 324, 327, 350, 351, 380, 405W, 406, 410, 411, 429, 440) and the co-op terms ENSC 395 and 396, which "any ENSC 300 or 400 course" would otherwise include
 - `NOTE`: At least one of ENSC 386, 413, 428, 383, 427, or the unused constrained elective. This list is from [the School of Engineering Science](https://www.sfu.ca/fas/study/current-students/school-of-engineering-science/undergraduates/program-requirements.html) and took effect in Summer 2025.
 
 ### Science elective

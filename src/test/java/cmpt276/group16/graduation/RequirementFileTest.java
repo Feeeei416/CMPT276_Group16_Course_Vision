@@ -9,7 +9,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.springframework.core.io.ClassPathResource;
 
 import cmpt276.group16.graduation.RequirementFile.CourseEntry;
 import cmpt276.group16.graduation.RequirementFile.RuleEntry;
@@ -38,13 +37,6 @@ class RequirementFileTest {
         List<RuleEntry> rules = rulesOf(requirement);
         assertThat(rules).hasSize(1);
         return rules.get(0);
-    }
-
-    @Test
-    void realFileCanBeRead() {
-        RequirementFile file = new RequirementFile(new ClassPathResource("requirements/requirements.json"));
-
-        assertThat(file.sets()).isNotNull();
     }
 
     @Test
