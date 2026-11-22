@@ -36,8 +36,11 @@
         
         <section>
             <h2 class="section-label">Your schedule</h2>
-            <p>Choose your courses and sections for next semester.</p>
-            <a class="btn btn-primary" th:href="@{/student/schedule/next-semester}">My schedule</a>
+            <p>Choose your courses and sections for next semester, and keep other versions to compare.</p>
+            <div class="actions">
+                <a class="btn btn-primary" th:href="@{/student/schedule/next-semester}">My schedule</a>
+                <a class="link" th:href="@{/student/schedules}">All my schedules</a>
+            </div>
         </section>
 
         <hr>
