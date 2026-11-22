@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,9 +66,12 @@ class NextSemesterScheduleControllerTest {
     private SectionRepository sectionRepository;
     @Autowired
     private NextSemesterScheduleService scheduleService;
+    @Autowired
+    private NextSemesterScheduleRepository scheduleRepository;
 
     private StudentProfile priya;
     private StudentProfile marcus;
+    private Term spring2027;
     private CourseOffering cmpt225;
     private Section d100, d101;
 
@@ -75,7 +79,7 @@ class NextSemesterScheduleControllerTest {
     void setUp() {
         priya = saveStudent("priya@example.com");
         marcus = saveStudent("marcus@example.com");
-        Term spring2027 = termRepository.save(new Term(2027, Season.SPRING));
+        spring2027 = termRepository.save(new Term(2027, Season.SPRING));
         Course course = courseRepository.save(
                 new Course("CMPT", "225", "Data Structures", new BigDecimal("3"), null, null, null));
         cmpt225 = courseOfferingRepository.save(new CourseOffering(course, spring2027, true));
@@ -185,5 +189,103 @@ class NextSemesterScheduleControllerTest {
                 .andExpect(flash().attribute("message", "Course added."));
 
         assertThat(scheduleService.coursesFor(priya)).hasSize(1);
+    }
+
+    private NextSemesterSchedule saveSchedule(StudentProfile student, String name, boolean main) {
+        return scheduleRepository.save(new NextSemesterSchedule(student, spring2027, name, main));
+    }
+
+    @Test
+    void mainScheduleShowsItsNameAndBadge() throws Exception {
+        saveSchedule(priya, "Morning labs", true);
+
+        mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
+                .andExpect(content().string(containsString("Morning labs")))
+                .andExpect(content().string(containsString("Main schedule")))
+                .andExpect(content().string(not(containsString("This isn't your main schedule"))));
+    }
+
+    // #61: /student/schedules/5 shows that schedule, not the main one
+    @Test
+    void opensAnotherOfMySchedules() throws Exception {
+        scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+        NextSemesterSchedule afternoon = saveSchedule(priya, "Afternoon labs", false);
+
+        mockMvc.perform(get("/student/schedules/{id}", afternoon.getId()).session(sessionFor(priya)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("student/next-semester-schedule"))
+                .andExpect(content().string(containsString("Afternoon labs")))
+                .andExpect(content().string(containsString("This isn't your main schedule")))
+                .andExpect(content().string(containsString("No courses yet")))
+                .andExpect(content().string(not(containsString("D100"))));
+    }
+
+    @Test
+    void cantOpenAnotherStudentsSchedule() throws Exception {
+        NextSemesterSchedule marcusSchedule = saveSchedule(marcus, "My schedule", true);
+
+        mockMvc.perform(get("/student/schedules/{id}", marcusSchedule.getId()).session(sessionFor(priya)))
+                .andExpect(redirectedUrl("/student/schedules"))
+                .andExpect(flash().attribute("errors", List.of("That schedule isn't one of yours.")));
+    }
+
+    // Choosing a course on an opened schedule stays on it, and the add form sends the schedule's id
+    @Test
+    void choosingACourseOnAnOpenedScheduleStaysOnIt() throws Exception {
+        NextSemesterSchedule afternoon = saveSchedule(priya, "Afternoon labs", false);
+
+        String html = mockMvc.perform(get("/student/schedules/{id}", afternoon.getId()).param("code", "CMPT 225")
+                .session(sessionFor(priya))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html).contains("action=\"/student/schedules/" + afternoon.getId() + "\"")
+                .contains("name=\"scheduleId\" value=\"" + afternoon.getId() + "\"");
+        assertThat(dropdown(html, "lecture-select")).contains("D100");
+    }
+
+    @Test
+    void addingToAnOpenedScheduleGoesIntoItAndComesBack() throws Exception {
+        saveSchedule(priya, "My schedule", true);
+        NextSemesterSchedule afternoon = saveSchedule(priya, "Afternoon labs", false);
+
+        mockMvc.perform(post("/student/schedule/next-semester/courses").session(sessionFor(priya))
+                .param("offeringId", cmpt225.getId().toString())
+                .param("primarySectionId", d100.getId().toString())
+                .param("attachedSectionId", d101.getId().toString())
+                .param("scheduleId", afternoon.getId().toString()))
+                .andExpect(redirectedUrl("/student/schedules/" + afternoon.getId()))
+                .andExpect(flash().attribute("message", "Course added."));
+
+        assertThat(scheduleService.coursesFor(afternoon)).hasSize(1);
+        assertThat(scheduleService.coursesFor(priya)).isEmpty();
+    }
+
+    @Test
+    void cantAddToAnotherStudentsSchedule() throws Exception {
+        NextSemesterSchedule marcusSchedule = saveSchedule(marcus, "My schedule", true);
+
+        mockMvc.perform(post("/student/schedule/next-semester/courses").session(sessionFor(priya))
+                .param("offeringId", cmpt225.getId().toString())
+                .param("primarySectionId", d100.getId().toString())
+                .param("attachedSectionId", d101.getId().toString())
+                .param("scheduleId", marcusSchedule.getId().toString()))
+                .andExpect(flash().attribute("errors", List.of("That schedule isn't one of yours.")));
+
+        assertThat(scheduleService.coursesFor(marcusSchedule)).isEmpty();
+    }
+
+    @Test
+    void removingFromAnOpenedScheduleComesBack() throws Exception {
+        NextSemesterSchedule afternoon = saveSchedule(priya, "Afternoon labs", false);
+        scheduleService.addCourse(priya, afternoon.getId(), cmpt225.getId(), d100.getId(), d101.getId());
+        Long courseId = scheduleService.coursesFor(afternoon).get(0).getId();
+
+        mockMvc.perform(post("/student/schedule/next-semester/courses/{id}/remove", courseId)
+                .param("scheduleId", afternoon.getId().toString())
+                .session(sessionFor(priya)))
+                .andExpect(redirectedUrl("/student/schedules/" + afternoon.getId()))
+                .andExpect(flash().attribute("message", "Course removed."));
+
+        assertThat(scheduleService.coursesFor(afternoon)).isEmpty();
     }
 }
