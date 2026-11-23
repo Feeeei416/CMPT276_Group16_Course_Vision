@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
-    <title>My schedules</title>
+    <title>All my schedules</title>
 </head>
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title">My schedules</h1>
+        <h1 class="page-title">All my schedules</h1>
         <p>Keep other versions of your schedule for next semester<span th:if="${term != null}"
             th:text="| (${term.termYear} ${term.season.showName})|"> (2027 Spring)</span>, like one with a morning
             lab and one with an afternoon lab. Your main schedule is the one My schedule shows.</p>

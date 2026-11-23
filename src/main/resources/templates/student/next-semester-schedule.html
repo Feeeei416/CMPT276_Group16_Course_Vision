@@ -17,10 +17,10 @@
         <span class="badge" th:if="${schedule != null and schedule.main}">Main schedule</span>
       </h1>
       <p>Choose your courses and sections for next semester.</p>
-      <!-- Opened from My schedules, so say it isn't the one My schedule shows -->
+      <!-- Opened from All my schedules, so say it isn't the one My schedule shows -->
       <p class="muted" th:if="${schedule != null and !schedule.main}">This isn't your main schedule, so changes
         here don't affect your main schedule. You can make it your main schedule on
-        <a th:href="@{/student/schedules}" class="link">My schedules</a>.</p>
+        <a th:href="@{/student/schedules}" class="link">All my schedules</a>.</p>
 
       <!-- Shows "Course added." / "Course removed." or the problems from the last add or remove -->
       <div
@@ -78,7 +78,7 @@
           </h3>
           <input type="hidden" name="offeringId" th:value="${chosen.id}" />
           <input type="hidden" name="code" th:value="|${chosen.course.subject} ${chosen.course.number}|">
-          <!-- Set when this page was opened from My schedules, so the course goes into this schedule -->
+          <!-- Set when this page was opened from All my schedules, so the course goes into this schedule -->
           <input type="hidden" name="scheduleId" th:if="${viewedScheduleId != null}" th:value="${viewedScheduleId}">
 
           <label

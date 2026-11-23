@@ -15,7 +15,7 @@ import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.Term;
 
-// A student's schedules for next semester as a whole, for the My schedules page: making, copying, renaming and
+// A student's schedules for next semester as a whole, for the All my schedules page: making, copying, renaming and
 // deleting them, and choosing which one is the main schedule. NextSemesterScheduleService changes what's inside
 // a schedule.
 // Only next semester's schedules are listed or found, since the schedule page only works with next semester's
@@ -38,7 +38,7 @@ public class ScheduleListService {
         this.scheduleService = scheduleService;
     }
 
-    // One row on the My schedules page
+    // One row on the All my schedules page
     public record ScheduleSummary(NextSemesterSchedule schedule, long courseCount) {
 
         // For example "3 courses", or "1 course"

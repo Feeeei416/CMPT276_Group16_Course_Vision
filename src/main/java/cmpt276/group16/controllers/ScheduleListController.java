@@ -17,7 +17,7 @@ import cmpt276.group16.services.PlanChange;
 import cmpt276.group16.services.ScheduleListService;
 import jakarta.servlet.http.HttpSession;
 
-// My schedules: every schedule a student has for next semester, such as one with a morning lab and one with an
+// All my schedules: every schedule a student has for next semester, such as one with a morning lab and one with an
 // afternoon lab. Every change redirects back to the page, so refreshing it doesn't send the form again
 @Controller
 public class ScheduleListController {
