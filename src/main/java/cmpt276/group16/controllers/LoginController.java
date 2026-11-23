@@ -17,9 +17,6 @@ import org.springframework.web.servlet.view.RedirectView;
 
 @Controller 
 public class LoginController {
-    // Key used to store the logged-in user in the session.
-    // The interceptor reads the same key, so keep them in sync.
-    public static final String SESSION_USER = "session_user";
 
     // Error message for both "unknown email" and "wrong password"
     private static final String LOGIN_ERROR = "Invalid email or password.";
