@@ -18,17 +18,19 @@ import jakarta.servlet.http.HttpSession;
 public class RegisterController {
 
     private final RegistrationService registrationService;
+    private final UserRepository userRepository;
 
-    public RegisterController(RegistrationService registrationService) {
+    public RegisterController(RegistrationService registrationService, UserRepository userRepository) {
         this.registrationService = registrationService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/register") 
     public String showRegisterPage(Model model, HttpSession session) {
-        User user = (User) session.getAttribute(LoginController.SESSION_USER);
+        Optional<User> user = SessionUser.user(session, userRepository);
 
-        if (user != null){
-            return LoginController.homeFor(user.getRole());
+        if (user.isPresent()){
+            return LoginController.homeFor(user.get().getRole());
         }
 
         List<String>  errors = new ArrayList<>();
@@ -38,10 +40,10 @@ public class RegisterController {
 
     @PostMapping("/register")
     public String register(@RequestParam Map<String, String> form, Model model, HttpServletRequest request, HttpSession session) {
-        User current = (User) session.getAttribute(LoginController.SESSION_USER);
+        Optional<User> current = SessionUser.user(session, userRepository);
 
-        if (current != null){
-            return LoginController.homeFor(current.getRole());
+        if (current.isPresent()){
+            return LoginController.homeFor(current.get().getRole());
         }
 
         List<String> errors = registrationService.validate(form);
@@ -64,7 +66,7 @@ public class RegisterController {
 
         // Sign the new student in
         session.invalidate();
-        request.getSession().setAttribute(LoginController.SESSION_USER, user);
+        SessionUser.signIn(request.getSession(), user);
 
         return LoginController.homeFor(user.getRole());
     }

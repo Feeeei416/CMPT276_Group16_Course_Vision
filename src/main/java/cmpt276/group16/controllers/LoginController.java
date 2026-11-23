@@ -45,13 +45,14 @@ public class LoginController {
     */
     @GetMapping("/login") 
     public String getLogin(HttpSession session) {
-        User user = (User) session.getAttribute(SESSION_USER);
+        // Signed in already: go home. The role comes from the database, so it's always current
+        Optional<User> user = SessionUser.user(session, repo);
 
-        if (user == null){
+        if (user.isEmpty()){
             return "login/login";
         }
         else{
-            return homeFor(user.getRole());
+            return homeFor(user.get().getRole());
         }
     }
 
@@ -81,9 +82,10 @@ public class LoginController {
             return showLoginError(model,email);
         }
         else {
-            // success
+            // success: a fresh session, so an id set before login can't be reused (session fixation),
+            // and only the user's id is stored in it
             session.invalidate();
-            request.getSession().setAttribute(SESSION_USER, user);
+            SessionUser.signIn(request.getSession(), user);
             
             return homeFor(user.getRole());
         }

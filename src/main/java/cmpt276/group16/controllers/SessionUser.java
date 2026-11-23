@@ -36,5 +36,12 @@ public class SessionUser {
         return Optional.empty();
     }
 
+    // The signed-in user, loaded from the database so their name and role are current.
+    // Empty if nobody is signed in, or if the user has since been deleted
+    public static Optional<User> user(HttpSession session, UserRepository users) {
+        Optional<User> user = id(session).flatMap(i -> users.findById(i));
+        return user;
+    }
+
     private SessionUser() {}
 }

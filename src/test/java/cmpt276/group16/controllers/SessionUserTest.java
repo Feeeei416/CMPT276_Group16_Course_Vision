@@ -2,6 +2,8 @@ package cmpt276.group16.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.*;
 
@@ -10,7 +12,7 @@ import org.springframework.mock.web.MockHttpSession;
 
 import cmpt276.group16.models.*;
 
-// A plain unit test: SessionUser only reads and writes the session, so no database or Spring is needed
+// A plain unit test: no database or Spring is needed, and the repository is a Mockito mock where one is used
 class SessionUserTest {
     
     // A user as if already saved, with the given id
@@ -89,5 +91,31 @@ class SessionUserTest {
 
         assertThatThrownBy(() -> SessionUser.signIn(session, user))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // The user comes from the database, so a name or role changed since signing in is already up to date
+    @Test 
+    void userIsLoadedFromTheDatabase() {
+        MockHttpSession session = new MockHttpSession();
+        UserRepository users = mock(UserRepository.class);
+        User user = savedUser(5);
+        when(users.findById(5L)).thenReturn(Optional.of(user));
+
+        SessionUser.signIn(session, user);
+
+        assertThat(SessionUser.user(session, users)).contains(user);
+    }
+
+    // A user deleted after signing in has no row anymore, so their old session reads as signed out.
+    // The mock repository finds nothing, since findById was never told to return anyone
+    @Test 
+    void deletedUserReadsAsSignedOut() {
+        MockHttpSession session = new MockHttpSession();
+        UserRepository users = mock(UserRepository.class);
+        User user = savedUser(5);
+
+        SessionUser.signIn(session, user);
+
+        assertThat(SessionUser.user(session, users)).isEmpty();
     }
 }
