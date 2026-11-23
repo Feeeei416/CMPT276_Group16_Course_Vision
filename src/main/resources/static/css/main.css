@@ -383,7 +383,7 @@ button.link {
     text-decoration: underline;
 }
 
-/* A small label next to a name, like Main plan on My plans */
+/* A small label next to a name, like Main plan on All my plans */
 .badge {
     display: inline-block;
     margin-left: var(--space-sm);
@@ -396,7 +396,7 @@ button.link {
     vertical-align: middle;
 }
 
-/* My plans: Rename opens a name box under the plan */
+/* All my plans: Rename opens a name box under the plan */
 .plan-rename summary {
     display: inline-block;
     cursor: pointer;
