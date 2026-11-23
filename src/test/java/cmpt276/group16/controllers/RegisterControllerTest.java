@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,9 @@ public class RegisterControllerTest {
     @MockitoBean
     private RegistrationService registrationService;
 
+    @MockitoBean 
+    private UserRepository userRepository;
+
     // #1 GET /register shows the empty form with the dropdown options
     @Test
     void getRegister_whenNotLoggedIn_showsForm() throws Exception {
@@ -50,8 +54,10 @@ public class RegisterControllerTest {
     @Test
     void getRegister_whenLoggedIn_redirectsToHome() throws Exception {
         User advisor = new User("advisor@test.com", "hash", "Test Advisor", Role.ADVISOR);
+        advisor.setId(10L);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(advisor));
 
-        mockMvc.perform(get("/register").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/register").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/advisor/home"));
     }
@@ -61,6 +67,7 @@ public class RegisterControllerTest {
     void postRegister_valid_savesStudentAndRedirects() throws Exception {
         when(registrationService.validate(any())).thenReturn(List.of());
         User student = new User("newstudent@test.com", "hash", "New Student", Role.STUDENT);
+        student.setId(1L);
         when(registrationService.createUserAndStudentProfile(anyString(), anyString(), anyString(), any(), anyInt())).thenReturn(student);
 
         mockMvc.perform(post("/register")
@@ -72,7 +79,7 @@ public class RegisterControllerTest {
                         .param("cohortYear", "2024"))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/student/home"))
-               .andExpect(request().sessionAttribute(LoginController.SESSION_USER, student));
+               .andExpect(request().sessionAttribute(SessionUser.SESSION_USER_ID, student.getId()));
 
         // The form values were converted and passed to the service
         verify(registrationService).createUserAndStudentProfile(
@@ -129,9 +136,11 @@ public class RegisterControllerTest {
     @Test
     void postRegister_whenLoggedIn_redirectsWithoutRegistering() throws Exception {
         User advisor = new User("advisor@test.com", "hash", "Test Advisor", Role.ADVISOR);
+        advisor.setId(10L);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(advisor));
 
         mockMvc.perform(post("/register")
-                        .sessionAttr(LoginController.SESSION_USER, advisor)
+                        .sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId())
                         .param("email", "newstudent@test.com")
                         .param("displayName", "New Student")
                         .param("password", "password123")
@@ -140,7 +149,7 @@ public class RegisterControllerTest {
                         .param("cohortYear", "2024"))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/advisor/home"))
-            .andExpect(request().sessionAttribute(LoginController.SESSION_USER, advisor));
+            .andExpect(request().sessionAttribute(SessionUser.SESSION_USER_ID, advisor.getId()));
 
         verify(registrationService, never()).validate(any());
         verify(registrationService, never())
