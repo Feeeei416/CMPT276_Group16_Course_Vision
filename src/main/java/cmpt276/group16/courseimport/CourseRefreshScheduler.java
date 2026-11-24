@@ -94,10 +94,14 @@ public class CourseRefreshScheduler {
                 + " starts soon after the next visit.";
     }
 
-    // "once a day", "once a week", "every 3 days" or "every 12 hours"
+    // "once a day", "once a week", "every 3 days", "every 12 hours" or "every 30 minutes"
     static String howOften(Duration every) {
-        if (every.toHours() % 24 != 0) {
-            return every.toHours() == 1 ? "once an hour" : "every " + every.toHours() + " hours";
+        if (every.toMinutes() % 60 != 0) {
+            return "every " + every.toMinutes() + " minutes";
+        }
+        long hours = every.toHours();
+        if (hours % 24 != 0) {
+            return hours == 1 ? "once an hour" : "every " + hours + " hours";
         }
         long days = every.toDays();
         if (days == 1) {

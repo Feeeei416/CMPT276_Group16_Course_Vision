@@ -206,7 +206,8 @@ class CourseRefreshSchedulerTest {
         "P7D, once a week",
         "P3D, every 3 days",
         "PT12H, every 12 hours",
-        "PT1H, once an hour"
+        "PT1H, once an hour",
+        "PT30M, every 30 minutes"
     })
     void saysHowOften(Duration every, String text) {
         assertThat(CourseRefreshScheduler.howOften(every)).isEqualTo(text);
