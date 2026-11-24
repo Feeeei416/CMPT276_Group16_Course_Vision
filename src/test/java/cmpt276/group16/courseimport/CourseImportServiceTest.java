@@ -20,8 +20,11 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.transaction.AfterTransaction;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import cmpt276.group16.config.ClockConfig;
+import cmpt276.group16.courseimport.CourseImportService.ImportAlreadyRunningException;
 import cmpt276.group16.courseimport.CourseImportService.ImportRun;
 import cmpt276.group16.models.*;
 import cmpt276.group16.requisites.ManualRules;
@@ -67,6 +70,9 @@ class CourseImportServiceTest {
 
     @Autowired
     private RequisiteRuleRepository requisiteRuleRepository;
+
+    @Autowired
+    private CourseRefreshRepository refreshRepository;
  
     private Term spring;
 
@@ -104,6 +110,10 @@ class CourseImportServiceTest {
     private List<Section> cmpt225Sections() {
         return sectionRepository.findByOfferingIdOrderBySectionCodeAsc(cmpt225Offering().getId());
     }
+
+    private CourseRefresh latestRefresh() {
+        return refreshRepository.findTop50ByOrderByStartedAtDescIdDesc().get(0);
+    }
  
     // The term created by addsTheTermIfItIsNew is saved in its own transaction, so it isn't rolled back
     @AfterTransaction
@@ -118,7 +128,6 @@ class CourseImportServiceTest {
  
         assertThat(run.courses()).isEqualTo(1);
         assertThat(run.sections()).isEqualTo(10);
-        assertThat(run.error()).isNull();
  
         Course course = cmpt225();
         assertThat(course.getTitle()).isEqualTo("Data Structures and Programming");
@@ -179,7 +188,7 @@ class CourseImportServiceTest {
 
         ImportRun run = importService.importTerm(2027, Season.SPRING);
 
-        assertThat(run.error()).isNull();
+        assertThat(run.courses()).isEqualTo(1);
         assertThat(cmpt225().getParseStatus()).isEqualTo(Course.ParseStatus.FAILED);
         assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(cmpt225().getId(),
                 RuleKind.PREREQUISITE)).isEmpty();
@@ -233,7 +242,8 @@ class CourseImportServiceTest {
                 .isInstanceOf(SfuApiException.class);
  
         assertThat(cmpt225Sections()).hasSize(10);
-        assertThat(importService.lastRun()).map(ImportRun::error).contains("SFU is down");
+        assertThat(latestRefresh().getError()).isEqualTo("SFU is down");
+        assertThat(latestRefresh().isFinished()).isTrue();
         assertThat(importService.isRunning()).isFalse();
     }
  
@@ -310,8 +320,8 @@ class CourseImportServiceTest {
                 .hasMessage("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
 
         assertThat(termRepository.findByTermYearAndSeason(NEW_TERM_YEAR, Season.FALL)).isEmpty();
-        assertThat(importService.lastRun()).map(ImportRun::error)
-                .contains("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
+        assertThat(latestRefresh().getTermName()).isEqualTo(NEW_TERM_YEAR + " Fall");
+        assertThat(latestRefresh().getError()).isEqualTo("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
     }
 
     // Courses already saved for the term stay offered, instead of all being marked not offered
@@ -367,18 +377,105 @@ class CourseImportServiceTest {
         assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
     }
 
-    // A database error while saving (here units too big for the column) is recorded as a failed run,
-    // and another refresh can start afterwards
+    // A database error while saving (here units too big for the column) is logged as a failed refresh,
+    // and another refresh can start afterwards.
+    // Runs outside the test's transaction, the way the app runs it. A database error breaks the Hibernate session
+    // it happens in, and inside one test transaction the log would be read from that same broken session.
+    // Nothing is rolled back for it, so it removes what it saved itself
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void failureWhileSavingIsRecorded() {
-        when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), any()))
-                .thenReturn(Optional.of("{\"info\": {\"title\": \"Too Many Units\", \"units\": \"12345\"}}"));
+        try {
+            when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), any()))
+                    .thenReturn(Optional.of("{\"info\": {\"title\": \"Too Many Units\", \"units\": \"12345\"}}"));
 
-        assertThatThrownBy(() -> importService.importTerm(2027, Season.SPRING))
-                .isInstanceOf(RuntimeException.class);
+            assertThatThrownBy(() -> importService.importTerm(2027, Season.SPRING))
+                    .isInstanceOf(RuntimeException.class);
 
-        assertThat(importService.lastRun()).map(ImportRun::error)
-                .hasValueSatisfying(error -> assertThat(error).contains("nothing was changed"));
-        assertThat(importService.isRunning()).isFalse();
+            assertThat(latestRefresh().getError()).contains("nothing was changed");
+            assertThat(latestRefresh().isFinished()).isTrue();
+            assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
+            assertThat(importService.isRunning()).isFalse();
+        } finally {
+            refreshRepository.deleteAll();
+            termRepository.delete(spring);
+        }
+    }
+
+    // -- The log --
+
+    // A refresh from the page is logged as manual, with the same counts and notes the run reports
+    @Test
+    void manualRefreshIsLogged() {
+        ImportRun run = importService.importTerm(2027, Season.SPRING);
+
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).hasSize(1);
+        CourseRefresh refresh = latestRefresh();
+        assertThat(refresh.getTermName()).isEqualTo("2027 Spring");
+        assertThat(refresh.isAutomatic()).isFalse();
+        assertThat(refresh.isFinished()).isTrue();
+        assertThat(refresh.isFailed()).isFalse();
+        assertThat(refresh.getCourses()).isEqualTo(1);
+        assertThat(refresh.getSections()).isEqualTo(10);
+        assertThat(refresh.getNotes()).isEqualTo(run.notes()).contains("ENSC has no courses this term");
+        assertThat(importService.isRunning(refresh)).isFalse();
+    }
+
+    @Test
+    void automaticRefreshIsLoggedAsAutomatic() {
+        importService.importTermAutomatically(2027, Season.SPRING);
+
+        assertThat(latestRefresh().isAutomatic()).isTrue();
+        assertThat(latestRefresh().getCourses()).isEqualTo(1);
+    }
+
+    // A failed automatic refresh keeps the saved data and shows its error in the log
+    @Test
+    void failedAutomaticRefreshKeepsTheDataAndLogsTheError() {
+        importService.importTerm(2027, Season.SPRING);
+        when(client.listSections(anyInt(), any(), eq("CMPT"), eq("225")))
+                .thenThrow(new SfuApiException("SFU is down", null));
+
+        assertThatThrownBy(() -> importService.importTermAutomatically(2027, Season.SPRING))
+                .isInstanceOf(SfuApiException.class);
+
+        assertThat(cmpt225Sections()).hasSize(10);
+        CourseRefresh failed = latestRefresh();
+        assertThat(failed.isAutomatic()).isTrue();
+        assertThat(failed.getError()).isEqualTo("SFU is down");
+        assertThat(failed.getCourses()).isZero();
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).hasSize(2);
+    }
+
+    // The row is saved before anything is fetched, so a refresh cut off partway still shows in the log.
+    // While it runs, it's the one isRunning reports
+    @Test
+    void refreshIsLoggedBeforeAnythingIsFetched() {
+        when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenAnswer(call -> {
+            CourseRefresh running = latestRefresh();
+            assertThat(running.getTermName()).isEqualTo("2027 Spring");
+            assertThat(running.isFinished()).isFalse();
+            assertThat(importService.isRunning(running)).isTrue();
+            return Optional.of(CMPT_COURSES);
+        });
+
+        importService.importTerm(2027, Season.SPRING);
+
+        assertThat(latestRefresh().isFinished()).isTrue();
+        assertThat(importService.isRunning(latestRefresh())).isFalse();
+    }
+
+    // A refresh turned down because another is running didn't do anything, so it isn't logged
+    @Test
+    void refreshTurnedDownWhileOneIsRunningIsntLogged() {
+        when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenAnswer(call -> {
+            assertThatThrownBy(() -> importService.importTermAutomatically(2027, Season.SPRING))
+                    .isInstanceOf(ImportAlreadyRunningException.class);
+            return Optional.of(CMPT_COURSES);
+        });
+
+        importService.importTerm(2027, Season.SPRING);
+
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).hasSize(1);
     }
 }

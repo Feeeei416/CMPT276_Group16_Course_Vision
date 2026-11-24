@@ -94,6 +94,12 @@ public final class PlanRules {
     return new YearAndSeason(next / TERMS_PER_YEAR, SEASONS[next % TERMS_PER_YEAR]);
     }
 
+    // Returns this term's year and season, for example 2026 and FALL in November 2026
+    public static YearAndSeason currentTermYearAndSeason(LocalDate today) {
+        int current = currentTerm(today);
+        return new YearAndSeason(current / TERMS_PER_YEAR, SEASONS[current % TERMS_PER_YEAR]);
+    }
+
     // The years to offer on the My plan page, from the first plannable term to the last
     public static List<Integer> plannableYears(LocalDate today) {
         int firstYear = (currentTerm(today) + 2) / TERMS_PER_YEAR;

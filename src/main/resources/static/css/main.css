@@ -240,6 +240,16 @@ a.btn {
     text-align: right;
 }
 
+/* Course refresh log: errors and skipped lists are long, so the Result column wraps */
+.refresh-log .refresh-result {
+    white-space: normal;
+    min-width: 18em;
+}
+
+.refresh-error {
+    color: var(--color-error);
+}
+
 /* My plan: Add a term sits above the term boxes */
 .plan-add-term {
     margin-bottom: var(--space-lg);
