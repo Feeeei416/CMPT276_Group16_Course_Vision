@@ -27,7 +27,7 @@ public class RequirementCourse {
     // Many courses belong to one requirement
     @ManyToOne
     @JoinColumn(name = "requirement_id", nullable = false)
-    private Requirement requirement;
+    private GraduationRequirement requirement;
 
     // Uppercase, like courses.subject, for example "CMPT"
     @Column(nullable = false)
@@ -46,7 +46,7 @@ public class RequirementCourse {
 
     protected RequirementCourse() {}
 
-    public RequirementCourse(Requirement requirement, String subject, String number, Use use) {
+    public RequirementCourse(GraduationRequirement requirement, String subject, String number, Use use) {
         this.requirement = requirement;
         this.subject = Course.normalizeSubjectOrNumber(subject);
         this.number = Course.normalizeSubjectOrNumber(number);
@@ -57,7 +57,7 @@ public class RequirementCourse {
         return id;
     }
 
-    public Requirement getRequirement() {
+    public GraduationRequirement getRequirement() {
         return requirement;
     }
 

@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import cmpt276.group16.models.GraduationRequirementRepository;
 import cmpt276.group16.models.Program;
-import cmpt276.group16.models.RequirementRepository;
 import cmpt276.group16.models.RequirementSet;
 import cmpt276.group16.models.RequirementSetRepository;
 
@@ -19,7 +19,7 @@ class RequirementLoaderStartupTest {
     private RequirementSetRepository setRepository;
 
     @Autowired
-    private RequirementRepository requirementRepository;
+    private GraduationRequirementRepository requirementRepository;
 
     @Test
     void everySetIsSavedAtStartup() {
@@ -35,6 +35,6 @@ class RequirementLoaderStartupTest {
     void savedSetHasItsRequirements() {
         RequirementSet cs = setRepository.findByProgramAndEntryYear(Program.COMPUTING_SCIENCE, 2024).orElseThrow();
 
-        assertThat(requirementRepository.findByRequirementSetOrderByPositionAsc(cs)).isNotEmpty();
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(cs)).isNotEmpty();
     }
 }

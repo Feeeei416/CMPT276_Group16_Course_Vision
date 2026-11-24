@@ -10,12 +10,12 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
 import cmpt276.group16.models.Designation;
+import cmpt276.group16.models.GraduationRequirement;
+import cmpt276.group16.models.GraduationRequirementRepository;
 import cmpt276.group16.models.Program;
-import cmpt276.group16.models.Requirement;
 import cmpt276.group16.models.RequirementCourse;
 import cmpt276.group16.models.RequirementCourseRepository;
 import cmpt276.group16.models.RequirementKind;
-import cmpt276.group16.models.RequirementRepository;
 import cmpt276.group16.models.RequirementSet;
 import cmpt276.group16.models.RequirementSetRepository;
 
@@ -50,7 +50,7 @@ class RequirementLoaderTest {
     private RequirementSetRepository setRepository;
 
     @Autowired
-    private RequirementRepository requirementRepository;
+    private GraduationRequirementRepository requirementRepository;
 
     @Autowired
     private RequirementCourseRepository courseRepository;
@@ -58,13 +58,32 @@ class RequirementLoaderTest {
     @Autowired
     private TestEntityManager entityManager;
 
+    // Returns the names of the sets it added
     private List<String> load(String json) {
+        return loadResult(json).added();
+    }
+
+    private RequirementLoader.LoadResult loadResult(String json) {
         RequirementLoader loader = new RequirementLoader(RequirementFile.fromJson(json), setRepository,
                 requirementRepository, courseRepository);
-        List<String> added = loader.loadMissingSets();
+        RequirementLoader.LoadResult result = loader.load();
         entityManager.flush();
         entityManager.clear();
-        return added;
+        return result;
+    }
+
+    // The Computing Science 2024 set from FILE with a different version, link and requirements
+    private static String csVersion(int version, String note) {
+        return """
+                { "sets": [ { "program": "COMPUTING_SCIENCE", "entryYear": 2024, "version": %d,
+                              "calendarUrl": "https://www.sfu.ca/new",
+                              "requirements": [
+                                { "category": "Notes", "kind": "NOTE", "text": "%s" },
+                                { "category": "WQB", "kind": "DESIGNATION", "units": 6, "designations": ["B_SCI"],
+                                  "outsideSubject": "CMPT" },
+                                { "category": "Lower division", "kind": "COURSE", "courses": ["CMPT 201"] }
+                              ] } ] }
+                """.formatted(version, note);
     }
 
     private RequirementSet csSet() {
@@ -84,32 +103,32 @@ class RequirementLoaderTest {
     void requirementsAreSavedInFileOrder() {
         load(FILE);
 
-        List<Requirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAsc(csSet());
+        List<GraduationRequirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csSet());
 
         // The COURSE entry with two courses became two requirements
-        assertThat(requirements).extracting(Requirement::getKind).containsExactly(
+        assertThat(requirements).extracting(GraduationRequirement::getKind).containsExactly(
                 RequirementKind.COURSE, RequirementKind.COURSE, RequirementKind.CHOOSE, RequirementKind.AREAS,
                 RequirementKind.UNITS_FROM, RequirementKind.DESIGNATION, RequirementKind.TOTAL_UNITS,
                 RequirementKind.NOTE);
-        assertThat(requirements).extracting(Requirement::getPosition).containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
+        assertThat(requirements).extracting(GraduationRequirement::getPosition).containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
     }
 
     @Test
     void eachRequirementKeepsItsFields() {
         load(FILE);
-        List<Requirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAsc(csSet());
+        List<GraduationRequirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csSet());
 
-        Requirement calculus = requirements.get(2);
+        GraduationRequirement calculus = requirements.get(2);
         assertThat(calculus.getTitle()).isEqualTo("Calculus I");
         assertThat(calculus.getCourseCount()).isEqualTo(1);
 
-        Requirement depth = requirements.get(4);
+        GraduationRequirement depth = requirements.get(4);
         assertThat(depth.getUnits()).isEqualByComparingTo("12");
         assertThat(depth.getSubject()).isEqualTo("CMPT");
         assertThat(depth.getMinNumber()).isEqualTo(400);
         assertThat(depth.isExclusive()).isTrue();
 
-        Requirement writing = requirements.get(5);
+        GraduationRequirement writing = requirements.get(5);
         assertThat(writing.getDesignations()).containsExactly(Designation.W);
         assertThat(writing.getMinGrade()).isEqualTo("C-");
 
@@ -119,7 +138,7 @@ class RequirementLoaderTest {
     @Test
     void coursesAreSavedWithTheirUseAndArea() {
         load(FILE);
-        List<Requirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAsc(csSet());
+        List<GraduationRequirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csSet());
 
         List<RequirementCourse> breadth = courseRepository.findByRequirementOrderByIdAsc(requirements.get(3));
         assertThat(breadth).extracting(RequirementCourse::getCode).containsExactly("CMPT 310", "CMPT 307");
@@ -144,7 +163,7 @@ class RequirementLoaderTest {
     }
 
     @Test
-    void savedSetIsLeftAloneWhenTheFileChanges() {
+    void savedSetIsLeftAloneWhenTheFileChangesWithoutANewVersion() {
         load(FILE);
         // An edit made in the app, like IT changing the Calendar link (#70)
         RequirementSet cs = csSet();
@@ -163,6 +182,59 @@ class RequirementLoaderTest {
     }
 
     @Test
+    void newerVersionReplacesTheSavedSet() {
+        load(FILE);
+        long ceRequirements = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(
+                setRepository.findByProgramAndEntryYear(Program.COMPUTER_ENGINEERING, 2024).orElseThrow()).size();
+
+        RequirementLoader.LoadResult result = loadResult(csVersion(2, "Fixed"));
+
+        assertThat(result.added()).isEmpty();
+        assertThat(result.replaced()).containsExactly("Computing Science 2024");
+        RequirementSet cs = csSet();
+        assertThat(cs.getFileVersion()).isEqualTo(2);
+        assertThat(cs.getCalendarUrl()).isEqualTo("https://www.sfu.ca/new");
+        List<GraduationRequirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(cs);
+        assertThat(requirements).extracting(GraduationRequirement::getKind)
+                .containsExactly(RequirementKind.NOTE, RequirementKind.DESIGNATION, RequirementKind.COURSE);
+        assertThat(requirements.get(0).getText()).isEqualTo("Fixed");
+        assertThat(requirements.get(1).getOutsideSubject()).isEqualTo("CMPT");
+        // The old courses are gone and only the new set's course is left
+        assertThat(courseRepository.findByRequirementRequirementSetOrderByIdAsc(cs))
+                .extracting(RequirementCourse::getCode).containsExactly("CMPT 201");
+        // The set row is kept, and the other set isn't touched
+        assertThat(setRepository.count()).isEqualTo(2);
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(
+                setRepository.findByProgramAndEntryYear(Program.COMPUTER_ENGINEERING, 2024).orElseThrow()))
+                .hasSize((int) ceRequirements);
+    }
+
+    @Test
+    void sameOrOlderVersionLeavesTheSavedSetAlone() {
+        loadResult(csVersion(3, "Version 3"));
+
+        RequirementLoader.LoadResult same = loadResult(csVersion(3, "Changed without a new version"));
+        RequirementLoader.LoadResult older = loadResult(csVersion(2, "Older"));
+
+        assertThat(same.replaced()).isEmpty();
+        assertThat(older.replaced()).isEmpty();
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csSet()).get(0).getText())
+                .isEqualTo("Version 3");
+    }
+
+    @Test
+    void replacingTwiceInARowWorks() {
+        load(FILE);
+        loadResult(csVersion(2, "Second"));
+
+        RequirementLoader.LoadResult result = loadResult(csVersion(3, "Third"));
+
+        assertThat(result.replaced()).containsExactly("Computing Science 2024");
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csSet())).hasSize(3);
+        assertThat(courseRepository.findByRequirementRequirementSetOrderByIdAsc(csSet())).hasSize(1);
+    }
+
+    @Test
     void onlyTheMissingSetIsAdded() {
         setRepository.saveAndFlush(new RequirementSet(Program.COMPUTING_SCIENCE, 2024, null));
 
@@ -170,7 +242,7 @@ class RequirementLoaderTest {
 
         assertThat(added).containsExactly("Computer Engineering 2024");
         // The set that was already there gets none of the file's requirements
-        assertThat(requirementRepository.findByRequirementSetOrderByPositionAsc(csSet())).isEmpty();
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csSet())).isEmpty();
     }
 
     @Test

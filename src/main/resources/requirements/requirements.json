@@ -3,6 +3,7 @@
     {
       "program": "COMPUTING_SCIENCE",
       "entryYear": 2024,
+      "version": 1,
       "calendarUrl": "https://www.sfu.ca/students/calendar/2024/fall/programs/computing-science/major/bachelor-of-science-or-bachelor-of-arts.html",
       "requirements": [
         { "category": "Lower division", "kind": "COURSE",
@@ -47,9 +48,9 @@
 
         { "category": "WQB", "kind": "DESIGNATION", "title": "Writing", "units": 6, "designations": ["W"], "minGrade": "C-" },
         { "category": "WQB", "kind": "DESIGNATION", "title": "Quantitative", "units": 6, "designations": ["Q"], "minGrade": "C-" },
-        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Social Sciences", "units": 6, "designations": ["B_SOC"], "minGrade": "C-" },
-        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Humanities", "units": 6, "designations": ["B_HUM"], "minGrade": "C-" },
-        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Sciences", "units": 6, "designations": ["B_SCI"], "minGrade": "C-" },
+        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Social Sciences", "units": 6, "designations": ["B_SOC"], "outsideSubject": "CMPT", "minGrade": "C-" },
+        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Humanities", "units": 6, "designations": ["B_HUM"], "outsideSubject": "CMPT", "minGrade": "C-" },
+        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Sciences", "units": 6, "designations": ["B_SCI"], "outsideSubject": "CMPT", "minGrade": "C-" },
 
         { "category": "Totals and notes", "kind": "TOTAL_UNITS", "title": "Total units", "units": 120 },
         { "category": "Totals and notes", "kind": "NOTE",
@@ -64,6 +65,7 @@
     {
       "program": "COMPUTING_SCIENCE",
       "entryYear": 2023,
+      "version": 1,
       "calendarUrl": "https://www.sfu.ca/students/calendar/2023/fall/programs/computing-science/major/bachelor-of-science-or-bachelor-of-arts.html",
       "requirements": [
         { "category": "Lower division", "kind": "COURSE",
@@ -82,11 +84,11 @@
         { "category": "Upper division", "kind": "TOTAL_UNITS", "title": "Upper-division units", "units": 45, "minNumber": 300 },
 
         { "category": "Breadth", "kind": "AREAS", "title": "One course from each of 5 Table I areas", "count": 5,
-          "exclusive": true, "required": ["CMPT 300", "CMPT 307"],
+          "exclusive": true, "required": ["CMPT 300", "CMPT 303", "CMPT 307"],
           "areas": {
             "Artificial Intelligence": ["CMPT 310", "CMPT 340", "CMPT 410", "CMPT 411", "CMPT 413", "CMPT 417", "CMPT 419", "CMPT 420"],
             "Visual and Interactive Computing": ["CMPT 361", "CMPT 363", "CMPT 365", "CMPT 412", "CMPT 461", "CMPT 464", "CMPT 466", "CMPT 467", "CMPT 469"],
-            "Computing Systems": ["CMPT 300", "CMPT 305", "CMPT 371", "CMPT 379", "CMPT 403", "CMPT 431", "CMPT 433", "CMPT 450", "CMPT 471", "CMPT 479", "CMPT 499"],
+            "Computing Systems": ["CMPT 300", "CMPT 303", "CMPT 305", "CMPT 371", "CMPT 379", "CMPT 403", "CMPT 431", "CMPT 433", "CMPT 450", "CMPT 471", "CMPT 479", "CMPT 499"],
             "Information Systems": ["CMPT 353", "CMPT 354", "CMPT 362", "CMPT 372", "CMPT 441", "CMPT 454", "CMPT 456", "CMPT 459", "CMPT 474"],
             "Programming Languages and Software": ["CMPT 373", "CMPT 383", "CMPT 384", "CMPT 473", "CMPT 475", "CMPT 477", "CMPT 489"],
             "Theoretical Computing Science": ["CMPT 307", "CMPT 308", "CMPT 404", "CMPT 405", "CMPT 406", "CMPT 407", "CMPT 409", "CMPT 476", "MACM 300"]
@@ -100,7 +102,7 @@
           "exclusive": true,
           "courses": ["CMPT 310", "CMPT 340", "CMPT 410", "CMPT 411", "CMPT 413", "CMPT 417", "CMPT 419", "CMPT 420",
                       "CMPT 361", "CMPT 363", "CMPT 365", "CMPT 412", "CMPT 461", "CMPT 464", "CMPT 466", "CMPT 467", "CMPT 469",
-                      "CMPT 300", "CMPT 305", "CMPT 371", "CMPT 379", "CMPT 403", "CMPT 431", "CMPT 433", "CMPT 450", "CMPT 471", "CMPT 479", "CMPT 499",
+                      "CMPT 300", "CMPT 303", "CMPT 305", "CMPT 371", "CMPT 379", "CMPT 403", "CMPT 431", "CMPT 433", "CMPT 450", "CMPT 471", "CMPT 479", "CMPT 499",
                       "CMPT 353", "CMPT 354", "CMPT 362", "CMPT 372", "CMPT 441", "CMPT 454", "CMPT 456", "CMPT 459", "CMPT 474",
                       "CMPT 373", "CMPT 383", "CMPT 384", "CMPT 473", "CMPT 475", "CMPT 477", "CMPT 489",
                       "CMPT 307", "CMPT 308", "CMPT 404", "CMPT 405", "CMPT 406", "CMPT 407", "CMPT 409", "CMPT 476", "MACM 300",
@@ -108,9 +110,9 @@
 
         { "category": "WQB", "kind": "DESIGNATION", "title": "Writing", "units": 6, "designations": ["W"], "minGrade": "C-" },
         { "category": "WQB", "kind": "DESIGNATION", "title": "Quantitative", "units": 6, "designations": ["Q"], "minGrade": "C-" },
-        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Social Sciences", "units": 6, "designations": ["B_SOC"], "minGrade": "C-" },
-        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Humanities", "units": 6, "designations": ["B_HUM"], "minGrade": "C-" },
-        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Sciences", "units": 6, "designations": ["B_SCI"], "minGrade": "C-" },
+        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Social Sciences", "units": 6, "designations": ["B_SOC"], "outsideSubject": "CMPT", "minGrade": "C-" },
+        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Humanities", "units": 6, "designations": ["B_HUM"], "outsideSubject": "CMPT", "minGrade": "C-" },
+        { "category": "WQB", "kind": "DESIGNATION", "title": "Breadth, Sciences", "units": 6, "designations": ["B_SCI"], "outsideSubject": "CMPT", "minGrade": "C-" },
 
         { "category": "Totals and notes", "kind": "TOTAL_UNITS", "title": "Total units", "units": 120 },
         { "category": "Totals and notes", "kind": "NOTE",
@@ -125,14 +127,19 @@
     {
       "program": "COMPUTER_ENGINEERING",
       "entryYear": 2024,
+      "version": 1,
       "calendarUrl": "https://www.sfu.ca/students/calendar/2024/fall/programs/engineering-science-computer-engineering-option/major/bachelor-of-applied-science.html",
       "requirements": [
         { "category": "Required courses", "kind": "COURSE",
-          "courses": ["CHEM 121", "CMPT 225", "CMPT 276", "CMPT 300", "ECON 103",
-                      "ENSC 100W", "ENSC 105W", "ENSC 120", "ENSC 151", "ENSC 180", "ENSC 204", "ENSC 220", "ENSC 225",
+          "courses": ["CHEM 121", "CMPT 225", "CMPT 276", "ECON 103",
+                      "ENSC 105W", "ENSC 120", "ENSC 151", "ENSC 180", "ENSC 204", "ENSC 220", "ENSC 225",
                       "ENSC 251", "ENSC 252", "ENSC 254", "ENSC 280", "ENSC 320", "ENSC 324", "ENSC 327", "ENSC 350",
                       "ENSC 351", "ENSC 380", "ENSC 405W", "ENSC 406", "ENSC 429", "ENSC 440",
                       "MACM 201", "MACM 316", "MATH 152", "MATH 232", "MATH 251", "MATH 260", "PHYS 120", "PHYS 121"] },
+        { "category": "Required courses", "kind": "CHOOSE", "title": "Operating systems", "count": 1,
+          "courses": ["CMPT 300", "CMPT 303"] },
+        { "category": "Required courses", "kind": "CHOOSE", "title": "Engineering, science and society", "count": 1,
+          "courses": ["ENSC 100W", "ENSC 100"] },
         { "category": "Required courses", "kind": "CHOOSE", "title": "Calculus I", "count": 1,
           "courses": ["MATH 151", "MATH 150"] },
         { "category": "Required courses", "kind": "CHOOSE", "title": "Business of engineering", "count": 1,
@@ -185,30 +192,35 @@
 
         { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Writing", "units": 6, "designations": ["W"], "minGrade": "C-" },
         { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Quantitative", "units": 6, "designations": ["Q"], "minGrade": "C-" },
-        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities", "units": 3, "designations": ["B_HUM"], "minGrade": "C-" },
-        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Social Sciences", "units": 3, "designations": ["B_SOC"], "minGrade": "C-" },
-        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities or Social Sciences in total", "units": 9, "designations": ["B_HUM", "B_SOC"], "minGrade": "C-" },
+        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities", "units": 3, "designations": ["B_HUM"], "outsideSubject": "ENSC", "minGrade": "C-" },
+        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Social Sciences", "units": 3, "designations": ["B_SOC"], "outsideSubject": "ENSC", "minGrade": "C-" },
+        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities or Social Sciences in total", "units": 9, "designations": ["B_HUM", "B_SOC"], "outsideSubject": "ENSC", "minGrade": "C-" },
         { "category": "Complementary studies and WQB", "kind": "NOTE",
           "text": "One complementary studies course must be from the CEAB \"Central Issues, Methodologies and Thought Processes\" list." },
 
         { "category": "Notes", "kind": "NOTE",
           "text": "A CGPA of 2.40 in 300- and 400-level ENSC courses." },
         { "category": "Notes", "kind": "NOTE",
-          "text": "The Calendar doesn't give a total number of units for this program. The total shown is the units of the requirements above." }
+          "text": "The Calendar doesn't give a total number of units for this program." }
       ]
     },
 
     {
       "program": "COMPUTER_ENGINEERING",
       "entryYear": 2023,
+      "version": 1,
       "calendarUrl": "https://www.sfu.ca/students/calendar/2023/fall/programs/engineering-science-computer-engineering-option/major/bachelor-of-applied-science.html",
       "requirements": [
         { "category": "Required courses", "kind": "COURSE",
-          "courses": ["CHEM 121", "CMPT 225", "CMPT 276", "CMPT 300", "ECON 103",
-                      "ENSC 100W", "ENSC 105W", "ENSC 120", "ENSC 151", "ENSC 180", "ENSC 204", "ENSC 220", "ENSC 225",
+          "courses": ["CHEM 121", "CMPT 225", "CMPT 276", "ECON 103",
+                      "ENSC 105W", "ENSC 120", "ENSC 151", "ENSC 180", "ENSC 204", "ENSC 220", "ENSC 225",
                       "ENSC 251", "ENSC 252", "ENSC 254", "ENSC 280", "ENSC 320", "ENSC 324", "ENSC 327", "ENSC 350",
                       "ENSC 351", "ENSC 380", "ENSC 405W", "ENSC 406", "ENSC 429", "ENSC 440",
                       "MACM 201", "MACM 316", "MATH 152", "MATH 232", "MATH 251", "MATH 260", "PHYS 120", "PHYS 121"] },
+        { "category": "Required courses", "kind": "CHOOSE", "title": "Operating systems", "count": 1,
+          "courses": ["CMPT 300", "CMPT 303"] },
+        { "category": "Required courses", "kind": "CHOOSE", "title": "Engineering, science and society", "count": 1,
+          "courses": ["ENSC 100W", "ENSC 100"] },
         { "category": "Required courses", "kind": "CHOOSE", "title": "Calculus I", "count": 1,
           "courses": ["MATH 151", "MATH 150"] },
         { "category": "Required courses", "kind": "CHOOSE", "title": "Business of engineering", "count": 1,
@@ -263,16 +275,16 @@
 
         { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Writing", "units": 6, "designations": ["W"], "minGrade": "C-" },
         { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Quantitative", "units": 6, "designations": ["Q"], "minGrade": "C-" },
-        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities", "units": 3, "designations": ["B_HUM"], "minGrade": "C-" },
-        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Social Sciences", "units": 3, "designations": ["B_SOC"], "minGrade": "C-" },
-        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities or Social Sciences in total", "units": 9, "designations": ["B_HUM", "B_SOC"], "minGrade": "C-" },
+        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities", "units": 3, "designations": ["B_HUM"], "outsideSubject": "ENSC", "minGrade": "C-" },
+        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Social Sciences", "units": 3, "designations": ["B_SOC"], "outsideSubject": "ENSC", "minGrade": "C-" },
+        { "category": "Complementary studies and WQB", "kind": "DESIGNATION", "title": "Humanities or Social Sciences in total", "units": 9, "designations": ["B_HUM", "B_SOC"], "outsideSubject": "ENSC", "minGrade": "C-" },
         { "category": "Complementary studies and WQB", "kind": "NOTE",
           "text": "One complementary studies course must be from the CEAB \"Central Issues, Methodologies and Thought Processes\" list." },
 
         { "category": "Notes", "kind": "NOTE",
           "text": "A CGPA of 2.40 in 300- and 400-level ENSC courses." },
         { "category": "Notes", "kind": "NOTE",
-          "text": "The Calendar doesn't give a total number of units for this program. The total shown is the units of the requirements above." }
+          "text": "The Calendar doesn't give a total number of units for this program." }
       ]
     }
   ]

@@ -29,14 +29,16 @@ import tools.jackson.databind.ObjectMapper;
 // The graduation requirements in src/main/resources/requirements/requirements.json, read and checked once at startup.
 // docs/graduation-requirements.md says where each rule comes from. The file looks like:
 //   { "sets": [ { "program": "COMPUTING_SCIENCE", "entryYear": 2024, "calendarUrl": "https://...",
-//                 "requirements": [ <requirement>, ... ] } ] }
+//                 "version": 2, "requirements": [ <requirement>, ... ] } ] }
 // where every requirement has a "category" and a "kind", plus the fields its kind uses:
 //   COURSE       "courses": ["CMPT 120", "CMPT 125"]          one requirement for each course
 //   CHOOSE       "count": 1, "courses": [...], "title"
 //   UNITS_FROM   "units": 12, "courses": [...] and/or "subject": "CMPT" + "minNumber": 400,
 //                "excluded": [...], "maxCoursesBelow": 2 + "belowNumber": 400, "title"
 //   AREAS        "count": 5, "areas": { "Artificial Intelligence": [...], ... }, "required": ["CMPT 307"]
-//   DESIGNATION  "units": 6, "designations": ["W"] or ["B_HUM", "B_SOC"]
+//                (required courses in the same area are alternatives, like CMPT 300 or 303)
+//   DESIGNATION  "units": 6, "designations": ["W"] or ["B_HUM", "B_SOC"], "outsideSubject": "CMPT" to leave out
+//                courses in the major subject
 //   TOTAL_UNITS  "units": 120, "minNumber": 300 for upper division only
 //   NOTE         "text": "..."
 // Any requirement can also have "minGrade": "C-" and "exclusive": true.
@@ -45,7 +47,7 @@ import tools.jackson.databind.ObjectMapper;
 public class RequirementFile {
 
     // One program and entry year, as read from the file
-    public record SetEntry(Program program, int entryYear, String calendarUrl, List<RuleEntry> requirements) {
+    public record SetEntry(Program program, int entryYear, String calendarUrl, int version, List<RuleEntry> requirements) {
 
         // For example "Computing Science 2024", the way error messages name a set
         public String name() {
@@ -56,7 +58,7 @@ public class RequirementFile {
     // One requirement, with only the fields its kind uses filled in
     public record RuleEntry(String category, RequirementKind kind, String title, Integer count, BigDecimal units,
                             String subject, Integer minNumber, Integer maxCoursesBelow, Integer belowNumber,
-                            Set<Designation> designations, String minGrade, boolean exclusive, String text,
+                            Set<Designation> designations, String outsideSubject, String minGrade, boolean exclusive, String text,
                             List<CourseEntry> courses) {
     }
 
@@ -78,7 +80,7 @@ public class RequirementFile {
             RequirementKind.UNITS_FROM, Set.of("title", "units", "courses", "subject", "minNumber", "excluded",
                     "maxCoursesBelow", "belowNumber"),
             RequirementKind.AREAS, Set.of("title", "count", "areas", "required"),
-            RequirementKind.DESIGNATION, Set.of("title", "units", "designations"),
+            RequirementKind.DESIGNATION, Set.of("title", "units", "designations", "outsideSubject"),
             RequirementKind.TOTAL_UNITS, Set.of("title", "units", "minNumber"),
             RequirementKind.NOTE, Set.of("text"));
 
@@ -153,7 +155,16 @@ public class RequirementFile {
             }
         }
         String calendarUrl = node.has("calendarUrl") ? node.get("calendarUrl").asString() : null;
-        return new SetEntry(program, entryYear, calendarUrl, List.copyOf(rules));
+        // Starts at 1. Raised when a set is fixed, so the loader replaces the saved copy
+        int version = 1;
+        if (node.has("version")) {
+            try {
+                version = positive(node, "version");
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException("Graduation requirements, " + name + ": " + e.getMessage(), e);
+            }
+        }
+        return new SetEntry(program, entryYear, calendarUrl, version, List.copyOf(rules));
     }
 
     // " (Breadth, AREAS)", so the error points at the right line of the file
@@ -185,7 +196,7 @@ public class RequirementFile {
         return switch (kind) {
             case COURSE -> codes(node, "courses", true).stream()
                     .map(course -> new RuleEntry(category, kind, null, null, null, null, null, null, null,
-                            Set.of(), minGrade, exclusive, null, List.of(course)))
+                            Set.of(), null, minGrade, exclusive, null, List.of(course)))
                     .toList();
             case CHOOSE -> {
                 List<CourseEntry> courses = codes(node, "courses", true);
@@ -195,17 +206,18 @@ public class RequirementFile {
                             + " courses are listed");
                 }
                 yield List.of(new RuleEntry(category, kind, title, count, null, null, null, null, null,
-                        Set.of(), minGrade, exclusive, null, courses));
+                        Set.of(), null, minGrade, exclusive, null, courses));
             }
             case UNITS_FROM -> List.of(unitsFrom(node, category, title, minGrade, exclusive));
             case AREAS -> List.of(areas(node, category, title, minGrade, exclusive));
             case DESIGNATION -> List.of(new RuleEntry(category, kind, title, null, units(node), null, null, null,
-                    null, designations(node), minGrade, exclusive, null, List.of()));
+                    null, designations(node), node.has("outsideSubject") ? subject(text(node, "outsideSubject")) : null,
+                    minGrade, exclusive, null, List.of()));
             case TOTAL_UNITS -> List.of(new RuleEntry(category, kind, title, null, units(node), null,
                     node.has("minNumber") ? courseNumber(node, "minNumber") : null, null, null,
-                    Set.of(), minGrade, exclusive, null, List.of()));
+                    Set.of(), null, minGrade, exclusive, null, List.of()));
             case NOTE -> List.of(new RuleEntry(category, kind, null, null, null, null, null, null, null,
-                    Set.of(), minGrade, exclusive, text(node, "text"), List.of()));
+                    Set.of(), null, minGrade, exclusive, text(node, "text"), List.of()));
         };
     }
 
@@ -242,7 +254,7 @@ public class RequirementFile {
             belowNumber = courseNumber(node, "belowNumber");
         }
         return new RuleEntry(category, RequirementKind.UNITS_FROM, title, null, units, subject, minNumber,
-                maxCoursesBelow, belowNumber, Set.of(), minGrade, exclusive, null, noRepeats(courses));
+                maxCoursesBelow, belowNumber, Set.of(), null, minGrade, exclusive, null, noRepeats(courses));
     }
 
     private static RuleEntry areas(JsonNode node, String category, String title, String minGrade, boolean exclusive) {
@@ -280,7 +292,7 @@ public class RequirementFile {
             }
         }
         return new RuleEntry(category, RequirementKind.AREAS, title, count, null, null, null, null, null,
-                Set.of(), minGrade, exclusive, null, List.copyOf(courses.values()));
+                Set.of(), null, minGrade, exclusive, null, List.copyOf(courses.values()));
     }
 
     // A list of course codes as LISTED courses. Empty when the field is missing and isn't needed

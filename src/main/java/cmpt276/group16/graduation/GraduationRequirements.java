@@ -10,10 +10,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import cmpt276.group16.models.Requirement;
+import cmpt276.group16.models.GraduationRequirement;
+import cmpt276.group16.models.GraduationRequirementRepository;
 import cmpt276.group16.models.RequirementCourse;
 import cmpt276.group16.models.RequirementCourseRepository;
-import cmpt276.group16.models.RequirementRepository;
 import cmpt276.group16.models.RequirementSet;
 import cmpt276.group16.models.RequirementSetRepository;
 import cmpt276.group16.models.StudentProfile;
@@ -24,7 +24,7 @@ import cmpt276.group16.models.StudentProfile;
 public class GraduationRequirements {
 
     // One requirement and the courses it names, in the order they were saved
-    public record RequirementWithCourses(Requirement requirement, List<RequirementCourse> courses) {
+    public record RequirementWithCourses(GraduationRequirement requirement, List<RequirementCourse> courses) {
     }
 
     // A student's whole set, with requirements in the order they're shown
@@ -42,10 +42,11 @@ public class GraduationRequirements {
     }
 
     private final RequirementSetRepository setRepository;
-    private final RequirementRepository requirementRepository;
+    private final GraduationRequirementRepository requirementRepository;
     private final RequirementCourseRepository courseRepository;
 
-    public GraduationRequirements(RequirementSetRepository setRepository, RequirementRepository requirementRepository,
+    public GraduationRequirements(RequirementSetRepository setRepository,
+                                  GraduationRequirementRepository requirementRepository,
                                   RequirementCourseRepository courseRepository) {
         this.setRepository = setRepository;
         this.requirementRepository = requirementRepository;
@@ -53,22 +54,25 @@ public class GraduationRequirements {
     }
 
     // Empty when the student's program and year have no requirements yet, so the report can say so.
-    // Read-only, so nothing the report does to these objects is saved
+    // Called on its own, it runs read-only, so nothing changed on the returned objects is saved. Called from a
+    // method that is already @Transactional, it joins that transaction and changes would be saved, so treat
+    // the result as read-only and copy anything that needs changing for display
     @Transactional(readOnly = true)
     public Optional<StudentRequirements> forStudent(StudentProfile student) {
         return setRepository.findByProgramAndEntryYear(student.getProgram(), student.getCohortYear())
                 .map(this::withRequirements);
     }
 
-    // Two queries for the whole set, one for the requirements and one for all their courses,
-    // instead of one query per requirement
+    // Three queries in all: the set, its requirements with their designations, and all their courses.
+    // The requirements are loaded before the courses, so each course finds its requirement already loaded
+    // instead of fetching it with a query of its own. GraduationRequirementsTest counts the queries
     private StudentRequirements withRequirements(RequirementSet set) {
+        List<GraduationRequirement> loaded = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(set);
         Map<Long, List<RequirementCourse>> coursesByRequirement = new HashMap<>();
         for (RequirementCourse course : courseRepository.findByRequirementRequirementSetOrderByIdAsc(set)) {
             coursesByRequirement.computeIfAbsent(course.getRequirement().getId(), id -> new ArrayList<>()).add(course);
         }
-        List<RequirementWithCourses> requirements = requirementRepository.findByRequirementSetOrderByPositionAsc(set)
-                .stream()
+        List<RequirementWithCourses> requirements = loaded.stream()
                 .map(requirement -> new RequirementWithCourses(requirement,
                         List.copyOf(coursesByRequirement.getOrDefault(requirement.getId(), List.of()))))
                 .toList();

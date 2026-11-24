@@ -20,8 +20,8 @@ A student follows the Calendar of the year they entered, so each year is stored 
 | `COURSE` | This course must be completed | CMPT 225 |
 | `CHOOSE` | N courses from a list | 1 of MATH 150, 151, 154, 157 |
 | `UNITS_FROM` | N units from a list or a range of courses, with optional exclusions and a cap on lower-level courses | 12 units of CMPT 400+, not CMPT 415, 416, 498 |
-| `AREAS` | N courses from N different areas, which must include certain courses | 5 courses from 5 of the 6 Table I areas, including CMPT 307 |
-| `DESIGNATION` | N units of courses with a WQB designation | 6 units of W |
+| `AREAS` | N courses from N different areas. An area with required courses must be covered by one of them, so required courses in the same area are alternatives | 5 courses from 5 of the 6 Table I areas, including CMPT 307 |
+| `DESIGNATION` | N units of courses with a WQB designation, optionally outside one subject | 6 units of B-Sci, not CMPT |
 | `TOTAL_UNITS` | N units overall, or N upper-division units | 45 upper-division units |
 | `NOTE` | A rule the app can't check from a transcript, shown as "check with an advisor" | Upper-division GPA of 2.00 |
 
@@ -32,6 +32,12 @@ A student follows the Calendar of the year they entered, so each year is stored 
 - **Counting a course once.** In Computing Science, Breadth, Depth and the BSc tables each say "additional", so one course counts toward only one of them. Required courses and WQB designations can overlap with anything.
 - **Taken twice.** A course taken twice counts once, from its passing attempt.
 - **Upper division** means courses numbered 300 and above.
+- **Breadth (B) designations** must be outside the student's major subject, as the Calendar says: CMPT for Computing Science and ENSC for Computer Engineering. So CMPT 120 (Q/B-Sci) doesn't count toward a CS student's B-Sci. W and Q have no such rule.
+- **Renamed courses.** CMPT 300 was replaced by CMPT 303, and ENSC 100W became ENSC 100 in Fall 2026. Where a set requires the old course, either one counts, since students who entered in 2023 or 2024 may have either.
+
+## Changing a set after it's deployed
+
+Each set in `requirements.json` has a `"version"`. The app adds any set that isn't saved yet, and replaces a saved set when its version in the file is higher than the saved one. To fix a set, change it in the file **and raise its version**. A change without a new version is ignored, so a database that already has the set keeps it.
 
 ---
 
@@ -84,7 +90,7 @@ A student follows the Calendar of the year they entered, so each year is stored 
 
 The same as 2024, except:
 - **Lower division:** **no CMPT 201** (9 required courses, not 10).
-- **Breadth:** must include **both CMPT 300 and CMPT 307**.
+- **Breadth:** must include **both CMPT 300 and CMPT 307**. CMPT 303 replaced CMPT 300, so CMPT 303 is also listed in Computing Systems and either one meets the CMPT 300 rule.
 - **Table I, Computing Systems:** has **CMPT 300** where 2024 has CMPT 303.
 
 ---
@@ -92,11 +98,13 @@ The same as 2024, except:
 ## Computer Engineering, BASc, entry 2024
 
 ### Required courses
-The Calendar numbers 37 core courses: these 35, plus the Calculus I and Business choices below.
-- `COURSE` × 35:
-  - CHEM 121; CMPT 225, 276, 300; ECON 103
-  - ENSC 100W, 105W, 120, 151, 180, 204, 220, 225, 251, 252, 254, 280, 320, 324, 327, 350, 351, 380, 405W, 406, 429, 440
+The Calendar numbers 37 core courses: these 33, plus the four choices below. CMPT 300 and ENSC 100W are choices, because they were replaced by CMPT 303 and ENSC 100.
+- `COURSE` × 33:
+  - CHEM 121; CMPT 225, 276; ECON 103
+  - ENSC 105W, 120, 151, 180, 204, 220, 225, 251, 252, 254, 280, 320, 324, 327, 350, 351, 380, 405W, 406, 429, 440
   - MACM 201, 316; MATH 152, 232, 251, 260; PHYS 120, 121
+- `CHOOSE` 1 (Operating systems): CMPT 300, CMPT 303
+- `CHOOSE` 1 (Engineering, science and society): ENSC 100W, ENSC 100
 - `CHOOSE` 1 (Calculus I): MATH 151, MATH 150
 - `CHOOSE` 1 (Business): ENSC 410, ENSC 411
 - `CHOOSE` 2 (Constrained electives): ENSC 450, ENSC 452, ENSC 453
@@ -138,7 +146,7 @@ The Calendar numbers 37 core courses: these 35, plus the Calculus I and Business
 
 ### Notes
 - `NOTE`: A 2.40 CGPA for 300- and 400-level ENSC courses.
-- `NOTE`: The Calendar doesn't state a total unit count. The report shows the units of the requirements above.
+- `NOTE`: The Calendar doesn't state a total unit count.
 
 ## Computer Engineering, BASc, entry 2023
 

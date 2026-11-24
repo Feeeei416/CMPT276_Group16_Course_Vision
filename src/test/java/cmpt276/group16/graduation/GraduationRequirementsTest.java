@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,11 +15,11 @@ import org.springframework.core.io.ClassPathResource;
 
 import cmpt276.group16.graduation.GraduationRequirements.RequirementWithCourses;
 import cmpt276.group16.graduation.GraduationRequirements.StudentRequirements;
+import cmpt276.group16.models.GraduationRequirementRepository;
 import cmpt276.group16.models.Program;
 import cmpt276.group16.models.RequirementCourse;
 import cmpt276.group16.models.RequirementCourseRepository;
 import cmpt276.group16.models.RequirementKind;
-import cmpt276.group16.models.RequirementRepository;
 import cmpt276.group16.models.RequirementSetRepository;
 import cmpt276.group16.models.Role;
 import cmpt276.group16.models.StudentProfile;
@@ -33,7 +35,7 @@ class GraduationRequirementsTest {
     private RequirementSetRepository setRepository;
 
     @Autowired
-    private RequirementRepository requirementRepository;
+    private GraduationRequirementRepository requirementRepository;
 
     @Autowired
     private RequirementCourseRepository courseRepository;
@@ -57,7 +59,7 @@ class GraduationRequirementsTest {
     // Saves the four real sets, the same as startup does
     private void loadRealRequirements() {
         RequirementFile file = new RequirementFile(new ClassPathResource("requirements/requirements.json"));
-        new RequirementLoader(file, setRepository, requirementRepository, courseRepository).loadMissingSets();
+        new RequirementLoader(file, setRepository, requirementRepository, courseRepository).load().added();
         entityManager.flush();
         entityManager.clear();
     }
@@ -132,6 +134,25 @@ class GraduationRequirementsTest {
         assertThat(cs.byCategory().keySet()).containsExactly(
                 "Lower division", "Upper division", "Breadth", "Depth", "BSc", "WQB", "Totals and notes");
         assertThat(cs.byCategory().get("WQB")).hasSize(5);
+    }
+
+    // Jack counted 55 statements here before the requirements were loaded first. Three is the set,
+    // the requirements with their designations, and all their courses
+    @Test
+    void wholeSetIsLoadedInThreeQueries() {
+        loadRealRequirements();
+        StudentProfile student = student("ce@example.com", Program.COMPUTER_ENGINEERING, 2024);
+        entityManager.clear();
+        Statistics statistics = entityManager.getEntityManager().getEntityManagerFactory()
+                .unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
+        StudentRequirements ce = graduationRequirements.forStudent(student).orElseThrow();
+
+        assertThat(ce.requirements()).hasSizeGreaterThan(50);
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
+        statistics.setStatisticsEnabled(false);
     }
 
     @Test

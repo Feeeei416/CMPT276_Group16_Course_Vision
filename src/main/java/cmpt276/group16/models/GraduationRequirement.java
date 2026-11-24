@@ -8,20 +8,23 @@ import org.hibernate.annotations.ColumnDefault;
 
 import jakarta.persistence.*;
 
-// One rule in a requirement set, for example "1 of MATH 150, 151, 154, 157" or "6 units of W".
+// One rule in a program's graduation requirements, for example "1 of MATH 150, 151, 154, 157" or "6 units of W".
+// Named GraduationRequirement because requisites.Requirement is already the prerequisite parser's tree.
 // Which fields are used depends on the kind:
 //   COURSE       its one course in requirement_courses
 //   CHOOSE       courseCount, and the courses to choose from
 //   UNITS_FROM   units, the listed courses and/or subject + minNumber, excluded courses,
 //                and optionally maxCoursesBelow + belowNumber ("at most two 300-level courses")
-//   AREAS        courseCount, and the courses with their area; required courses must be among them
-//   DESIGNATION  units, and the designations that count
+//   AREAS        courseCount, and the courses with their area. Each area that has required courses must be
+//                covered by one of them, so required courses in the same area are alternatives
+//                (CMPT 300 or CMPT 303 in Computing Systems)
+//   DESIGNATION  units, the designations that count, and optionally outsideSubject
 //   TOTAL_UNITS  units, and minNumber for upper division only
 //   NOTE         text
+// Positions aren't unique, so requirements can be reordered one row at a time (#70); ties are shown by id
 @Entity
-@Table(name = "requirements",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"requirement_set_id", "position"}))
-public class Requirement {
+@Table(name = "requirements")
+public class GraduationRequirement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -72,6 +75,10 @@ public class Requirement {
     @Column(name = "designation", nullable = false)
     private Set<Designation> designations = EnumSet.noneOf(Designation.class);
 
+    // DESIGNATION: courses in this subject don't count, for example CMPT for Computing Science, since
+    // Breadth courses "must be outside the student's major subject". Null when any subject counts
+    private String outsideSubject;
+
     // The lowest grade that counts, for example "C-" for WQB; null if any passing grade counts
     private String minGrade;
 
@@ -85,9 +92,9 @@ public class Requirement {
     @Column(columnDefinition = "TEXT")
     private String text;
 
-    protected Requirement() {}
+    protected GraduationRequirement() {}
 
-    public Requirement(RequirementSet requirementSet, int position, String category, RequirementKind kind) {
+    public GraduationRequirement(RequirementSet requirementSet, int position, String category, RequirementKind kind) {
         if (position < 0) {
             throw new IllegalArgumentException("Position can't be negative");
         }
@@ -190,6 +197,15 @@ public class Requirement {
 
     public void setDesignations(Set<Designation> designations) {
         this.designations = designations.isEmpty() ? EnumSet.noneOf(Designation.class) : EnumSet.copyOf(designations);
+    }
+
+    public String getOutsideSubject() {
+        return outsideSubject;
+    }
+
+    // Stored uppercase so it matches courses.subject
+    public void setOutsideSubject(String outsideSubject) {
+        this.outsideSubject = outsideSubject == null ? null : Course.normalizeSubjectOrNumber(outsideSubject);
     }
 
     public String getMinGrade() {

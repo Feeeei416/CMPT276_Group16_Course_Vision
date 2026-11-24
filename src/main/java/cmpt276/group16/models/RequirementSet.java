@@ -1,5 +1,7 @@
 package cmpt276.group16.models;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import jakarta.persistence.*;
 
 // The graduation requirements for one program and entry year, for example Computing Science 2024.
@@ -24,6 +26,12 @@ public class RequirementSet {
     // The Calendar page the requirements were taken from, so students and advisors can check them
     @Column(length = 500)
     private String calendarUrl;
+
+    // The set's "version" in requirements.json when it was loaded. Raising it in the file makes the loader
+    // replace this set on the next start, so a fix to the file reaches a database that already has the set
+    @Column(nullable = false)
+    @ColumnDefault("1")
+    private int fileVersion = 1;
 
     protected RequirementSet() {}
 
@@ -52,6 +60,14 @@ public class RequirementSet {
 
     public void setCalendarUrl(String calendarUrl) {
         this.calendarUrl = calendarUrl;
+    }
+
+    public int getFileVersion() {
+        return fileVersion;
+    }
+
+    public void setFileVersion(int fileVersion) {
+        this.fileVersion = fileVersion;
     }
 
     // For example "Computing Science, entry 2024"

@@ -93,13 +93,26 @@ class RealRequirementsTest {
     void breadth2023NeedsCmpt300And307() {
         RuleEntry breadth = onlyRule(set(Program.COMPUTING_SCIENCE, 2023), "Breadth", RequirementKind.AREAS);
 
-        assertThat(codes(breadth, RequirementCourse.Use.REQUIRED)).containsExactlyInAnyOrder("CMPT 300", "CMPT 307");
+        assertThat(codes(breadth, RequirementCourse.Use.REQUIRED))
+                .containsExactlyInAnyOrder("CMPT 300", "CMPT 303", "CMPT 307");
+    }
+
+    // CMPT 303 replaced CMPT 300, so both are required courses in Computing Systems, which makes either one count.
+    // Required courses in the same area are alternatives; each area with any must be covered by one of them
+    @Test
+    void breadth2023TakesCmpt300OrCmpt303() {
+        RuleEntry breadth = onlyRule(set(Program.COMPUTING_SCIENCE, 2023), "Breadth", RequirementKind.AREAS);
+
+        assertThat(breadth.courses().stream().filter(course -> course.use() == RequirementCourse.Use.REQUIRED)
+                .map(course -> course.area() + ": " + course.code()))
+                .containsExactlyInAnyOrder("Computing Systems: CMPT 300", "Computing Systems: CMPT 303",
+                        "Theoretical Computing Science: CMPT 307");
     }
 
     @Test
-    void computingSystemsHasCmpt303In2024AndCmpt300In2023() {
+    void computingSystemsHasCmpt303In2024AndBothIn2023() {
         assertThat(computingSystems(2024)).contains("CMPT 303").doesNotContain("CMPT 300");
-        assertThat(computingSystems(2023)).contains("CMPT 300").doesNotContain("CMPT 303");
+        assertThat(computingSystems(2023)).contains("CMPT 300", "CMPT 303");
     }
 
     private static List<String> computingSystems(int year) {
@@ -128,16 +141,44 @@ class RealRequirementsTest {
         }
     }
 
-    // The Calendar numbers the core courses 1 to 37: 35 on their own, plus MATH 151 or 150 and ENSC 410 or 411
+    // The Calendar numbers the core courses 1 to 37: 33 on their own, plus four choices. Two are in the Calendar
+    // (MATH 151 or 150, ENSC 410 or 411) and two are renamed courses, where a student may have either:
+    // CMPT 300 became CMPT 303, and ENSC 100W became ENSC 100 in Fall 2026
     @Test
     void computerEngineeringHasThirtySevenCoreCourses() {
         for (int year : List.of(2023, 2024)) {
             SetEntry set = set(Program.COMPUTER_ENGINEERING, year);
-            assertThat(requiredCourses(set, "Required courses")).as(set.name()).hasSize(35);
-            assertThat(rules(set, "Required courses", RequirementKind.CHOOSE))
-                    .extracting(RuleEntry::title)
-                    .containsExactly("Calculus I", "Business of engineering", "Constrained electives");
+            assertThat(requiredCourses(set, "Required courses")).as(set.name()).hasSize(33)
+                    .doesNotContain("CMPT 300", "CMPT 303", "ENSC 100W", "ENSC 100");
+            List<RuleEntry> choices = rules(set, "Required courses", RequirementKind.CHOOSE);
+            assertThat(choices).extracting(RuleEntry::title).containsExactly("Operating systems",
+                    "Engineering, science and society", "Calculus I", "Business of engineering",
+                    "Constrained electives");
+            assertThat(codes(choices.get(0), RequirementCourse.Use.LISTED)).containsExactly("CMPT 300", "CMPT 303");
+            assertThat(codes(choices.get(1), RequirementCourse.Use.LISTED)).containsExactly("ENSC 100W", "ENSC 100");
         }
+    }
+
+    // Breadth (B) courses "must be outside the student's major subject", so CMPT 120 (B-Sci) doesn't count for
+    // Computing Science. Writing and Quantitative have no such rule
+    @Test
+    void breadthDesignationsLeaveOutTheMajorSubject() {
+        for (SetEntry set : FILE.sets()) {
+            String major = set.program() == Program.COMPUTING_SCIENCE ? "CMPT" : "ENSC";
+            for (RuleEntry rule : set.requirements()) {
+                if (rule.kind() != RequirementKind.DESIGNATION) {
+                    continue;
+                }
+                boolean breadth = rule.designations().stream().anyMatch(d -> d.name().startsWith("B_"));
+                assertThat(rule.outsideSubject()).as(set.name() + ", " + rule.title())
+                        .isEqualTo(breadth ? major : null);
+            }
+        }
+    }
+
+    @Test
+    void everySetSaysItsVersion() {
+        assertThat(FILE.sets()).extracting(SetEntry::version).allMatch(version -> version >= 1);
     }
 
     // "Any ENSC 300 or 400 course" would otherwise let a required course or a co-op term count as an elective

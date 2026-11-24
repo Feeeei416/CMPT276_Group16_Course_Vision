@@ -16,13 +16,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 // Covers the requirement_sets, requirements and requirement_courses tables together,
 // since a set is only useful with its requirements and their courses
 @DataJpaTest
-class RequirementRepositoryTest {
+class GraduationRequirementRepositoryTest {
 
     @Autowired
     private RequirementSetRepository setRepository;
 
     @Autowired
-    private RequirementRepository requirementRepository;
+    private GraduationRequirementRepository requirementRepository;
 
     @Autowired
     private RequirementCourseRepository courseRepository;
@@ -34,11 +34,11 @@ class RequirementRepositoryTest {
         return setRepository.saveAndFlush(new RequirementSet(program, year, "https://www.sfu.ca/students/calendar"));
     }
 
-    private Requirement saveRequirement(RequirementSet set, int position, String category, RequirementKind kind) {
-        return requirementRepository.saveAndFlush(new Requirement(set, position, category, kind));
+    private GraduationRequirement saveRequirement(RequirementSet set, int position, String category, RequirementKind kind) {
+        return requirementRepository.saveAndFlush(new GraduationRequirement(set, position, category, kind));
     }
 
-    private RequirementCourse saveCourse(Requirement requirement, String subject, String number,
+    private RequirementCourse saveCourse(GraduationRequirement requirement, String subject, String number,
                                          RequirementCourse.Use use) {
         return courseRepository.saveAndFlush(new RequirementCourse(requirement, subject, number, use));
     }
@@ -97,8 +97,8 @@ class RequirementRepositoryTest {
         saveRequirement(set, 1, "Lower division", RequirementKind.CHOOSE);
         entityManager.clear();
 
-        List<RequirementKind> kinds = requirementRepository.findByRequirementSetOrderByPositionAsc(set).stream()
-                .map(Requirement::getKind).toList();
+        List<RequirementKind> kinds = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(set).stream()
+                .map(GraduationRequirement::getKind).toList();
 
         assertThat(kinds).containsExactly(RequirementKind.COURSE, RequirementKind.CHOOSE, RequirementKind.TOTAL_UNITS);
     }
@@ -111,32 +111,50 @@ class RequirementRepositoryTest {
         saveRequirement(ce, 0, "Required courses", RequirementKind.COURSE);
         saveRequirement(ce, 1, "Co-op", RequirementKind.CHOOSE);
 
-        assertThat(requirementRepository.findByRequirementSetOrderByPositionAsc(cs)).hasSize(1);
-        assertThat(requirementRepository.findByRequirementSetOrderByPositionAsc(ce)).hasSize(2);
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(cs)).hasSize(1);
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(ce)).hasSize(2);
     }
 
     @Test
-    void twoRequirementsCantShareAPosition() {
+    void requirementsAtTheSamePositionComeBackInTheOrderTheyWereSaved() {
+        // Two rows can share a position partway through reordering them (#70), so the id breaks the tie
         RequirementSet set = saveSet(Program.COMPUTING_SCIENCE, 2024);
+        saveRequirement(set, 1, "Upper division", RequirementKind.TOTAL_UNITS);
         saveRequirement(set, 0, "Lower division", RequirementKind.COURSE);
+        saveRequirement(set, 0, "Lower division", RequirementKind.CHOOSE);
+        entityManager.clear();
 
-        assertThatThrownBy(() -> saveRequirement(set, 0, "Lower division", RequirementKind.CHOOSE))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        List<RequirementKind> kinds = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(set).stream()
+                .map(GraduationRequirement::getKind).toList();
+
+        assertThat(kinds).containsExactly(RequirementKind.COURSE, RequirementKind.CHOOSE, RequirementKind.TOTAL_UNITS);
+    }
+
+    @Test
+    void newSetStartsAtFileVersionOne() {
+        RequirementSet set = saveSet(Program.COMPUTING_SCIENCE, 2024);
+        set.setFileVersion(3);
+        setRepository.saveAndFlush(set);
+        entityManager.clear();
+
+        assertThat(setRepository.findByProgramAndEntryYear(Program.COMPUTING_SCIENCE, 2024).orElseThrow()
+                .getFileVersion()).isEqualTo(3);
+        assertThat(new RequirementSet(Program.COMPUTER_ENGINEERING, 2024, null).getFileVersion()).isEqualTo(1);
     }
 
     @Test
     void unitsFromRuleKeepsItsRangeAndLimit() {
         RequirementSet set = saveSet(Program.COMPUTER_ENGINEERING, 2024);
-        Requirement esd = new Requirement(set, 0, "ESD electives", RequirementKind.UNITS_FROM);
+        GraduationRequirement esd = new GraduationRequirement(set, 0, "ESD electives", RequirementKind.UNITS_FROM);
         esd.setUnits(new BigDecimal("12"));
         esd.setSubject("ensc");
         esd.setMinNumber(300);
         esd.setLimitBelow(2, 400);
         esd.setExclusive(true);
-        Requirement saved = requirementRepository.saveAndFlush(esd);
+        GraduationRequirement saved = requirementRepository.saveAndFlush(esd);
         entityManager.clear();
 
-        Requirement found = requirementRepository.findById(saved.getId()).orElseThrow();
+        GraduationRequirement found = requirementRepository.findById(saved.getId()).orElseThrow();
 
         assertThat(found.getUnits()).isEqualByComparingTo("12");
         assertThat(found.getSubject()).isEqualTo("ENSC");
@@ -149,26 +167,28 @@ class RequirementRepositoryTest {
     @Test
     void designationRuleKeepsEveryDesignation() {
         RequirementSet set = saveSet(Program.COMPUTER_ENGINEERING, 2024);
-        Requirement humOrSoc = new Requirement(set, 0, "Complementary studies", RequirementKind.DESIGNATION);
+        GraduationRequirement humOrSoc = new GraduationRequirement(set, 0, "Complementary studies", RequirementKind.DESIGNATION);
         humOrSoc.setUnits(new BigDecimal("9"));
         humOrSoc.setDesignations(Set.of(Designation.B_HUM, Designation.B_SOC));
         humOrSoc.setMinGrade("C-");
-        Requirement saved = requirementRepository.saveAndFlush(humOrSoc);
+        humOrSoc.setOutsideSubject("ensc");
+        GraduationRequirement saved = requirementRepository.saveAndFlush(humOrSoc);
         entityManager.clear();
 
-        Requirement found = requirementRepository.findById(saved.getId()).orElseThrow();
+        GraduationRequirement found = requirementRepository.findById(saved.getId()).orElseThrow();
 
         assertThat(found.getDesignations()).containsExactlyInAnyOrder(Designation.B_HUM, Designation.B_SOC);
         assertThat(found.getMinGrade()).isEqualTo("C-");
+        assertThat(found.getOutsideSubject()).isEqualTo("ENSC");
         assertThat(found.isExclusive()).isFalse();
     }
 
     @Test
     void noteKeepsItsText() {
         RequirementSet set = saveSet(Program.COMPUTING_SCIENCE, 2024);
-        Requirement note = new Requirement(set, 0, "Totals and notes", RequirementKind.NOTE);
+        GraduationRequirement note = new GraduationRequirement(set, 0, "Totals and notes", RequirementKind.NOTE);
         note.setText("An upper-division GPA of 2.00 in program courses.");
-        Requirement saved = requirementRepository.saveAndFlush(note);
+        GraduationRequirement saved = requirementRepository.saveAndFlush(note);
         entityManager.clear();
 
         assertThat(requirementRepository.findById(saved.getId()).orElseThrow().getText())
@@ -179,16 +199,16 @@ class RequirementRepositoryTest {
     void requirementNeedsACategoryAndAPositionOfZeroOrMore() {
         RequirementSet set = saveSet(Program.COMPUTING_SCIENCE, 2024);
 
-        assertThatThrownBy(() -> new Requirement(set, 0, " ", RequirementKind.COURSE))
+        assertThatThrownBy(() -> new GraduationRequirement(set, 0, " ", RequirementKind.COURSE))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new Requirement(set, -1, "Breadth", RequirementKind.AREAS))
+        assertThatThrownBy(() -> new GraduationRequirement(set, -1, "Breadth", RequirementKind.AREAS))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void coursesAreSavedUppercaseWithTheirUseAndArea() {
         RequirementSet set = saveSet(Program.COMPUTING_SCIENCE, 2024);
-        Requirement breadth = saveRequirement(set, 0, "Breadth", RequirementKind.AREAS);
+        GraduationRequirement breadth = saveRequirement(set, 0, "Breadth", RequirementKind.AREAS);
         RequirementCourse required = new RequirementCourse(breadth, "cmpt", "307", RequirementCourse.Use.REQUIRED);
         required.setArea("Theoretical Computing Science");
         courseRepository.saveAndFlush(required);
@@ -206,7 +226,7 @@ class RequirementRepositoryTest {
     @Test
     void sameCourseCantBeListedTwiceInOneRequirement() {
         RequirementSet set = saveSet(Program.COMPUTING_SCIENCE, 2024);
-        Requirement calculus = saveRequirement(set, 0, "Lower division", RequirementKind.CHOOSE);
+        GraduationRequirement calculus = saveRequirement(set, 0, "Lower division", RequirementKind.CHOOSE);
         saveCourse(calculus, "MATH", "151", RequirementCourse.Use.LISTED);
 
         assertThatThrownBy(() -> saveCourse(calculus, "math", "151", RequirementCourse.Use.LISTED))
@@ -216,8 +236,8 @@ class RequirementRepositoryTest {
     @Test
     void sameCourseCanBeInTwoRequirements() {
         RequirementSet set = saveSet(Program.COMPUTING_SCIENCE, 2024);
-        Requirement required = saveRequirement(set, 0, "BSc", RequirementKind.COURSE);
-        Requirement tables = saveRequirement(set, 1, "BSc", RequirementKind.CHOOSE);
+        GraduationRequirement required = saveRequirement(set, 0, "BSc", RequirementKind.COURSE);
+        GraduationRequirement tables = saveRequirement(set, 1, "BSc", RequirementKind.CHOOSE);
         saveCourse(required, "MACM", "316", RequirementCourse.Use.LISTED);
         saveCourse(tables, "MACM", "316", RequirementCourse.Use.LISTED);
 
@@ -228,9 +248,9 @@ class RequirementRepositoryTest {
     void allCoursesOfASetComeBackInOneQuery() {
         RequirementSet cs = saveSet(Program.COMPUTING_SCIENCE, 2024);
         RequirementSet ce = saveSet(Program.COMPUTER_ENGINEERING, 2024);
-        Requirement depth = saveRequirement(cs, 0, "Depth", RequirementKind.UNITS_FROM);
-        Requirement calculus = saveRequirement(cs, 1, "Lower division", RequirementKind.CHOOSE);
-        Requirement chem = saveRequirement(ce, 0, "Required courses", RequirementKind.COURSE);
+        GraduationRequirement depth = saveRequirement(cs, 0, "Depth", RequirementKind.UNITS_FROM);
+        GraduationRequirement calculus = saveRequirement(cs, 1, "Lower division", RequirementKind.CHOOSE);
+        GraduationRequirement chem = saveRequirement(ce, 0, "Required courses", RequirementKind.COURSE);
         saveCourse(depth, "CMPT", "415", RequirementCourse.Use.EXCLUDED);
         saveCourse(calculus, "MATH", "150", RequirementCourse.Use.LISTED);
         saveCourse(chem, "CHEM", "121", RequirementCourse.Use.LISTED);

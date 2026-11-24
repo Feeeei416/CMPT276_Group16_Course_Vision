@@ -49,6 +49,29 @@ class RequirementFileTest {
         assertThat(set.entryYear()).isEqualTo(2024);
         assertThat(set.calendarUrl()).isEqualTo("https://www.sfu.ca/students/calendar");
         assertThat(set.name()).isEqualTo("Computing Science 2024");
+        // No "version" in the file means version 1
+        assertThat(set.version()).isEqualTo(1);
+    }
+
+    @Test
+    void setKeepsItsVersion() {
+        SetEntry set = RequirementFile.fromJson("""
+                { "sets": [ { "program": "COMPUTER_ENGINEERING", "entryYear": 2023, "version": 4,
+                              "requirements": [ { "category": "Notes", "kind": "NOTE", "text": "x" } ] } ] }
+                """).sets().get(0);
+
+        assertThat(set.version()).isEqualTo(4);
+    }
+
+    @Test
+    void versionBelowOneIsTurnedDown() {
+        String json = """
+                { "sets": [ { "program": "COMPUTER_ENGINEERING", "entryYear": 2023, "version": 0,
+                              "requirements": [ { "category": "Notes", "kind": "NOTE", "text": "x" } ] } ] }
+                """;
+
+        assertThatThrownBy(() -> RequirementFile.fromJson(json))
+                .hasMessage("Graduation requirements, Computer Engineering 2023: \"version\" needs to be 1 or more");
     }
 
     @Test
@@ -135,6 +158,17 @@ class RequirementFileTest {
 
         assertThat(rule.designations()).containsExactlyInAnyOrder(Designation.B_HUM, Designation.B_SOC);
         assertThat(rule.minGrade()).isEqualTo("C-");
+        assertThat(rule.outsideSubject()).isNull();
+    }
+
+    @Test
+    void designationKeepsTheSubjectToLeaveOut() {
+        RuleEntry rule = onlyRule("""
+                { "category": "WQB", "kind": "DESIGNATION", "units": 6, "designations": ["B_SCI"],
+                  "outsideSubject": "cmpt" }
+                """);
+
+        assertThat(rule.outsideSubject()).isEqualTo("CMPT");
     }
 
     @Test
@@ -184,6 +218,8 @@ class RequirementFileTest {
             "{ 'category': 'X', 'kind': 'DESIGNATION', 'units': 6 }                          | needs \"designations\"",
             "{ 'category': 'X', 'kind': 'DESIGNATION', 'unit': 6, 'designations': ['W'] }    | DESIGNATION doesn't use \"unit\"",
             "{ 'category': 'X', 'kind': 'DESIGNATION', 'units': 6, 'designations': ['W'], 'minGrade': 'C--' } | not a letter grade: C--",
+            "{ 'category': 'X', 'kind': 'DESIGNATION', 'units': 6, 'designations': ['B_SCI'], 'outsideSubject': 'C1' } | not a subject: C1",
+            "{ 'category': 'X', 'kind': 'TOTAL_UNITS', 'units': 120, 'outsideSubject': 'CMPT' } | TOTAL_UNITS doesn't use \"outsideSubject\"",
             "{ 'category': 'X', 'kind': 'TOTAL_UNITS', 'units': -3 }                          | needs \"units\" above 0",
             "{ 'category': 'X', 'kind': 'NOTE', 'text': ' ' }                                 | needs \"text\"",
             "{ 'category': 'X', 'kind': 'NOTE', 'text': 'x', 'exclusive': 'yes' }             | \"exclusive\" needs to be true or false"

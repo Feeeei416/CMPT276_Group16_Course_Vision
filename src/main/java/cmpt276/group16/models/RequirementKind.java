@@ -9,9 +9,10 @@ public enum RequirementKind {
     CHOOSE,
     // units from the listed courses and/or a range like CMPT 400 and above, leaving out the excluded courses
     UNITS_FROM,
-    // courseCount courses, each from a different area, including every course marked as required
+    // courseCount courses, each from a different area. Each area with required courses must be covered by one
+    // of them, so required courses in the same area are alternatives (CMPT 300 or CMPT 303)
     AREAS,
-    // units of courses with any of the listed WQB designations
+    // units of courses with any of the listed WQB designations, optionally leaving out one subject (the major)
     DESIGNATION,
     // units overall, or only of courses numbered minNumber and above
     TOTAL_UNITS,
