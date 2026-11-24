@@ -1,6 +1,5 @@
 package cmpt276.group16.models;
 
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.Locale;
 
@@ -9,11 +8,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "users")
-// Serializable so login can store the user in the session (sessions are saved in the database)
-public class User implements Serializable {
-
-    // Keeps saved sessions readable
-    private static final long serialVersionUID = 1L;
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
