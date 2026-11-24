@@ -503,4 +503,69 @@ class PrerequisiteCheckTest {
 
         assertThat(result.met()).isFalse();
     }
+    // #63: a P earns credit but isn't a letter grade, so against a minimum it counts with a note to check,
+    // instead of reading as if the course was never taken
+    @Test
+    void passWithoutALetterGradeCountsButIsFlagged() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "225", "P")));
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.missing()).isEmpty();
+        assertThat(result.toConfirm())
+                .containsExactly("CMPT 225 has a grade of P, so check that it counts as C- or better.");
+    }
+
+    // The same for every grade that earns credit without a letter
+    @Test
+    void everyCreditGradeWithoutALetterIsFlaggedAgainstAMinimum() {
+        for (String grade : List.of("P", "CR", "CC", "AE")) {
+            rules.clear();
+            requires(null, "CMPT", "225", "C-");
+
+            PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                    List.of(took("2025 Fall", "CMPT", "225", grade)));
+
+            assertThat(result.met()).as(grade).isTrue();
+            assertThat(result.toConfirm()).as(grade).hasSize(1);
+        }
+    }
+
+    // Without a minimum grade, a P is just a pass, so there's nothing to check
+    @Test
+    void passWithoutALetterGradeMeetsARuleWithNoMinimum() {
+        requires(null, "CMPT", "225", null);
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "225", "P")));
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm()).isEmpty();
+    }
+
+    // A letter grade that meets the minimum wins over a P from another attempt, so nothing is left to check
+    @Test
+    void letterGradeThatMeetsTheMinimumWinsOverAPass() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2024 Fall", "CMPT", "225", "P"), took("2025 Fall", "CMPT", "225", "B")));
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm()).isEmpty();
+    }
+
+    // Failing grades still don't count: an F with a minimum is still missing
+    @Test
+    void failingGradeIsStillMissingWithAMinimum() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.check(rules,
+                List.of(took("2025 Fall", "CMPT", "225", "F")));
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs CMPT 225 with C- or better, you have F.");
+    }
 }
