@@ -2,6 +2,7 @@ package cmpt276.group16.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
@@ -74,10 +75,17 @@ class CourseRefreshControllerTest {
         return session;
     }
  
-    // Finished in July, when Vancouver is UTC-7 under both the old and new time zone rules.
+    // July, when Vancouver is UTC-7 under both the old and new time zone rules.
     // BC stopped changing its clocks in 2026, so a November time shows an hour later on newer Java versions
-    private static ImportRun run(List<String> notes, String error) {
-        return new ImportRun(2027, Season.SPRING, Instant.parse("2026-07-09T22:10:00Z"), 52, 310, 2, 1, notes, error);
+    private static final Instant JULY_9 = Instant.parse("2026-07-09T22:10:00Z");
+
+    private static ImportRun run() {
+        return new ImportRun(2027, Season.SPRING, JULY_9, 52, 310, 2, 1, List.of());
+    }
+
+    // A 2027 Spring refresh that started on July 9 and hasn't finished yet
+    private static CourseRefresh started(boolean automatic) {
+        return new CourseRefresh(2027, Season.SPRING, automatic, JULY_9);
     }
 
     // -- The page --
@@ -91,34 +99,66 @@ class CourseRefreshControllerTest {
                .andExpect(content().string(containsString("2026 Fall")))
                .andExpect(model().attribute("selectedTerm", "2027-SPRING"))
                .andExpect(content().string(containsString("2027 Summer")))
-               .andExpect(content().string(containsString("No refresh since the app last started.")));
+               .andExpect(content().string(containsString("No refreshes yet.")));
     }
  
-    // The last refresh is shown with its counts, time and what was skipped
+    // -- The log --
+
+    // A refresh that worked shows its term, start time, type, counts and what was skipped
     @Test
-    void showsTheLastRefresh() throws Exception {
-        when(importService.lastRun()).thenReturn(Optional.of(run(List.of("MATH 495 has no outline, skipped"), null)));
- 
+    void logShowsARefreshThatWorked() throws Exception {
+        CourseRefresh worked = started(false);
+        worked.finish(JULY_9.plusSeconds(300), 52, 310, 2, 1, List.of("MATH 495 has no outline, skipped"));
+        when(importService.refreshLog()).thenReturn(List.of(worked));
+
         mockMvc.perform(get("/it/course-refresh").session(sessionFor(Role.IT_MANAGER)))
                .andExpect(content().string(containsString("Jul 9, 2026, 3:10 PM")))
+               .andExpect(content().string(containsString("Manual")))
                .andExpect(content().string(containsString("52 courses and 310 sections saved")))
+               .andExpect(content().string(containsString("No longer offered: 2 sections and 1 course")))
+               .andExpect(content().string(containsString("1 skipped")))
                .andExpect(content().string(containsString("MATH 495 has no outline, skipped")));
     }
- 
-    // A refresh that stopped shows why
+
+    // A failed refresh shows why, and an automatic one says so
     @Test
-    void showsWhyTheLastRefreshStopped() throws Exception {
-        when(importService.lastRun()).thenReturn(Optional.of(run(List.of(), "SFU is down")));
- 
+    void logShowsWhyARefreshFailed() throws Exception {
+        CourseRefresh failed = started(true);
+        failed.fail(JULY_9.plusSeconds(60), "SFU is down");
+        when(importService.refreshLog()).thenReturn(List.of(failed));
+
         mockMvc.perform(get("/it/course-refresh").session(sessionFor(Role.IT_MANAGER)))
-               .andExpect(content().string(containsString("Stopped: SFU is down")));
+               .andExpect(content().string(containsString("Automatic")))
+               .andExpect(content().string(containsString("Failed: SFU is down")))
+               .andExpect(content().string(not(containsString("sections saved"))));
     }
- 
+
+    @Test
+    void logShowsTheRefreshRunningNow() throws Exception {
+        CourseRefresh running = started(false);
+        when(importService.refreshLog()).thenReturn(List.of(running));
+        when(importService.isRunning(running)).thenReturn(true);
+
+        mockMvc.perform(get("/it/course-refresh").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(content().string(containsString("Running now")))
+               .andExpect(content().string(not(containsString("Didn't finish"))));
+    }
+
+    // Not finished and not running means the app stopped partway through
+    @Test
+    void logShowsARefreshThatWasCutOff() throws Exception {
+        when(importService.refreshLog()).thenReturn(List.of(started(true)));
+
+        mockMvc.perform(get("/it/course-refresh").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(content().string(containsString("Didn't finish: the app stopped partway through")))
+               .andExpect(content().string(not(containsString("Running now"))));
+    }
+
     // -- Refreshing --
  
     @Test
     void refreshImportsTheChosenTerm() throws Exception {
-        when(importService.importTerm(2027, Season.SPRING)).thenReturn(run(List.of(), null));
+        when(importService.importTerm(2027, Season.SPRING)).thenReturn(run());
  
         mockMvc.perform(post("/it/course-refresh/refresh").param("term", "2027-SPRING")
                        .session(sessionFor(Role.IT_MANAGER)))
@@ -181,6 +221,15 @@ class CourseRefreshControllerTest {
         verify(importService, never()).importTerm(anyInt(), any());
     }
  
+    // Only IT managers see the log: AuthInterceptor sends other roles home before it's read
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = "IT_MANAGER", mode = EnumSource.Mode.EXCLUDE)
+    void otherRolesCantSeeTheLog(Role role) throws Exception {
+        mockMvc.perform(get("/it/course-refresh").session(sessionFor(role)))
+               .andExpect(redirectedUrl(LoginController.homePath(role)));
+        verify(importService, never()).refreshLog();
+    }
+
     // -- Which terms are offered --
  
     @Test

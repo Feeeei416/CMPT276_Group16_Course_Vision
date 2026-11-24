@@ -22,22 +22,32 @@ class CourseRefreshRepositoryTest {
     @Autowired
     private TestEntityManager entityManager;
 
-    private CourseRefresh worked(int year, Season season, Instant finishedAt) {
-        return refreshRepository.save(new CourseRefresh(year, season, false, finishedAt, 52, 310, 2, 1, List.of(), null));
+    // A manual refresh that started at the given time and worked, taking 5 minutes
+    private CourseRefresh worked(int year, Season season, Instant startedAt) {
+        CourseRefresh refresh = new CourseRefresh(year, season, false, startedAt);
+        refresh.finish(startedAt.plus(5, ChronoUnit.MINUTES), 52, 310, 2, 1, List.of());
+        return refreshRepository.save(refresh);
     }
 
-    // Everything about a refresh comes back the same after it's saved, including the skipped notes
-    @Test
-    void refreshIsSavedAndLoadedBack() {
-        Long id = refreshRepository.save(new CourseRefresh(2027, Season.SPRING, true, NOV_9, 52, 310, 2, 1,
-                List.of("MATH 495 has no outline, skipped", "CMPT 105W has no sections, skipped"), null)).getId();
+    private CourseRefresh reload(CourseRefresh refresh) {
         entityManager.flush();
         entityManager.clear();
+        return refreshRepository.findById(refresh.getId()).orElseThrow();
+    }
 
-        CourseRefresh found = refreshRepository.findById(id).orElseThrow();
+    // Everything about a refresh that worked comes back the same after it's saved, including the skipped notes
+    @Test
+    void finishedRefreshIsSavedAndLoadedBack() {
+        CourseRefresh refresh = new CourseRefresh(2027, Season.SPRING, true, NOV_9);
+        refresh.finish(NOV_9.plus(5, ChronoUnit.MINUTES), 52, 310, 2, 1,
+                List.of("MATH 495 has no outline, skipped", "CMPT 105W has no sections, skipped"));
+
+        CourseRefresh found = reload(refreshRepository.save(refresh));
         assertThat(found.getTermName()).isEqualTo("2027 Spring");
         assertThat(found.isAutomatic()).isTrue();
-        assertThat(found.getFinishedAt()).isEqualTo(NOV_9);
+        assertThat(found.getStartedAt()).isEqualTo(NOV_9);
+        assertThat(found.getFinishedAt()).isEqualTo(NOV_9.plus(5, ChronoUnit.MINUTES));
+        assertThat(found.isFinished()).isTrue();
         assertThat(found.getCourses()).isEqualTo(52);
         assertThat(found.getSections()).isEqualTo(310);
         assertThat(found.getRemovedSections()).isEqualTo(2);
@@ -47,38 +57,48 @@ class CourseRefreshRepositoryTest {
         assertThat(found.isFailed()).isFalse();
     }
 
-    // A failed refresh keeps its error, and having no notes reads back as an empty list
+    // A failed refresh keeps its error and counts as finished. Having no notes reads back as an empty list
     @Test
     void failedRefreshKeepsItsError() {
-        Long id = refreshRepository.save(new CourseRefresh(2027, Season.SUMMER, false, NOV_9, 0, 0, 0, 0,
-                List.of(), "SFU hasn't published 2027 Summer yet")).getId();
-        entityManager.flush();
-        entityManager.clear();
+        CourseRefresh refresh = new CourseRefresh(2027, Season.SUMMER, false, NOV_9);
+        refresh.fail(NOV_9.plus(1, ChronoUnit.MINUTES), "SFU hasn't published 2027 Summer yet");
 
-        CourseRefresh found = refreshRepository.findById(id).orElseThrow();
+        CourseRefresh found = reload(refreshRepository.save(refresh));
         assertThat(found.isFailed()).isTrue();
+        assertThat(found.isFinished()).isTrue();
         assertThat(found.getError()).isEqualTo("SFU hasn't published 2027 Summer yet");
         assertThat(found.getNotes()).isEmpty();
     }
 
-    // The log is newest first, whatever order the refreshes were saved in
+    // A refresh that has only started has no finish time and no error
+    @Test
+    void startedRefreshHasNotFinished() {
+        CourseRefresh found = reload(refreshRepository.save(new CourseRefresh(2027, Season.SPRING, false, NOV_9)));
+
+        assertThat(found.isFinished()).isFalse();
+        assertThat(found.isFailed()).isFalse();
+        assertThat(found.getCourses()).isZero();
+    }
+
+    // The log is newest first by start time, whatever order the refreshes were saved in.
+    // One that never finished is listed where it started
     @Test
     void logIsNewestFirst() {
         CourseRefresh older = worked(2026, Season.FALL, NOV_9.minus(2, ChronoUnit.DAYS));
         CourseRefresh newest = worked(2027, Season.SPRING, NOV_9);
-        CourseRefresh middle = worked(2027, Season.SPRING, NOV_9.minus(1, ChronoUnit.DAYS));
+        CourseRefresh unfinished = refreshRepository.save(
+                new CourseRefresh(2027, Season.SPRING, true, NOV_9.minus(1, ChronoUnit.DAYS)));
 
-        assertThat(refreshRepository.findTop50ByOrderByFinishedAtDescIdDesc()).containsExactly(newest, middle, older);
-        assertThat(refreshRepository.findFirstByOrderByFinishedAtDescIdDesc()).contains(newest);
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).containsExactly(newest, unfinished, older);
     }
 
-    // Two refreshes that finished at the same moment: the one saved last comes first
+    // Two refreshes that started at the same moment: the one saved last comes first
     @Test
-    void sameFinishTimeListsTheLastSavedFirst() {
+    void sameStartTimeListsTheLastSavedFirst() {
         CourseRefresh first = worked(2026, Season.FALL, NOV_9);
         CourseRefresh second = worked(2027, Season.SPRING, NOV_9);
 
-        assertThat(refreshRepository.findTop50ByOrderByFinishedAtDescIdDesc()).containsExactly(second, first);
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).containsExactly(second, first);
     }
 
     // Only the latest 50 are listed
@@ -88,36 +108,41 @@ class CourseRefreshRepositoryTest {
             worked(2027, Season.SPRING, NOV_9.minus(i, ChronoUnit.HOURS));
         }
 
-        List<CourseRefresh> log = refreshRepository.findTop50ByOrderByFinishedAtDescIdDesc();
+        List<CourseRefresh> log = refreshRepository.findTop50ByOrderByStartedAtDescIdDesc();
         assertThat(log).hasSize(50);
-        assertThat(log.get(49).getFinishedAt()).isEqualTo(NOV_9.minus(49, ChronoUnit.HOURS));
-    }
-
-    // Nothing saved yet means there's no latest refresh
-    @Test
-    void noRefreshesMeansNoLatest() {
-        assertThat(refreshRepository.findFirstByOrderByFinishedAtDescIdDesc()).isEmpty();
-        assertThat(refreshRepository.findTop50ByOrderByFinishedAtDescIdDesc()).isEmpty();
+        assertThat(log.get(49).getStartedAt()).isEqualTo(NOV_9.minus(49, ChronoUnit.HOURS));
     }
 
     // Only a refresh of the same term that finished after the time counts
     @Test
-    void existsOnlyForTheSameTermAfterTheTime() {
+    void existsOnlyForTheSameTermFinishedAfterTheTime() {
         worked(2027, Season.SPRING, NOV_9);
+        Instant finished = NOV_9.plus(5, ChronoUnit.MINUTES);
         Instant dayBefore = NOV_9.minus(1, ChronoUnit.DAYS);
 
         assertThat(refreshRepository.existsByTermYearAndSeasonAndFinishedAtAfter(2027, Season.SPRING, dayBefore)).isTrue();
-        assertThat(refreshRepository.existsByTermYearAndSeasonAndFinishedAtAfter(2027, Season.SPRING, NOV_9)).isFalse();
+        assertThat(refreshRepository.existsByTermYearAndSeasonAndFinishedAtAfter(2027, Season.SPRING, finished)).isFalse();
         assertThat(refreshRepository.existsByTermYearAndSeasonAndFinishedAtAfter(2027, Season.SUMMER, dayBefore)).isFalse();
         assertThat(refreshRepository.existsByTermYearAndSeasonAndFinishedAtAfter(2028, Season.SPRING, dayBefore)).isFalse();
     }
 
-    // A failed refresh counts too, so a term SFU hasn't published isn't tried again every hour
+    // A failed refresh counts too, so a term SFU hasn't published isn't tried again on every check
     @Test
     void failedRefreshCountsForExists() {
-        refreshRepository.save(new CourseRefresh(2027, Season.SUMMER, true, NOV_9, 0, 0, 0, 0, List.of(), "SFU is down"));
+        CourseRefresh refresh = new CourseRefresh(2027, Season.SUMMER, true, NOV_9);
+        refresh.fail(NOV_9, "SFU is down");
+        refreshRepository.save(refresh);
 
         assertThat(refreshRepository.existsByTermYearAndSeasonAndFinishedAtAfter(2027, Season.SUMMER,
                 NOV_9.minus(1, ChronoUnit.DAYS))).isTrue();
+    }
+
+    // A refresh that never finished doesn't count, so the term is tried again
+    @Test
+    void unfinishedRefreshDoesntCountForExists() {
+        refreshRepository.save(new CourseRefresh(2027, Season.SPRING, true, NOV_9));
+
+        assertThat(refreshRepository.existsByTermYearAndSeasonAndFinishedAtAfter(2027, Season.SPRING,
+                NOV_9.minus(1, ChronoUnit.DAYS))).isFalse();
     }
 }

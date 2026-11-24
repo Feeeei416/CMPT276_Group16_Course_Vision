@@ -7,7 +7,8 @@ import java.util.List;
 import jakarta.persistence.*;
 
 // One course data refresh from the SFU API, as listed in the log on the IT manager's Course refresh page.
-// Every refresh gets a row, whether it worked or not and whether the app or an IT manager started it.
+// The row is saved when the refresh starts and filled in when it ends, so a refresh cut off by the app
+// stopping still shows up (with no finish time).
 // The term is a year and season instead of a link to terms, because a refresh of a term SFU hasn't
 // published yet stops before the term is added
 @Entity
@@ -30,6 +31,9 @@ public class CourseRefresh {
     private boolean automatic;
 
     @Column(nullable = false)
+    private Instant startedAt;
+
+    // Null while it runs, and stays null if the app stopped before it finished
     private Instant finishedAt;
 
     // What was saved. All 0 when the refresh failed, since nothing is saved then
@@ -48,21 +52,30 @@ public class CourseRefresh {
 
     protected CourseRefresh() {}
 
-    public CourseRefresh(int termYear, Season season, boolean automatic, Instant finishedAt, int courses,
-            int sections, int removedSections, int notOffered, List<String> notes, String error) {
+    // A refresh that has just started. finish or fail fills in how it ended
+    public CourseRefresh(int termYear, Season season, boolean automatic, Instant startedAt) {
         this.termYear = termYear;
         this.season = season;
         this.automatic = automatic;
+        this.startedAt = startedAt;
+    }
+
+    public void finish(Instant finishedAt, int courses, int sections, int removedSections, int notOffered,
+            List<String> notes) {
         this.finishedAt = finishedAt;
         this.courses = courses;
         this.sections = sections;
         this.removedSections = removedSections;
         this.notOffered = notOffered;
         this.notes = notes.isEmpty() ? null : String.join("\n", notes);
+        this.error = null;
+    }
+
+    public void fail(Instant finishedAt, String error) {
+        this.finishedAt = finishedAt;
         this.error = error;
     }
 
-    // No setters: a refresh that has finished doesn't change
     public Long getId() {
         return id;
     }
@@ -84,8 +97,16 @@ public class CourseRefresh {
         return automatic;
     }
 
+    public Instant getStartedAt() {
+        return startedAt;
+    }
+
     public Instant getFinishedAt() {
         return finishedAt;
+    }
+
+    public boolean isFinished() {
+        return finishedAt != null;
     }
 
     public int getCourses() {
