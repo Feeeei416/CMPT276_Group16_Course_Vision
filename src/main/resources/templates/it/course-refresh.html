@@ -20,6 +20,9 @@
           Gets every undergraduate CMPT, ENSC, MACM and MATH course in the term from the SFU Course Outlines API.
           This can take a few minutes.
         </p>
+        <p class="muted" th:text="${autoRefresh}">
+          Next semester is also refreshed automatically once a day, and this term once a week.
+        </p>
         <p class="notice-message" th:if="${running}" role="status">A refresh is running now.</p>
         <form method="post" class="inline-form" th:action="@{/it/course-refresh/refresh}">
           <select name="term" class="input" aria-label="Term" required>

@@ -15,6 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import cmpt276.group16.courseimport.CourseImportService;
 import cmpt276.group16.courseimport.CourseImportService.ImportAlreadyRunningException;
 import cmpt276.group16.courseimport.CourseImportService.ImportRun;
+import cmpt276.group16.courseimport.CourseRefreshScheduler;
 import cmpt276.group16.courseimport.SfuApiException;
 import cmpt276.group16.models.CourseRefresh;
 import cmpt276.group16.models.Season;
@@ -47,10 +48,12 @@ public class CourseRefreshController {
     private static final DateTimeFormatter STARTED_AT = DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a", Locale.ENGLISH);
  
     private final CourseImportService importService;
+    private final CourseRefreshScheduler scheduler;
     private final Clock clock;
  
-    public CourseRefreshController(CourseImportService importService, Clock clock) {
+    public CourseRefreshController(CourseImportService importService, CourseRefreshScheduler scheduler, Clock clock) {
         this.importService = importService;
+        this.scheduler = scheduler;
         this.clock = clock;
     }
 
@@ -62,6 +65,7 @@ public class CourseRefreshController {
         // Next semester is the one students are registering for, so it is picked to start with
         model.addAttribute("selectedTerm", terms.get(1).value());
         model.addAttribute("running", importService.isRunning());
+        model.addAttribute("autoRefresh", scheduler.description());
         model.addAttribute("log", importService.refreshLog().stream()
                 .map(refresh -> new LogRow(refresh, STARTED_AT.format(refresh.getStartedAt().atZone(clock.getZone())),
                         importService.isRunning(refresh)))

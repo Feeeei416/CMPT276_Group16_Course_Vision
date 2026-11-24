@@ -99,7 +99,9 @@ class CourseRefreshControllerTest {
                .andExpect(content().string(containsString("2026 Fall")))
                .andExpect(model().attribute("selectedTerm", "2027-SPRING"))
                .andExpect(content().string(containsString("2027 Summer")))
-               .andExpect(content().string(containsString("No refreshes yet.")));
+               .andExpect(content().string(containsString("No refreshes yet.")))
+               // Turned off for tests in src/test/resources/config/application.properties
+               .andExpect(content().string(containsString("Automatic refresh is turned off")));
     }
  
     // -- The log --
