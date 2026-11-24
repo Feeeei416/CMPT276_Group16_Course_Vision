@@ -14,9 +14,9 @@
             <span class="badge" th:if="${plan != null and plan.main}">Main plan</span>
         </h1>
         <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
-        <!-- Opened from My plans, so say it isn't the one the Graduation Report uses -->
+        <!-- Opened from All my plans, so say it isn't the one the Graduation Report uses -->
         <p class="muted" th:if="${plan != null and !plan.main}">This isn't your main plan, so changes here don't
-            affect your main plan. You can make it your main plan on <a th:href="@{/student/plans}" class="link">My plans</a>.</p>
+            affect your main plan. You can make it your main plan on <a th:href="@{/student/plans}" class="link">All my plans</a>.</p>
 
         <!-- Set by the last change, before redirecting back here. A change inside a term shows in that term instead -->
         <th:block th:if="${changedTermId == null}">
@@ -30,7 +30,7 @@
         <section class="plan-add-term">
             <h2 class="section-label">Add a term</h2>
             <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
-                <!-- Set when this page was opened from My plans, so the change goes to this plan and comes back here -->
+                <!-- Set when this page was opened from All my plans, so the change goes to this plan and comes back here -->
                 <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <select name="year" class="input" aria-label="Year" required>
                     <option value="">-- Year --</option>

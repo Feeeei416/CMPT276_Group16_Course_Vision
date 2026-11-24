@@ -7,13 +7,20 @@
     <style>
     .conflict { color: #a6192e; font-weight: 600; }
     </style>
-    <title>My schedule</title>
+    <title th:text="${schedule != null ? schedule.name : 'My schedule'}">My schedule</title>
   </head>
   <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-      <h1 class="page-title">My schedule</h1>
+      <h1 class="page-title">
+        <span th:text="${schedule != null ? schedule.name : 'My schedule'}">My schedule</span>
+        <span class="badge" th:if="${schedule != null and schedule.main}">Main schedule</span>
+      </h1>
       <p>Choose your courses and sections for next semester.</p>
+      <!-- Opened from All my schedules, so say it isn't the one My schedule shows -->
+      <p class="muted" th:if="${schedule != null and !schedule.main}">This isn't your main schedule, so changes
+        here don't affect your main schedule. You can make it your main schedule on
+        <a th:href="@{/student/schedules}" class="link">All my schedules</a>.</p>
 
       <!-- Shows "Course added." / "Course removed." or the problems from the last add or remove -->
       <div
@@ -30,10 +37,11 @@
 
       <section>
         <h2 class="section-label">Add a course</h2>
+        <!-- Stays on the schedule being viewed, so the sections to choose from show up on the same one -->
         <form
           method="get"
           class="inline-form"
-          th:action="@{/student/schedule/next-semester}"
+          th:action="@{${pageUrl}}"
         >
           <input
             type="text"
@@ -70,6 +78,8 @@
           </h3>
           <input type="hidden" name="offeringId" th:value="${chosen.id}" />
           <input type="hidden" name="code" th:value="|${chosen.course.subject} ${chosen.course.number}|">
+          <!-- Set when this page was opened from All my schedules, so the course goes into this schedule -->
+          <input type="hidden" name="scheduleId" th:if="${viewedScheduleId != null}" th:value="${viewedScheduleId}">
 
           <label
             >Lecture
@@ -133,6 +143,7 @@
             method="post"
             th:action="@{/student/schedule/next-semester/courses/{id}/remove(id=${c.id})}"
           >
+            <input type="hidden" name="scheduleId" th:if="${viewedScheduleId != null}" th:value="${viewedScheduleId}">
             <button type="submit" class="link">Remove</button>
           </form>
         </li>
@@ -160,6 +171,7 @@
       </section>
 
       <div class="actions">
+        <a th:href="@{/student/schedules}" class="link">All my schedules</a>
         <a th:href="@{/student/home}" class="link">Back to home</a>
       </div>
     </main>

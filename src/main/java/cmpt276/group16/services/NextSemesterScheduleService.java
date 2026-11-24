@@ -62,27 +62,40 @@ public class NextSemesterScheduleService {
         return termRepository.findByTermYearAndSeason(next.year(), next.season());
     }
 
-    // Returns the courses in the student's next semester schedule, or empty if the
-    // term isn't known yet
+    // The schedule My schedule opens to. Empty until the student adds their first course or makes their
+    // first schedule, or when next semester's courses aren't loaded yet
     @Transactional(readOnly = true)
-    public List<ScheduledCourse> coursesFor(StudentProfile student) {
-        Optional<Term> term = nextSemesterTerm();
-        if (term.isEmpty()) {
-            return List.of();
-        }
-        Optional<NextSemesterSchedule> schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student,
-                term.get());
-        if (schedule.isEmpty()) {
-            return List.of();
-        }
-        return scheduledCourseRepository.findBySchedule(schedule.get());
+    public Optional<NextSemesterSchedule> mainSchedule(StudentProfile student) {
+        return nextSemesterTerm()
+                .flatMap(term -> scheduleRepository.findByStudentAndTermAndMainTrue(student, term));
     }
 
-    // Adds a course to the student's next semester schedule: lecture and its lab or
-    // tutorial if it has one
-    // Returns every problem found
+    // Returns the courses in the student's main schedule for next semester, or empty if they don't have one yet
+    @Transactional(readOnly = true)
+    public List<ScheduledCourse> coursesFor(StudentProfile student) {
+        return mainSchedule(student).map(scheduledCourseRepository::findBySchedule).orElse(List.of());
+    }
+
+    // The courses in one schedule, for showing any of the student's schedules on the same page
+    @Transactional(readOnly = true)
+    public List<ScheduledCourse> coursesFor(NextSemesterSchedule schedule) {
+        return scheduledCourseRepository.findBySchedule(schedule);
+    }
+
+    // Adds a course to the student's main schedule for next semester, making the schedule if it's their
+    // first course. Calls the version below directly, so it needs its own @Transactional
     @Transactional
     public List<String> addCourse(StudentProfile student, Long offeringId,
+            Long primarySectionId, Long attachedSectionId) {
+        return addCourseTo(student, null, offeringId, primarySectionId, attachedSectionId);
+    }
+
+    // Adds a course to one of the student's schedules: lecture and its lab or tutorial if it has one.
+    // scheduleId is the schedule to add it to, or null for the main schedule.
+    // Named differently from addCourse, so a call with one Long too many can't quietly pick the wrong one.
+    // Returns every problem found
+    @Transactional
+    public List<String> addCourseTo(StudentProfile student, Long scheduleId, Long offeringId,
             Long primarySectionId, Long attachedSectionId) {
 
         // Locks the student so a double click waits for the first request instead of
@@ -93,6 +106,15 @@ public class NextSemesterScheduleService {
         Optional<Term> term = nextSemesterTerm();
         if (term.isEmpty()) {
             return List.of("Next semester's courses aren't available yet.");
+        }
+
+        // Checked first, since the id comes from the form and can be changed to another student's schedule
+        Optional<NextSemesterSchedule> chosenSchedule = Optional.empty();
+        if (scheduleId != null) {
+            chosenSchedule = scheduleRepository.findByIdAndStudentAndTerm(scheduleId, student, term.get());
+            if (chosenSchedule.isEmpty()) {
+                return List.of("That schedule isn't one of yours.");
+            }
         }
 
         // Look up the lecture id the browser sent. Stop if it doesn't exist
@@ -144,10 +166,11 @@ public class NextSemesterScheduleService {
             attached = found.get();
         }
 
-        // Find the student's schedule, or create it if this is their first course
-        NextSemesterSchedule schedule = scheduleRepository.findByStudentAndTermAndMainTrue(student, term.get())
+        // The chosen schedule, or the student's main one, made now if this is their first course
+        NextSemesterSchedule schedule = chosenSchedule.orElseGet(() -> scheduleRepository
+                .findByStudentAndTermAndMainTrue(student, term.get())
                 .orElseGet(() -> scheduleRepository
-                        .save(new NextSemesterSchedule(student, term.get(), MAIN_SCHEDULE_NAME, true)));
+                        .save(new NextSemesterSchedule(student, term.get(), MAIN_SCHEDULE_NAME, true))));
 
         // Stop if the course is already in the schedule
         if (scheduledCourseRepository.existsByScheduleAndOffering(schedule, offering)) {
@@ -219,18 +242,24 @@ public class NextSemesterScheduleService {
                 .toList();
     }
 
-    // The student's class meetings next semester grouped by weekday, Monday to
-    // Friday first,
+    // The class meetings in the student's main schedule. The versions below that take a list of courses
+    // work for any schedule
+    @Transactional(readOnly = true)
+    public Map<DayOfWeek, List<ClassTime>> meetingsByDay(StudentProfile student) {
+        return meetingsByDay(coursesFor(student));
+    }
+
+    // The class meetings of these courses grouped by weekday, Monday to Friday first,
     // each day sorted by start time. Sections without published times aren't
     // included
     @Transactional(readOnly = true)
-    public Map<DayOfWeek, List<ClassTime>> meetingsByDay(StudentProfile student) {
+    public Map<DayOfWeek, List<ClassTime>> meetingsByDay(List<ScheduledCourse> courses) {
         Map<DayOfWeek, List<ClassTime>> days = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek day : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                 DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
             days.put(day, new ArrayList<>());
         }
-        for (ScheduledCourse course : coursesFor(student)) {
+        for (ScheduledCourse course : courses) {
             String code = course.getOffering().getCourse().getSubject() + " "
                     + course.getOffering().getCourse().getNumber();
             List<Section> sections = new ArrayList<>();
@@ -250,11 +279,17 @@ public class NextSemesterScheduleService {
         return days;
     }
 
-    // The total units of every course in the student's schedule next semester
+    // The total units of every course in the student's main schedule next semester
     @Transactional(readOnly = true)
     public BigDecimal totalUnits(StudentProfile student) {
+        return totalUnits(coursesFor(student));
+    }
+
+    // The total units of these courses
+    @Transactional(readOnly = true)
+    public BigDecimal totalUnits(List<ScheduledCourse> courses) {
         BigDecimal total = BigDecimal.ZERO;
-        for (ScheduledCourse course : coursesFor(student)) {
+        for (ScheduledCourse course : courses) {
             total = total.add(course.getOffering().getCourse().getUnits());
         }
         return total;
@@ -269,12 +304,17 @@ public class NextSemesterScheduleService {
         return MAX_UNITS;
     }
 
-    // Every pair of the student's classes that overlap on the same day, for the
-    // warnings
+    // Every pair of classes in the student's main schedule that overlap on the same day
     @Transactional(readOnly = true)
     public List<Conflict> conflicts(StudentProfile student) {
+        return conflicts(coursesFor(student));
+    }
+
+    // Every pair of these courses' classes that overlap on the same day, for the warnings
+    @Transactional(readOnly = true)
+    public List<Conflict> conflicts(List<ScheduledCourse> courses) {
         List<Conflict> conflicts = new ArrayList<>();
-        for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(student).entrySet()) {
+        for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(courses).entrySet()) {
             List<ClassTime> classes = day.getValue();
             for (int i = 0; i < classes.size(); i++) {
                 for (int j = i + 1; j < classes.size(); j++) {

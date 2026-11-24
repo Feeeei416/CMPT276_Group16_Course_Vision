@@ -65,6 +65,20 @@ class PlanRulesTest {
         assertThat(PlanRules.nextSemester(today)).isEqualTo(nextSemester);
     }
 
+    // This term changes on the same days, and is always the term before next semester
+    @ParameterizedTest
+    @CsvSource({
+        "2026-11-09, 2026, FALL",
+        "2026-12-31, 2026, FALL",
+        "2027-01-01, 2027, SPRING",
+        "2027-04-30, 2027, SPRING",
+        "2027-05-01, 2027, SUMMER",
+        "2027-09-01, 2027, FALL"
+    })
+    void findsThisTerm(LocalDate today, int year, Season season) {
+        assertThat(PlanRules.currentTermYearAndSeason(today)).isEqualTo(new PlanRules.YearAndSeason(year, season));
+    }
+
     // The first term after next semester, the last term allowed, and one in between
     @ParameterizedTest
     @CsvSource({"2027, SUMMER", "2027, FALL", "2030, SPRING", "2033, FALL"})
@@ -120,6 +134,15 @@ class PlanRulesTest {
     void rejectsAPlanNameOverTheLimit() {
         assertThat(PlanRules.problemsWithPlanName("a".repeat(41)))
             .containsExactly("Plan names can be at most 40 characters.");
+    }
+
+    @Test
+    void scheduleNamesFollowTheSameRules() {
+        assertThat(PlanRules.problemsWithScheduleName("Morning labs")).isEmpty();
+        assertThat(PlanRules.problemsWithScheduleName("a".repeat(40))).isEmpty();
+        assertThat(PlanRules.problemsWithScheduleName("")).containsExactly("Give the schedule a name.");
+        assertThat(PlanRules.problemsWithScheduleName("a".repeat(41)))
+            .containsExactly("Schedule names can be at most 40 characters.");
     }
 
     // In Fall 2027, next semester is Spring 2028, so 2027 has nothing left to plan

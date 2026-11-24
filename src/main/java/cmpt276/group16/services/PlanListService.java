@@ -18,7 +18,7 @@ import cmpt276.group16.models.PlannedCourseRepository;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.StudentProfileRepository;
 
-// A student's plans as a whole, for the My plans page: making, copying, renaming and deleting them, and choosing
+// A student's plans as a whole, for the All my plans page: making, copying, renaming and deleting them, and choosing
 // which one is the main plan. PlanService changes what's inside a plan.
 // Each change locks the student first, like PlanService does, so a double click can't make two plans with the
 // same name or leave two main plans
@@ -38,7 +38,7 @@ public class PlanListService {
         this.studentProfileRepository = studentProfileRepository;
     }
 
-    // One row on the My plans page
+    // One row on the All my plans page
     public record PlanSummary(Plan plan, int termCount, int courseCount) {
 
         // For example "3 terms, 9 courses", or "1 term, 1 course"

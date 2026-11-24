@@ -15,10 +15,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import cmpt276.group16.courseimport.CourseImportService;
 import cmpt276.group16.courseimport.CourseImportService.ImportAlreadyRunningException;
 import cmpt276.group16.courseimport.CourseImportService.ImportRun;
+import cmpt276.group16.courseimport.CourseRefreshScheduler;
 import cmpt276.group16.courseimport.SfuApiException;
+import cmpt276.group16.models.CourseRefresh;
 import cmpt276.group16.models.Season;
 
-// The IT manager's course refresh page: refresh one term's courses from the SFU API and see what the last refresh did.
+// The IT manager's course refresh page: refresh one term's courses from the SFU API and see the log of past refreshes.
 @Controller 
 public class CourseRefreshController {
 
@@ -33,19 +35,29 @@ public class CourseRefreshController {
         }
     }
 
+    // One refresh in the log. runningNow is true for the refresh running at the moment.
+    // One that hasn't finished and isn't running was cut off by the app stopping
+    public record LogRow(CourseRefresh refresh, String startedAt, boolean runningNow) {
+        public boolean cutOff() {
+            return !refresh.isFinished() && !runningNow;
+        }
+    }
+
     // for example "Nov 15, 2026, 3:10 PM", in the clock's time zone (Vancouver).
     // English rather than Canadian English, which would write "p.m."
-    private static final DateTimeFormatter FINISHED_AT = DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter STARTED_AT = DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a", Locale.ENGLISH);
  
     private final CourseImportService importService;
+    private final CourseRefreshScheduler scheduler;
     private final Clock clock;
  
-    public CourseRefreshController(CourseImportService importService, Clock clock) {
+    public CourseRefreshController(CourseImportService importService, CourseRefreshScheduler scheduler, Clock clock) {
         this.importService = importService;
+        this.scheduler = scheduler;
         this.clock = clock;
     }
 
-    /** GET /it/course-refresh : the refresh form and the result of the last refresh. */
+    /** GET /it/course-refresh : the refresh form and the log of past refreshes. */
     @GetMapping("/it/course-refresh")
     public String showCourseRefresh(Model model) {
         List<TermOption> terms = termOptions(LocalDate.now(clock));
@@ -53,10 +65,11 @@ public class CourseRefreshController {
         // Next semester is the one students are registering for, so it is picked to start with
         model.addAttribute("selectedTerm", terms.get(1).value());
         model.addAttribute("running", importService.isRunning());
-        Optional<ImportRun> lastRun = importService.lastRun();
-        model.addAttribute("lastRun", lastRun.orElse(null));
-        model.addAttribute("lastRunTime",
-                lastRun.map(run -> FINISHED_AT.format(run.finishedAt().atZone(clock.getZone()))).orElse(null));
+        model.addAttribute("autoRefresh", scheduler.description());
+        model.addAttribute("log", importService.refreshLog().stream()
+                .map(refresh -> new LogRow(refresh, STARTED_AT.format(refresh.getStartedAt().atZone(clock.getZone())),
+                        importService.isRunning(refresh)))
+                .toList());
         return "it/course-refresh";
     }
 

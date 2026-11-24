@@ -240,6 +240,16 @@ a.btn {
     text-align: right;
 }
 
+/* Course refresh log: errors and skipped lists are long, so the Result column wraps */
+.refresh-log .refresh-result {
+    white-space: normal;
+    min-width: 18em;
+}
+
+.refresh-error {
+    color: var(--color-error);
+}
+
 /* My plan: Add a term sits above the term boxes */
 .plan-add-term {
     margin-bottom: var(--space-lg);
@@ -383,7 +393,7 @@ button.link {
     text-decoration: underline;
 }
 
-/* A small label next to a name, like Main plan on My plans */
+/* A small label next to a name, like Main plan on All my plans */
 .badge {
     display: inline-block;
     margin-left: var(--space-sm);
@@ -396,7 +406,7 @@ button.link {
     vertical-align: middle;
 }
 
-/* My plans: Rename opens a name box under the plan */
+/* All my plans: Rename opens a name box under the plan */
 .plan-rename summary {
     display: inline-block;
     cursor: pointer;
