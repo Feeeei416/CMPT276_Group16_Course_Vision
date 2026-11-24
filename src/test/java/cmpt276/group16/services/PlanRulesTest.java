@@ -122,6 +122,15 @@ class PlanRulesTest {
             .containsExactly("Plan names can be at most 40 characters.");
     }
 
+    @Test
+    void scheduleNamesFollowTheSameRules() {
+        assertThat(PlanRules.problemsWithScheduleName("Morning labs")).isEmpty();
+        assertThat(PlanRules.problemsWithScheduleName("a".repeat(40))).isEmpty();
+        assertThat(PlanRules.problemsWithScheduleName("")).containsExactly("Give the schedule a name.");
+        assertThat(PlanRules.problemsWithScheduleName("a".repeat(41)))
+            .containsExactly("Schedule names can be at most 40 characters.");
+    }
+
     // In Fall 2027, next semester is Spring 2028, so 2027 has nothing left to plan
     @Test
     void skipsAYearWithNoPlannableTermsLeft() {
