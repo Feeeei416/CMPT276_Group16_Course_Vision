@@ -5,21 +5,15 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.server.ResponseStatusException;
 
-import cmpt276.group16.models.AdvisorAssignmentRepository;
 import cmpt276.group16.models.ScheduledCourse;
 import cmpt276.group16.models.StudentProfile;
-import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
-import cmpt276.group16.models.User;
-import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.services.EligibilityService;
 import cmpt276.group16.services.NextSemesterScheduleService;
 import cmpt276.group16.services.PlanPrerequisites;
@@ -36,24 +30,18 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 public class AdvisorStudentController {
 
-    private final UserRepository userRepository;
-    private final AdvisorAssignmentRepository advisorAssignmentRepository;
-    private final StudentProfileRepository studentProfileRepository;
+    private final AssignedStudent assignedStudent;
     private final TranscriptCourseRepository transcriptCourseRepository;
     private final EligibilityService eligibilityService;
     private final NextSemesterScheduleService scheduleService;
     private final PlanService planService;
     private final PlanPrerequisites planPrerequisites;
 
-    public AdvisorStudentController(UserRepository userRepository,
-            AdvisorAssignmentRepository advisorAssignmentRepository,
-            StudentProfileRepository studentProfileRepository,
+    public AdvisorStudentController(AssignedStudent assignedStudent,
             TranscriptCourseRepository transcriptCourseRepository, EligibilityService eligibilityService,
             NextSemesterScheduleService scheduleService, PlanService planService,
             PlanPrerequisites planPrerequisites) {
-        this.userRepository = userRepository;
-        this.advisorAssignmentRepository = advisorAssignmentRepository;
-        this.studentProfileRepository = studentProfileRepository;
+        this.assignedStudent = assignedStudent;
         this.transcriptCourseRepository = transcriptCourseRepository;
         this.eligibilityService = eligibilityService;
         this.scheduleService = scheduleService;
@@ -64,17 +52,8 @@ public class AdvisorStudentController {
     /** GET /advisor/students/5 : the overview of student 5, if they're assigned to the logged-in advisor. */
     @GetMapping("/advisor/students/{studentId}")
     public String showStudent(@PathVariable Long studentId, HttpSession session, Model model) {
-        // AuthInterceptor has already checked this user exists, so orElseThrow can't fail here
-        User advisor = SessionUser.user(session, userRepository).orElseThrow();
-
-        // Checked before anything about the student is loaded. Another advisor's student and an id that
-        // doesn't exist get the same answer, so the page doesn't reveal which students exist
-        if (!advisorAssignmentRepository.existsByAdvisorIdAndStudentUserId(advisor.getId(), studentId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "That student isn't assigned to you.");
-        }
-        StudentProfile student = studentProfileRepository.findById(studentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
-                        "That student isn't assigned to you."));
+        // A 403 unless the student is assigned to this advisor, before anything about them is loaded
+        StudentProfile student = assignedStudent.find(session, studentId);
 
         // The same course record My courses shows: terms oldest first, courses in the order they were saved
         List<TranscriptCourse> courses = transcriptCourseRepository.findByStudentOrderByIdAsc(student);
@@ -84,7 +63,6 @@ public class AdvisorStudentController {
         List<ScheduledCourse> scheduledCourses = scheduleService.coursesFor(student);
         List<TermPlan> termPlans = planService.termPlans(student);
 
-        model.addAttribute("user", advisor);
         model.addAttribute("student", student);
         model.addAttribute("coursesByTerm", coursesByTerm);
         model.addAttribute("units", UnitTotals.of(courses));

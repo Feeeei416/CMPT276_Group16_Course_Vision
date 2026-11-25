@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -48,8 +49,10 @@ import cmpt276.group16.services.PlanPrerequisites;
 import cmpt276.group16.services.PlanService;
 import cmpt276.group16.services.PlanService.TermPlan;
 
-// #71: loads only AdvisorStudentController and the web layer (including AuthInterceptor); everything else is a mock
+// #71: loads only AdvisorStudentController and the web layer (including AuthInterceptor); everything else is a mock.
+// AssignedStudent is the real one, since it's the check that refuses other advisors' students
 @WebMvcTest(AdvisorStudentController.class)
+@Import(AssignedStudent.class)
 class AdvisorStudentControllerTest {
 
     @Autowired
