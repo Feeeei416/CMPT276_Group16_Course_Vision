@@ -242,4 +242,16 @@ public class NextSemesterScheduleServiceTest {
         assertThat(blocks).hasSize(2);
         assertThat(blocks).allMatch(TimetableBlock::conflict);
     }
+
+    @Test
+void eachCourseGetsItsOwnColour() {
+    Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
+    Section math = saveLecture("MATH", "152", "4", DayOfWeek.TUESDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
+    service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+    service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+
+    List<TimetableBlock> blocks = service.timetableBlocks(priya);
+
+    assertThat(blocks).extracting(TimetableBlock::color).containsExactlyInAnyOrder(0, 1);
+}
 }

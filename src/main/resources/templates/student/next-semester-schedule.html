@@ -223,6 +223,14 @@
             CMPT 225 D100 LEC
           </div>
         </div>
+        <p
+          class="muted"
+          th:each="c : ${courses}"
+          th:if="${c.primarySection.meetings.isEmpty()}"
+          th:text="|${c.offering.course.subject} ${c.offering.course.number}: Times not confirmed|"
+        >
+          CMPT 225: Times not confirmed
+        </p>
         <div th:each="day : ${meetingsByDay}">
           <h3
             th:text="${#strings.capitalize(day.key.toString().toLowerCase())}"

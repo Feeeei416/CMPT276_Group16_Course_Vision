@@ -310,16 +310,17 @@ public class NextSemesterScheduleService {
         return Objects.equals(attached.getAssociatedClass(), lecture.getAssociatedClass());
     }
 
-    //Information to describe one class on the timetable grid
+    // Information to describe one class on the timetable grid
     public record TimetableBlock(
             int column,
             int rowStart,
             int rowEnd,
             String label,
-            boolean conflict) {
+            boolean conflict, int color) {
     }
 
     private static final int MINUTES_PER_ROW = 10;
+    private static final int COLORS = 6;
 
     // Row 1 is the day names, so 8:00 is row 2, 8:10 is row 3, and so on
     static int rowFor(LocalTime time) {
@@ -330,6 +331,11 @@ public class NextSemesterScheduleService {
     // Every class in the student's week, turned into a box with a grid position
     @Transactional(readOnly = true)
     public List<TimetableBlock> timetableBlocks(StudentProfile student) {
+        List<String> courseOrder = new ArrayList<>();
+    for (ScheduledCourse course : coursesFor(student)) {
+    courseOrder.add(course.getOffering().getCourse().getSubject() + " "
+            + course.getOffering().getCourse().getNumber());
+}
         Set<ClassTime> clashing = new HashSet<>();
         for (Conflict c : conflicts(student)) {
             clashing.add(c.first());
@@ -345,7 +351,8 @@ public class NextSemesterScheduleService {
                         rowFor(t.start()),
                         rowFor(t.end()),
                         t.course() + " " + t.section() + " " + t.type(),
-                        clashing.contains(t)));
+                        clashing.contains(t),
+                        courseOrder.indexOf(t.course()) % COLORS));;
             }
         }
         return blocks;
