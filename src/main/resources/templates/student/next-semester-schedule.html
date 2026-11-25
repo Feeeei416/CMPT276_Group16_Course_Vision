@@ -89,9 +89,9 @@
                 th:each="s : ${lectures}"
                 th:value="${s.id}"
                 th:data-group="${s.associatedClass}"
-                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : s.timesText}|"
               >
-                D100 LEC – MONDAY 10:30-11:20
+                D100 LEC – Mon, Wed, Fri 10:30–11:20 (Burnaby)
               </option>
             </select>
           </label>
@@ -104,9 +104,9 @@
                 th:each="s : ${attachedSections}"
                 th:value="${s.id}"
                 th:data-group="${s.associatedClass}"
-                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : s.timesText}|"
               >
-                D101 TUT – FRIDAY 9:30-10:20
+                D101 TUT – Fri 9:30–10:20 (Burnaby)
               </option>
             </select>
           </label>
@@ -162,7 +162,7 @@
             <li
               th:each="t : ${day.value}"
               th:classappend="${#lists.contains(conflicts.![first], t) or #lists.contains(conflicts.![second], t)} ? 'conflict'"
-              th:text="|${t.start}–${t.end} ${t.course} ${t.section} ${t.type}|"
+              th:text="|${t.timeText()} ${t.course} ${t.section} ${t.type}|"
             >
               10:30–11:20 CMPT 225 D100 LEC
             </li>
