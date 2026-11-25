@@ -11,31 +11,35 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.services.PlanChange;
 import cmpt276.group16.services.PlanListService;
 import jakarta.servlet.http.HttpSession;
 
 // All my plans: every plan a student has, such as a lighter load or one with a co-op term.
+// An assigned advisor gets the same page for a student under /advisor/students/{studentId} (#73), so every
+// handler has both paths. studentId is null on the student's own pages. See PlanOwner.
 // Every change redirects back to the page, so refreshing it doesn't send the form again
 @Controller
 public class PlanListController {
 
-    private final CurrentStudent currentStudent;
+    private static final String ADVISOR = "/advisor/students/{studentId}";
+
+    private final PlanOwner.Finder planOwners;
     private final PlanListService planListService;
 
-    public PlanListController(CurrentStudent currentStudent, PlanListService planListService) {
-        this.currentStudent = currentStudent;
+    public PlanListController(PlanOwner.Finder planOwners, PlanListService planListService) {
+        this.planOwners = planOwners;
         this.planListService = planListService;
     }
 
-    @GetMapping("/student/plans")
-    public String showPlans(HttpSession session, Model model) {
-        Optional<StudentProfile> student = currentStudent.find(session);
-        if (student.isEmpty()) {
+    @GetMapping({"/student/plans", ADVISOR + "/plans"})
+    public String showPlans(@PathVariable(required = false) Long studentId, HttpSession session, Model model) {
+        Optional<PlanOwner> owner = planOwners.find(session, studentId);
+        if (owner.isEmpty()) {
             return "redirect:/login";
         }
-        model.addAttribute("plans", planListService.plans(student.get()));
+        model.addAttribute("owner", owner.get());
+        model.addAttribute("plans", planListService.plans(owner.get().student()));
         // Already set when the change before the redirect had problems
         if (!model.containsAttribute("errors")) {
             model.addAttribute("errors", List.of());
@@ -44,58 +48,63 @@ public class PlanListController {
     }
 
     // copyFrom is blank for an empty plan, or the id of the plan to copy
-    @PostMapping("/student/plans")
-    public String createPlan(@RequestParam(defaultValue = "") String name,
+    @PostMapping({"/student/plans", ADVISOR + "/plans"})
+    public String createPlan(@PathVariable(required = false) Long studentId,
+                             @RequestParam(defaultValue = "") String name,
                              @RequestParam(defaultValue = "") String copyFrom,
                              HttpSession session, RedirectAttributes redirectAttributes) {
-        Optional<StudentProfile> student = currentStudent.find(session);
-        if (student.isEmpty()) {
+        Optional<PlanOwner> owner = planOwners.find(session, studentId);
+        if (owner.isEmpty()) {
             return "redirect:/login";
         }
-        PlanChange change = planListService.create(student.get(), name, parseCopyFrom(copyFrom));
+        PlanChange change = planListService.create(owner.get().student(), name, parseCopyFrom(copyFrom));
         // On an error the name and choice go back into the form, so the student doesn't have to start again
         if (!change.isSaved()) {
             redirectAttributes.addFlashAttribute("typedName", name);
             redirectAttributes.addFlashAttribute("chosenCopyFrom", copyFrom);
         }
-        return backToPlans(change, redirectAttributes);
+        return backToPlans(owner.get(), change, redirectAttributes);
     }
 
-    @PostMapping("/student/plans/{planId}/rename")
-    public String renamePlan(@PathVariable Long planId, @RequestParam(defaultValue = "") String name,
+    @PostMapping({"/student/plans/{planId}/rename", ADVISOR + "/plans/{planId}/rename"})
+    public String renamePlan(@PathVariable(required = false) Long studentId, @PathVariable Long planId,
+                             @RequestParam(defaultValue = "") String name,
                              HttpSession session, RedirectAttributes redirectAttributes) {
-        Optional<StudentProfile> student = currentStudent.find(session);
-        if (student.isEmpty()) {
+        Optional<PlanOwner> owner = planOwners.find(session, studentId);
+        if (owner.isEmpty()) {
             return "redirect:/login";
         }
-        return backToPlans(planListService.rename(student.get(), planId, name), redirectAttributes);
+        return backToPlans(owner.get(), planListService.rename(owner.get().student(), planId, name),
+                redirectAttributes);
     }
 
-    @PostMapping("/student/plans/{planId}/delete")
-    public String deletePlan(@PathVariable Long planId, HttpSession session, RedirectAttributes redirectAttributes) {
-        Optional<StudentProfile> student = currentStudent.find(session);
-        if (student.isEmpty()) {
+    @PostMapping({"/student/plans/{planId}/delete", ADVISOR + "/plans/{planId}/delete"})
+    public String deletePlan(@PathVariable(required = false) Long studentId, @PathVariable Long planId,
+                             HttpSession session, RedirectAttributes redirectAttributes) {
+        Optional<PlanOwner> owner = planOwners.find(session, studentId);
+        if (owner.isEmpty()) {
             return "redirect:/login";
         }
-        return backToPlans(planListService.delete(student.get(), planId), redirectAttributes);
+        return backToPlans(owner.get(), planListService.delete(owner.get().student(), planId), redirectAttributes);
     }
 
-    @PostMapping("/student/plans/{planId}/main")
-    public String makeMain(@PathVariable Long planId, HttpSession session, RedirectAttributes redirectAttributes) {
-        Optional<StudentProfile> student = currentStudent.find(session);
-        if (student.isEmpty()) {
+    @PostMapping({"/student/plans/{planId}/main", ADVISOR + "/plans/{planId}/main"})
+    public String makeMain(@PathVariable(required = false) Long studentId, @PathVariable Long planId,
+                           HttpSession session, RedirectAttributes redirectAttributes) {
+        Optional<PlanOwner> owner = planOwners.find(session, studentId);
+        if (owner.isEmpty()) {
             return "redirect:/login";
         }
-        return backToPlans(planListService.makeMain(student.get(), planId), redirectAttributes);
+        return backToPlans(owner.get(), planListService.makeMain(owner.get().student(), planId), redirectAttributes);
     }
 
-    private static String backToPlans(PlanChange change, RedirectAttributes redirectAttributes) {
+    private static String backToPlans(PlanOwner owner, PlanChange change, RedirectAttributes redirectAttributes) {
         if (change.isSaved()) {
             redirectAttributes.addFlashAttribute("message", change.message());
         } else {
             redirectAttributes.addFlashAttribute("errors", change.problems());
         }
-        return "redirect:/student/plans";
+        return "redirect:" + owner.basePath() + "/plans";
     }
 
     // Null for an empty plan. Text that isn't a number becomes an id no plan has, so it's rejected as not yours

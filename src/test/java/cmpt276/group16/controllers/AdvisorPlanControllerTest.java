@@ -230,6 +230,8 @@ class AdvisorPlanControllerTest {
     void unassignedStudentsPlanIsRefused() throws Exception {
         mockMvc.perform(get(finnPages + "/plan").session(sessionFor(advisor)))
                .andExpect(status().isForbidden());
+        mockMvc.perform(get(finnPages + "/plans").session(sessionFor(advisor)))
+               .andExpect(status().isForbidden());
     }
 
     // Changes are refused too, and nothing is saved
@@ -246,9 +248,12 @@ class AdvisorPlanControllerTest {
                .andExpect(status().isForbidden());
         mockMvc.perform(post(finnPages + "/plan/terms/{id}/remove", finnFall).session(sessionFor(advisor)))
                .andExpect(status().isForbidden());
+        mockMvc.perform(post(finnPages + "/plans").session(sessionFor(advisor)).param("name", "Co-op plan"))
+               .andExpect(status().isForbidden());
 
         assertThat(termNames(finn)).containsExactly("2027 Fall");
         assertThat(courseCodes(finn)).isEmpty();
+        assertThat(planListService.plans(finn)).hasSize(1);
     }
 
     // The assigned student's address can't be used to change another student's term:
@@ -315,5 +320,65 @@ class AdvisorPlanControllerTest {
         mockMvc.perform(get(jackPages + "/plans/{id}", planId(finn, "My plan")).session(sessionFor(advisor)))
                .andExpect(redirectedUrl(jackPages + "/plans"))
                .andExpect(flash().attribute("errors", contains("That plan isn't one of yours.")));
+    }
+
+    // -- All my plans --
+
+    @Test
+    void advisorOpensTheStudentsPlanList() throws Exception {
+        planListService.create(jack, "My plan", null);
+        planListService.create(jack, "Co-op plan", null);
+
+        mockMvc.perform(get(jackPages + "/plans").session(sessionFor(advisor)))
+               .andExpect(status().isOk())
+               .andExpect(view().name("student/plans"))
+               .andExpect(content().string(containsString(
+                       "href=\"" + jackPages + "/plans/" + planId(jack, "Co-op plan") + "\"")))
+               .andExpect(content().string(containsString("action=\"" + jackPages + "/plans\"")))
+               .andExpect(content().string(containsString("href=\"" + jackPages + "\"")))
+               .andExpect(content().string(not(containsString("\"/student/"))));
+    }
+
+    // The student's own list still points at the student's pages
+    @Test
+    void studentsOwnPlanListKeepsItsLinks() throws Exception {
+        planListService.create(jack, "My plan", null);
+
+        mockMvc.perform(get("/student/plans").session(sessionFor(jack.getUser())))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("action=\"/student/plans\"")))
+               .andExpect(content().string(containsString("href=\"/student/plans/" + planId(jack, "My plan") + "\"")))
+               .andExpect(content().string(containsString("href=\"/student/home\"")));
+    }
+
+    @Test
+    void advisorMakesAPlanAndMakesItMain() throws Exception {
+        planListService.create(jack, "My plan", null);
+
+        mockMvc.perform(post(jackPages + "/plans").session(sessionFor(advisor)).param("name", "Co-op plan"))
+               .andExpect(redirectedUrl(jackPages + "/plans"))
+               .andExpect(flash().attribute("message", "Made Co-op plan."));
+        Long coop = planId(jack, "Co-op plan");
+
+        mockMvc.perform(post(jackPages + "/plans/{id}/main", coop).session(sessionFor(advisor)))
+               .andExpect(redirectedUrl(jackPages + "/plans"));
+
+        assertThat(planService.mainPlan(jack)).map(Plan::getId).contains(coop);
+    }
+
+    @Test
+    void advisorRenamesAndDeletesAPlan() throws Exception {
+        planListService.create(jack, "My plan", null);
+        planListService.create(jack, "Co-op plan", null);
+        Long coop = planId(jack, "Co-op plan");
+
+        mockMvc.perform(post(jackPages + "/plans/{id}/rename", coop).session(sessionFor(advisor))
+                        .param("name", "Lighter plan"))
+               .andExpect(redirectedUrl(jackPages + "/plans"));
+        mockMvc.perform(post(jackPages + "/plans/{id}/delete", coop).session(sessionFor(advisor)))
+               .andExpect(redirectedUrl(jackPages + "/plans"));
+
+        assertThat(planListService.plans(jack)).extracting(summary -> summary.plan().getName())
+                .containsExactly("My plan");
     }
 }
