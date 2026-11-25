@@ -46,6 +46,20 @@
         >
       </p>
 
+      <!-- #76: worked out from the record with SFU's grading scale (Gpa). A repeated course counts its higher grade,
+           and P, W, transfer credit and courses in progress are left out -->
+      <th:block th:unless="${coursesByTerm.isEmpty()}">
+        <p class="gpa-summary" th:if="${gpa.hasCumulative()}">
+          <span>CGPA <strong th:text="${gpa.cumulativeText()}">3.42</strong></span>
+          <span th:if="${gpa.hasUpperDivision()}">Upper-division GPA
+            <strong th:text="${gpa.upperDivisionText()}">3.60</strong></span>
+          <span th:unless="${gpa.hasUpperDivision()}" class="muted">No upper-division GPA yet</span>
+        </p>
+        <p class="muted" th:unless="${gpa.hasCumulative()}">No GPA yet. It starts once a course has a letter grade.</p>
+        <p class="muted field-hint" th:if="${gpa.hasCumulative()}">Calculated from your record with SFU's grading
+          scale. Your official GPA is on your SFU transcript.</p>
+      </th:block>
+
       <p th:if="${coursesByTerm.isEmpty()}">
         You don't have any saved courses yet.
         <a th:href="@{/student/transcript}" class="link"

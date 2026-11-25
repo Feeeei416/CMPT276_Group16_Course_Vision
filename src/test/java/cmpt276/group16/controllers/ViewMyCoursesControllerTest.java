@@ -156,6 +156,48 @@ class ViewMyCoursesControllerTest {
         .andExpect(content().string(org.hamcrest.Matchers.not(containsString("in progress)"))));
     }
 
+    // #76 CGPA and upper-division GPA, from SFU's grading scale: (3.67 x 3 + 0 x 3) / 6 = 1.84 overall,
+    // and only CMPT 300's A- in the upper division
+    @Test
+    void showsCgpaAndUpperDivisionGpa() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "MATH", "151", "Calculus I", new BigDecimal("3.00"), "F"),
+            new ParsedCourse("2026 Fall", "CMPT", "300", "Operating Systems I", new BigDecimal("3.00"), "A-")));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("CGPA <strong>1.84</strong>")))
+        .andExpect(content().string(containsString("Upper-division GPA")))
+        .andExpect(content().string(containsString("<strong>3.67</strong>")))
+        .andExpect(content().string(containsString("Your official GPA is on your SFU transcript.")));
+    }
+
+    // #76 No 300- or 400-level courses yet, so only the CGPA is shown
+    @Test
+    void saysThereIsNoUpperDivisionGpaYet() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "B")));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(containsString("CGPA <strong>3.00</strong>")))
+        .andExpect(content().string(containsString("No upper-division GPA yet")));
+    }
+
+    // #76 Only pass/fail and in-progress courses: no GPA yet, rather than 0.00
+    @Test
+    void saysThereIsNoGpaYetWithoutLetterGrades() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "ENSC", "195", "Industrial Internship I", new BigDecimal("3.00"), "P"),
+            new ParsedCourse("2026 Spring", "CMPT", "225", "Data Structures/Programming", new BigDecimal("3.00"), null)));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(containsString("No GPA yet. It starts once a course has a letter grade.")))
+        .andExpect(content().string(org.hamcrest.Matchers.not(containsString("CGPA <strong>"))));
+    }
+
     // #50 An empty record shows the upload link instead of "0.00 units earned"
     @Test
     void noUnitTotalWithoutCourses() throws Exception {

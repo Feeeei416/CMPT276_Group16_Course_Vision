@@ -502,3 +502,15 @@ button.link {
     border-radius: var(--radius);
     font-size: 0.9rem;
 }
+
+/* My courses: CGPA and upper-division GPA next to units earned */
+.gpa-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-bottom: 0;
+}
+
+.gpa-summary strong {
+    font-size: 1.15rem;
+}

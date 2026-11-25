@@ -17,6 +17,7 @@ import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.services.CourseOptions;
+import cmpt276.group16.services.Gpa;
 import cmpt276.group16.services.UnitTotals;
 import cmpt276.group16.transcript.CourseInput;
 import cmpt276.group16.transcript.Terms;
@@ -80,6 +81,8 @@ public class ViewMyCoursesController {
                 Collectors.groupingBy(TranscriptCourse::getTerm, () -> new TreeMap<>(Terms.OLDEST_FIRST), Collectors.toList()));
         model.addAttribute("coursesByTerm", coursesByTerm);
         model.addAttribute("units", UnitTotals.of(courses));
+        // Worked out on every visit, so adding, editing or removing a course updates it straight away
+        model.addAttribute("gpa", Gpa.of(courses));
         CourseForms.addTo(model, form, errors, courseOptions.allCourses());
         return "student/view-courses";
     }
