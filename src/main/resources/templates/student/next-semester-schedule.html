@@ -19,6 +19,8 @@
         padding: 2px 4px;
         font-size: 0.8rem;
         overflow: hidden;
+        justify-self: start;
+        box-sizing: border-box;
       }
       .timetable-block.conflict {
         outline: 2px solid #a6192e;
@@ -255,7 +257,7 @@
             class="timetable-block"
             th:each="b : ${timetableBlocks}"
             th:classappend="|colour-${b.color()}| + (${b.conflict()} ? ' conflict' : '')"
-            th:style="|grid-column: ${b.column()}; grid-row: ${b.rowStart()} / ${b.rowEnd()};|"
+            th:style="|grid-column: ${b.column()}; grid-row: ${b.rowStart()} / ${b.rowEnd()}; width: calc(100% / ${b.lanes()}); margin-left: calc(100% * ${b.lane()} / ${b.lanes()});|"
             th:text="${b.label()}"
           >
             CMPT 225 D100 LEC

@@ -316,7 +316,10 @@ public class NextSemesterScheduleService {
             int rowStart,
             int rowEnd,
             String label,
-            boolean conflict, int color) {
+            boolean conflict,
+            int color,
+            int lane,
+            int lanes) {
     }
 
     private static final int MINUTES_PER_ROW = 10;
@@ -328,14 +331,74 @@ public class NextSemesterScheduleService {
         return minutes / MINUTES_PER_ROW + 2;
     }
 
+    // Where a block sits across its day column: lane 0 is the left, lanes is how
+    // many share the width
+    record LanePlace(int lane, int lanes) {
+    }
+
+    // Seats one day's classes (sorted by start time) side by side where they
+    // overlap
+    static List<LanePlace> lanesFor(List<ClassTime> classes) {
+        int[] lane = new int[classes.size()];
+        int[] lanes = new int[classes.size()];
+        List<LocalTime> laneEnds = new ArrayList<>();
+        int groupStart = 0;
+        LocalTime groupEnd = null;
+
+        for (int i = 0; i < classes.size(); i++) {
+            ClassTime t = classes.get(i);
+
+            // This class starts after the whole group has ended, so close that group
+            if (groupEnd != null && !t.start().isBefore(groupEnd)) {
+                for (int k = groupStart; k < i; k++) {
+                    lanes[k] = laneEnds.size();
+                }
+                laneEnds.clear();
+                groupStart = i;
+                groupEnd = null;
+            }
+
+            // Take the first lane that's free by the time this class starts
+            int chosen = -1;
+            for (int l = 0; l < laneEnds.size(); l++) {
+                if (!t.start().isBefore(laneEnds.get(l))) {
+                    chosen = l;
+                    break;
+                }
+            }
+            // No lane is free, so open a new one
+            if (chosen == -1) {
+                laneEnds.add(t.end());
+                chosen = laneEnds.size() - 1;
+            } else {
+                laneEnds.set(chosen, t.end());
+            }
+            lane[i] = chosen;
+
+            if (groupEnd == null || t.end().isAfter(groupEnd)) {
+                groupEnd = t.end();
+            }
+        }
+        // Close the last group
+        for (int k = groupStart; k < classes.size(); k++) {
+            lanes[k] = laneEnds.size();
+        }
+
+        List<LanePlace> places = new ArrayList<>();
+        for (int i = 0; i < classes.size(); i++) {
+            places.add(new LanePlace(lane[i], lanes[i]));
+        }
+        return places;
+    }
+
     // Every class in the student's week, turned into a box with a grid position
     @Transactional(readOnly = true)
     public List<TimetableBlock> timetableBlocks(StudentProfile student) {
         List<String> courseOrder = new ArrayList<>();
-    for (ScheduledCourse course : coursesFor(student)) {
-    courseOrder.add(course.getOffering().getCourse().getSubject() + " "
-            + course.getOffering().getCourse().getNumber());
-}
+        for (ScheduledCourse course : coursesFor(student)) {
+            courseOrder.add(course.getOffering().getCourse().getSubject() + " "
+                    + course.getOffering().getCourse().getNumber());
+        }
         Set<ClassTime> clashing = new HashSet<>();
         for (Conflict c : conflicts(student)) {
             clashing.add(c.first());
@@ -345,14 +408,20 @@ public class NextSemesterScheduleService {
         List<TimetableBlock> blocks = new ArrayList<>();
         for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(student).entrySet()) {
             int column = day.getKey().getValue() + 1; // column 1 is the times, Monday is 2
-            for (ClassTime t : day.getValue()) {
+            List<ClassTime> classes = day.getValue();
+            List<LanePlace> places = lanesFor(classes);
+            for (int i = 0; i < classes.size(); i++) {
+                ClassTime t = classes.get(i);
+                LanePlace place = places.get(i);
                 blocks.add(new TimetableBlock(
                         column,
                         rowFor(t.start()),
                         rowFor(t.end()),
                         t.course() + " " + t.section() + " " + t.type(),
                         clashing.contains(t),
-                        courseOrder.indexOf(t.course()) % COLORS));;
+                        courseOrder.indexOf(t.course()) % COLORS,
+                        place.lane(),
+                        place.lanes()));
             }
         }
         return blocks;

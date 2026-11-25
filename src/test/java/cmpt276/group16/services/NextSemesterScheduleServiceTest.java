@@ -253,5 +253,25 @@ public class NextSemesterScheduleServiceTest {
     List<TimetableBlock> blocks = service.timetableBlocks(priya);
 
     assertThat(blocks).extracting(TimetableBlock::color).containsExactlyInAnyOrder(0, 1);
+    }
+
+    @Test
+    void overlappingClassesSitSideBySide() {
+    Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+    Section math = saveLecture("MATH", "152", "4", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+    Section stat = saveLecture("STAT", "270", "3", DayOfWeek.MONDAY, LocalTime.of(13, 30), LocalTime.of(14, 20));
+    service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+    service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+    service.addCourse(priya, stat.getOffering().getId(), stat.getId(), null);
+
+    List<TimetableBlock> blocks = service.timetableBlocks(priya);
+
+    TimetableBlock alone = blocks.stream().filter(b -> b.label().startsWith("STAT")).findFirst().orElseThrow();
+    List<TimetableBlock> sharing = blocks.stream().filter(b -> !b.label().startsWith("STAT")).toList();
+
+    assertThat(alone.lane()).isEqualTo(0);
+    assertThat(alone.lanes()).isEqualTo(1);
+    assertThat(sharing).extracting(TimetableBlock::lane).containsExactlyInAnyOrder(0, 1);
+    assertThat(sharing).allMatch(b -> b.lanes() == 2);
 }
 }
