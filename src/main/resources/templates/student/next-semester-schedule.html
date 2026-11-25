@@ -236,12 +236,12 @@
 
       <section th:unless="${courses.isEmpty()}">
         <h2 class="section-label">Week</h2>
-        <div class="timetable">
+        <div class="timetable" th:style="|grid-template-columns: 4rem repeat(${meetingsByDay.size()}, 1fr);|">
           <div
             class="timetable-day"
-            th:each="d, i : ${ {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'} }"
-            th:style="|grid-column: ${i.index + 2}; grid-row: 1;|"
-            th:text="${d}"
+            th:each="day : ${meetingsByDay}"
+            th:style="|grid-column: ${day.key.value + 1}; grid-row: 1;|"
+            th:text="${#strings.capitalize(day.key.toString().toLowerCase()).substring(0, 3)}"
           >
             Mon
           </div>

@@ -202,6 +202,20 @@ class NextSemesterScheduleControllerTest {
         mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("class=\"timetable\"")))
-                .andExpect(content().string(containsString("grid-column: 2; grid-row: 17 / 22;")));
+                .andExpect(content().string(containsString("grid-column: 2; grid-row: 17 / 22;")))
+                .andExpect(content().string(not(containsString(">Sat<"))));
+    }
+
+    // Saturday only gets a column when a class meets then
+    @Test
+    void showsSaturdayWhenAClassMeetsThen() throws Exception {
+        d100.replaceMeetings(
+                List.of(new SectionMeeting(DayOfWeek.SATURDAY, LocalTime.of(9, 30), LocalTime.of(12, 20), null)));
+        sectionRepository.save(d100);
+        scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+
+        mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
+                .andExpect(content().string(containsString(">Sat<")))
+                .andExpect(content().string(not(containsString(">Sun<"))));
     }
 }
