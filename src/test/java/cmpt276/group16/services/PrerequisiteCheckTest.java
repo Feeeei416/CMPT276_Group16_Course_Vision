@@ -199,7 +199,7 @@ class PrerequisiteCheckTest {
                 PrerequisiteCheck.takenBefore(record, "2027 Spring"));
 
         assertThat(result.met()).isFalse();
-        assertThat(result.missing()).containsExactly("Needs 6 units, you have 3.00.");
+        assertThat(result.missing()).containsExactly("Needs 6 units, you have 3.");
     }
 
     @Test
@@ -324,7 +324,7 @@ class PrerequisiteCheckTest {
                 took("2025 Fall", "MATH", "151", "F")));
 
         assertThat(result.met()).isFalse();
-        assertThat(result.missing()).containsExactly("Needs 60 units, you have 3.00.");
+        assertThat(result.missing()).containsExactly("Needs 60 units, you have 3.");
     }
 
     @Test
@@ -454,7 +454,7 @@ class PrerequisiteCheckTest {
                 List.of(planned(2027, Season.SUMMER, "CMPT", "426")), List.of());
 
         assertThat(result.met()).isFalse();
-        assertThat(result.missing()).containsExactly("Needs 6 units, you have 3.00.");
+        assertThat(result.missing()).containsExactly("Needs 6 units, you have 3.");
     }
 
     // Left out of units only: a work term still counts when a course prerequisite names it

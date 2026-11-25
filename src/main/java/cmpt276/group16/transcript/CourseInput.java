@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 
 import cmpt276.group16.models.Grades;
 import cmpt276.group16.models.TranscriptCourse;
+import cmpt276.group16.services.UnitText;
 
 // A course typed into the Add course or Edit course form, after validate() has passed
 // Both forms use the same field names and the same checks
@@ -21,8 +22,9 @@ public record CourseInput(String term, String subject, String number, String tit
     // SFU's first term
     public static final int MIN_YEAR = 1965;
 
-    // The units column is precision 4, scale 2
-    private static final BigDecimal MAX_UNITS = new BigDecimal("99.99");
+    // SFU courses are worth whole units, so the form only takes whole numbers.
+    // 99 fits the units column (precision 4, scale 2) with room for transfer credit blocks
+    private static final BigDecimal MAX_UNITS = new BigDecimal("99");
 
     // Same shape as the transcript parser: 2 to 4 capital letters
     private static final Pattern SUBJECT = Pattern.compile("^[A-Z]{2,4}$");
@@ -75,7 +77,7 @@ public record CourseInput(String term, String subject, String number, String tit
         if (units.isEmpty()) {
             errors.add("Units are required.");
         } else if (parseUnits(units) == null) {
-            errors.add("Units must be a number from 0 to 99.99, such as 3 or 3.00.");
+            errors.add("Units must be a whole number from 0 to 99, such as 3.");
         }
 
         // Empty means the course is in progress
@@ -107,7 +109,8 @@ public record CourseInput(String term, String subject, String number, String tit
         form.put("subject", course.getSubject());
         form.put("number", course.getNumber());
         form.put("title", course.getTitle());
-        form.put("units", course.getUnits().toPlainString());
+        // "3", not "3.00", so it fits the form's whole-number box
+        form.put("units", UnitText.number(course.getUnits()));
         form.put("grade", course.getGrade() == null ? "" : course.getGrade());
         return form;
     }
@@ -121,11 +124,11 @@ public record CourseInput(String term, String subject, String number, String tit
         }
     }
 
-    // null unless it's a number from 0 to 99.99 with at most 2 decimal places
+    // null unless it's a whole number from 0 to 99. "3.00" counts as 3, since that's how transcripts print it
     private static BigDecimal parseUnits(String units) {
         try {
             BigDecimal value = new BigDecimal(units);
-            if (value.signum() < 0 || value.compareTo(MAX_UNITS) > 0 || value.stripTrailingZeros().scale() > 2) {
+            if (value.signum() < 0 || value.compareTo(MAX_UNITS) > 0 || value.stripTrailingZeros().scale() > 0) {
                 return null;
             }
             // Stored with 2 decimal places, like the transcript prints them

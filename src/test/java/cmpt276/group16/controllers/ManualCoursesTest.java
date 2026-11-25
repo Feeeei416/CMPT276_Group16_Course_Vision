@@ -166,7 +166,7 @@ class ManualCoursesTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("student/view-courses"))
                 .andExpect(content().string(containsString("Title is required.")))
-                .andExpect(content().string(containsString("Units must be a number")))
+                .andExpect(content().string(containsString("Units must be a whole number")))
                 .andExpect(content().string(containsString("Choose a grade from the list.")))
                 // The form stays open with what the student typed
                 .andExpect(content().string(containsString("<details class=\"collapsible\" open")))
@@ -289,7 +289,7 @@ class ManualCoursesTest {
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(view().name("student/edit-course"))
-                .andExpect(content().string(containsString("Units must be a number")));
+                .andExpect(content().string(containsString("Units must be a whole number")));
 
         TranscriptCourse unchanged = transcriptCourseRepository.findById(course.getId()).orElseThrow();
         assertThat(unchanged.getNumber()).isEqualTo("120");

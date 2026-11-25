@@ -31,14 +31,14 @@
 
       <!-- Each course counts once, from its most recent passing attempt -->
       <p th:unless="${coursesByTerm.isEmpty()}">
-        <strong th:text="|${units.earned()} units earned|"
-          >45.00 units earned</strong
+        <strong th:text="|${@unitText.number(units.earned())} units earned|"
+          >45 units earned</strong
         >
         <span
           th:if="${units.inProgress().signum() > 0}"
           class="muted"
-          th:text="|(${units.inProgress()} in progress)|"
-          >(9.00 in progress)</span
+          th:text="|(${@unitText.number(units.inProgress())} in progress)|"
+          >(9 in progress)</span
         >
       </p>
 

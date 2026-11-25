@@ -88,9 +88,9 @@ class ViewMyCoursesControllerTest {
         assertThat(page).containsSubsequence("<h2 class=\"section-label\">2025 Fall</h2>", "<h2 class=\"section-label\">2026 Spring</h2>");
 
         assertThat(CourseTableRows.tableRows(page)).containsExactly(
-            List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
-            List.of("2025 Fall", "MATH", "151", "Calculus I", "3.00", "B+"),
-            List.of("2026 Spring", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
+            List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3", "A-"),
+            List.of("2025 Fall", "MATH", "151", "Calculus I", "3", "B+"),
+            List.of("2026 Spring", "CMPT", "225", "Data Structures/Programming", "3", "In progress"));
     }
 
     // A course added by hand can be from a term older than the ones already saved
@@ -140,8 +140,8 @@ class ViewMyCoursesControllerTest {
 
         mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
         .andExpect(status().isOk())
-        .andExpect(content().string(containsString("3.00 units earned")))
-        .andExpect(content().string(containsString("(3.00 in progress)")));
+        .andExpect(content().string(containsString("3 units earned")))
+        .andExpect(content().string(containsString("(3 in progress)")));
     }
 
     // #50 Nothing in progress, so only the earned total is shown
@@ -152,7 +152,7 @@ class ViewMyCoursesControllerTest {
             new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-")));
 
         mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
-        .andExpect(content().string(containsString("3.00 units earned")))
+        .andExpect(content().string(containsString("3 units earned")))
         .andExpect(content().string(org.hamcrest.Matchers.not(containsString("in progress)"))));
     }
 

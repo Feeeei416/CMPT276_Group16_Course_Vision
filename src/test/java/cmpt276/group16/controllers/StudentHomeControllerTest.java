@@ -126,8 +126,8 @@ class StudentHomeControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(CourseTableRows.tableRows(page)).containsExactly(
-                List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
-                List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
+                List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3", "A-"),
+                List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3", "In progress"));
     }
 
     // TR is our marker for transfer credit, so the table spells it out instead of showing it as a grade
@@ -141,6 +141,6 @@ class StudentHomeControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(CourseTableRows.tableRows(page)).containsExactly(
-                List.of("2024 Summer", "MATH", "1XX", "Calculus (transfer)", "3.00", "Transfer credit"));
+                List.of("2024 Summer", "MATH", "1XX", "Calculus (transfer)", "3", "Transfer credit"));
     }
 }

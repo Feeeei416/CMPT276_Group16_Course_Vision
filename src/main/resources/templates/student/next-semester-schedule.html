@@ -118,7 +118,7 @@
       <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
       <!-- Units and overlap warnings. They only warn; the schedule is still saved -->
 <div th:unless="${courses.isEmpty()}">
-    <p th:text="|Total: ${totalUnits.stripTrailingZeros().toPlainString()} of ${unitLimit} units|">Total: 15 of 18 units</p>
+    <p th:text="|Total: ${@unitText.number(totalUnits)} of ${unitLimit} units|">Total: 15 of 18 units</p>
     <div class="error-message" role="alert" th:if="${totalUnits.compareTo(unitLimit) > 0}"
          th:text="|You're over the ${unitLimit}-unit limit for a term.|">You're over the 18-unit limit for a term.</div>
     <div class="error-message" role="alert" th:unless="${conflicts.isEmpty()}">

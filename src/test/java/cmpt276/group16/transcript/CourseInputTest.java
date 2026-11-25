@@ -104,12 +104,20 @@ class CourseInputTest {
         assertThat(CourseInput.validate(validFormWith("grade", grade))).containsExactly("Choose a grade from the list.");
     }
 
-    // Acceptance criterion: units that aren't a number show an error
+    // Acceptance criterion: units that aren't a number show an error.
+    // #76: SFU courses are worth whole units, so 3.01 and 3.5 are turned down too
     @ParameterizedTest
-    @ValueSource(strings = {"three", "3,00", "-1", "100", "3.005"})
-    void rejectsUnitsThatArentAValidNumber(String units) {
+    @ValueSource(strings = {"three", "3,00", "-1", "100", "3.005", "3.01", "3.5", "0.5"})
+    void rejectsUnitsThatArentAWholeNumber(String units) {
         assertThat(CourseInput.validate(validFormWith("units", units)))
-                .containsExactly("Units must be a number from 0 to 99.99, such as 3 or 3.00.");
+                .containsExactly("Units must be a whole number from 0 to 99, such as 3.");
+    }
+
+    // "3.00" is how transcripts print units, so it still counts as 3
+    @ParameterizedTest
+    @ValueSource(strings = {"3", "3.00", "4.0", "30", "99"})
+    void acceptsWholeNumberUnits(String units) {
+        assertThat(CourseInput.validate(validFormWith("units", units))).isEmpty();
     }
 
     // Co-op terms are worth 0 units
@@ -168,7 +176,9 @@ class CourseInputTest {
 
         Map<String, String> form = CourseInput.formFor(course);
 
-        assertThat(form).containsEntry("year", "2026").containsEntry("season", "Spring").containsEntry("grade", "");
+        // "3", not "3.00", so it fits the form's whole-number units box
+        assertThat(form).containsEntry("year", "2026").containsEntry("season", "Spring").containsEntry("grade", "")
+                .containsEntry("units", "3");
         assertThat(CourseInput.validate(form)).isEmpty();
         assertThat(CourseInput.from(form)).isEqualTo(new CourseInput("2026 Spring", "CMPT", "125",
                 "Intro.Cmpt.Sci/Programming II", new BigDecimal("3.00"), null));
