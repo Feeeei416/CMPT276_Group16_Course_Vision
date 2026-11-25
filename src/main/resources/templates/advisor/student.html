@@ -103,6 +103,11 @@
 
       <section>
         <h2 class="section-label">Main plan</h2>
+        <!-- #73: the student's own My plan and All my plans pages, which the advisor can change -->
+        <p class="actions">
+          <a class="btn btn-primary" th:href="@{/advisor/students/{id}/plan(id=${student.user.id})}">Edit their plan</a>
+          <a class="link" th:href="@{/advisor/students/{id}/plans(id=${student.user.id})}">All their plans</a>
+        </p>
         <p th:if="${termPlans.isEmpty()}">No plan yet.</p>
         <th:block th:each="termPlan : ${termPlans}" th:with="term=${termPlan.term}, courses=${termPlan.courses}">
           <h3>

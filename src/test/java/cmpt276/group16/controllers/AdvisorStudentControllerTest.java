@@ -211,6 +211,15 @@ class AdvisorStudentControllerTest {
                .andExpect(content().string(not(containsString("Add course"))));
     }
 
+    // #73: the plan section links to the student's plan pages, where the advisor can change them
+    @Test
+    void linksToTheStudentsPlanPages() throws Exception {
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("href=\"/advisor/students/5/plan\"")))
+               .andExpect(content().string(containsString("href=\"/advisor/students/5/plans\"")));
+    }
+
     // Another advisor's student, or an id that doesn't exist, is refused, and nothing about them is loaded
     @Test
     void unassignedStudent_isRefused() throws Exception {

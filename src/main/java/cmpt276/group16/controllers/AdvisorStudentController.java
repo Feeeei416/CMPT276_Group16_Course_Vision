@@ -25,7 +25,7 @@ import jakarta.servlet.http.HttpSession;
 
 // #71: an advisor's read-only view of one assigned student, to prepare for an advising appointment:
 // their course record, eligible courses, next semester's schedule and main plan.
-// The Graduation Report joins this page with #69.
+// The Graduation Report joins this page with #69. The plan links open the student's plans for editing (#73).
 // AuthInterceptor only lets advisors reach /advisor/**, so students and IT managers never get here
 @Controller
 public class AdvisorStudentController {
