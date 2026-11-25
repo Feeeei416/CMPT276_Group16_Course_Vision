@@ -23,8 +23,10 @@ public record CourseInput(String term, String subject, String number, String tit
     public static final int MIN_YEAR = 1965;
 
     // SFU courses are worth whole units, so the form only takes whole numbers.
-    // 99 fits the units column (precision 4, scale 2) with room for transfer credit blocks
-    private static final BigDecimal MAX_UNITS = new BigDecimal("99");
+    // Course Vision is for Computing Science and Computer Engineering students, and the largest course in either is
+    // ENSC 499, the engineering honours thesis, at 9 units (CMPT 498, the CMPT honours project, is 6).
+    // The breadth courses they take from other subjects are 3 or 4 units
+    public static final int MAX_UNITS = 9;
 
     // Same shape as the transcript parser: 2 to 4 capital letters
     private static final Pattern SUBJECT = Pattern.compile("^[A-Z]{2,4}$");
@@ -77,7 +79,7 @@ public record CourseInput(String term, String subject, String number, String tit
         if (units.isEmpty()) {
             errors.add("Units are required.");
         } else if (parseUnits(units) == null) {
-            errors.add("Units must be a whole number from 0 to 99, such as 3.");
+            errors.add("Units must be a whole number from 0 to " + MAX_UNITS + ", such as 3.");
         }
 
         // Empty means the course is in progress
@@ -124,11 +126,11 @@ public record CourseInput(String term, String subject, String number, String tit
         }
     }
 
-    // null unless it's a whole number from 0 to 99. "3.00" counts as 3, since that's how transcripts print it
+    // null unless it's a whole number from 0 to MAX_UNITS. "3.00" counts as 3, since that's how transcripts print it
     private static BigDecimal parseUnits(String units) {
         try {
             BigDecimal value = new BigDecimal(units);
-            if (value.signum() < 0 || value.compareTo(MAX_UNITS) > 0 || value.stripTrailingZeros().scale() > 0) {
+            if (value.signum() < 0 || value.compareTo(BigDecimal.valueOf(MAX_UNITS)) > 0 || value.stripTrailingZeros().scale() > 0) {
                 return null;
             }
             // Stored with 2 decimal places, like the transcript prints them

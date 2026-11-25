@@ -107,15 +107,16 @@ class CourseInputTest {
     // Acceptance criterion: units that aren't a number show an error.
     // #76: SFU courses are worth whole units, so 3.01 and 3.5 are turned down too
     @ParameterizedTest
-    @ValueSource(strings = {"three", "3,00", "-1", "100", "3.005", "3.01", "3.5", "0.5"})
+    @ValueSource(strings = {"three", "3,00", "-1", "10", "15", "3.005", "3.01", "3.5", "0.5"})
     void rejectsUnitsThatArentAWholeNumber(String units) {
         assertThat(CourseInput.validate(validFormWith("units", units)))
-                .containsExactly("Units must be a whole number from 0 to 99, such as 3.");
+                .containsExactly("Units must be a whole number from 0 to 9, such as 3.");
     }
 
-    // "3.00" is how transcripts print units, so it still counts as 3
+    // "3.00" is how transcripts print units, so it still counts as 3.
+    // 9 is ENSC 499, the largest CMPT or ENSC course; 6 is CMPT 498, the CMPT honours project
     @ParameterizedTest
-    @ValueSource(strings = {"3", "3.00", "4.0", "30", "99"})
+    @ValueSource(strings = {"3", "3.00", "4.0", "6", "9", "9.00"})
     void acceptsWholeNumberUnits(String units) {
         assertThat(CourseInput.validate(validFormWith("units", units))).isEmpty();
     }
