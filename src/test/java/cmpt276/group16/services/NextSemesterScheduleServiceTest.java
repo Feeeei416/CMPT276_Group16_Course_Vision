@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import cmpt276.group16.services.NextSemesterScheduleService.TimetableBlock;
 
 import cmpt276.group16.models.*;
 
@@ -211,5 +212,34 @@ public class NextSemesterScheduleServiceTest {
         service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
 
         assertThat(service.conflicts(priya)).isEmpty();
+    }
+
+    @Test
+    void classIsPlacedAtItsDayAndTime() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+
+        List<TimetableBlock> blocks = service.timetableBlocks(priya);
+
+        assertThat(blocks).hasSize(1);
+        TimetableBlock block = blocks.get(0);
+        assertThat(block.column()).isEqualTo(2); // Monday
+        assertThat(block.rowStart()).isEqualTo(17); // 10:30
+        assertThat(block.rowEnd()).isEqualTo(22); // 11:20
+        assertThat(block.label()).isEqualTo("MACM 201 D100 LEC");
+        assertThat(block.conflict()).isFalse();
+    }
+
+    @Test
+    void overlappingClassesAreMarkedAsConflicts() {
+        Section math = saveLecture("MATH", "152", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(11, 0), LocalTime.of(11, 50));
+        service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+
+        List<TimetableBlock> blocks = service.timetableBlocks(priya);
+
+        assertThat(blocks).hasSize(2);
+        assertThat(blocks).allMatch(TimetableBlock::conflict);
     }
 }

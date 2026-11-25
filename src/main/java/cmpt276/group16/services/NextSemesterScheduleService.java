@@ -6,12 +6,15 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.util.Optional;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
 import cmpt276.group16.models.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -211,7 +214,8 @@ public class NextSemesterScheduleService {
     }
 
     // A course's sections, sorted by code, with their times loaded, for the lecture
-    // and tutorial dropdowns. Sections SFU has cancelled are kept by the import but left out here
+    // and tutorial dropdowns. Sections SFU has cancelled are kept by the import but
+    // left out here
     @Transactional(readOnly = true)
     public List<Section> sectionsOf(CourseOffering offering) {
         return sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId()).stream()
@@ -306,4 +310,44 @@ public class NextSemesterScheduleService {
         return Objects.equals(attached.getAssociatedClass(), lecture.getAssociatedClass());
     }
 
+    //Information to describe one class on the timetable grid
+    public record TimetableBlock(
+            int column,
+            int rowStart,
+            int rowEnd,
+            String label,
+            boolean conflict) {
+    }
+
+    private static final int MINUTES_PER_ROW = 10;
+
+    // Row 1 is the day names, so 8:00 is row 2, 8:10 is row 3, and so on
+    static int rowFor(LocalTime time) {
+        int minutes = (time.getHour() - 8) * 60 + time.getMinute();
+        return minutes / MINUTES_PER_ROW + 2;
+    }
+
+    // Every class in the student's week, turned into a box with a grid position
+    @Transactional(readOnly = true)
+    public List<TimetableBlock> timetableBlocks(StudentProfile student) {
+        Set<ClassTime> clashing = new HashSet<>();
+        for (Conflict c : conflicts(student)) {
+            clashing.add(c.first());
+            clashing.add(c.second());
+        }
+
+        List<TimetableBlock> blocks = new ArrayList<>();
+        for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(student).entrySet()) {
+            int column = day.getKey().getValue() + 1; // column 1 is the times, Monday is 2
+            for (ClassTime t : day.getValue()) {
+                blocks.add(new TimetableBlock(
+                        column,
+                        rowFor(t.start()),
+                        rowFor(t.end()),
+                        t.course() + " " + t.section() + " " + t.type(),
+                        clashing.contains(t)));
+            }
+        }
+        return blocks;
+    }
 }
