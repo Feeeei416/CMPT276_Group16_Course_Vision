@@ -4,14 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main.css}">
-    <title>All my plans</title>
+    <title th:text="${owner.byAdvisor() ? 'Plans for ' + owner.name() : 'All my plans'}">All my plans</title>
 </head>
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title">All my plans</h1>
-        <p>Keep other versions of your plan, like a lighter course load or one with a co-op term.
+        <h1 class="page-title" th:text="${owner.byAdvisor() ? 'Plans for ' + owner.name() : 'All my plans'}">All my plans</h1>
+        <!-- #73: an advisor planning for a student. The changes go to the student's own plans -->
+        <p class="muted" th:if="${owner.byAdvisor()}"
+           th:text="|Planning for ${owner.name()} (${owner.student().user.email}). Changes are saved to their plans, and they see them on their own pages.|">
+            Planning for Jack (jack@example.com). Changes are saved to their plans, and they see them on their own pages.</p>
+        <p th:unless="${owner.byAdvisor()}">Keep other versions of your plan, like a lighter course load or one with a co-op term.
             Your main plan is the one the Graduation Report uses.</p>
+        <p th:if="${owner.byAdvisor()}">Keep other versions of their plan, like a lighter course load or one with a co-op term.
+            Their main plan is the one the Graduation Report uses.</p>
 
         <!-- Set by the last change, before redirecting back here -->
         <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Made Co-op plan.</div>
@@ -37,7 +43,8 @@
         </section>
 
         <p th:if="${plans.isEmpty()}" class="muted">No plans yet. Make one above, or start adding terms on
-            <a th:href="@{${owner.basePath()} + '/plan'}" class="link">My plan</a>.</p>
+            <a th:href="@{${owner.basePath()} + '/plan'}" class="link"
+               th:text="${owner.byAdvisor() ? 'their main plan' : 'My plan'}">My plan</a>.</p>
 
         <!-- One box per plan, the main plan first -->
         <section class="plan-term" th:each="summary : ${plans}" th:with="plan=${summary.plan}"
@@ -92,7 +99,8 @@
         </section>
 
         <div class="actions">
-            <a th:href="@{${owner.homePath()}}" class="link">Back to home</a>
+            <a th:href="@{${owner.homePath()}}" class="link"
+               th:text="${owner.byAdvisor() ? 'Back to ' + owner.name() : 'Back to home'}">Back to home</a>
         </div>
     </main>
 

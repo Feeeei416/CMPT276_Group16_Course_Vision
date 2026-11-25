@@ -13,10 +13,17 @@
             <span th:text="${plan != null ? plan.name : 'My plan'}">My plan</span>
             <span class="badge" th:if="${plan != null and plan.main}">Main plan</span>
         </h1>
+        <!-- #73: an advisor planning for a student. The changes go to the student's own plans -->
+        <p class="muted" th:if="${owner.byAdvisor()}"
+           th:text="|Planning for ${owner.name()} (${owner.student().user.email}). Changes are saved to their plans, and they see them on their own pages.|">
+            Planning for Jack (jack@example.com). Changes are saved to their plans, and they see them on their own pages.</p>
         <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
         <!-- Opened from All my plans, so say it isn't the one the Graduation Report uses -->
-        <p class="muted" th:if="${plan != null and !plan.main}">This isn't your main plan, so changes here don't
+        <p class="muted" th:if="${plan != null and !plan.main and !owner.byAdvisor()}">This isn't your main plan, so changes here don't
             affect your main plan. You can make it your main plan on <a th:href="@{${owner.basePath()} + '/plans'}" class="link">All my plans</a>.</p>
+        <p class="muted" th:if="${plan != null and !plan.main and owner.byAdvisor()}">This isn't their main plan, so changes
+            here don't affect their main plan. You can make it their main plan on
+            <a th:href="@{${owner.basePath()} + '/plans'}" class="link">All their plans</a>.</p>
 
         <!-- Set by the last change, before redirecting back here. A change inside a term shows in that term instead -->
         <th:block th:if="${changedTermId == null}">
@@ -132,8 +139,10 @@
         </section>
 
         <div class="actions">
-            <a th:href="@{${owner.basePath()} + '/plans'}" class="link">All my plans</a>
-            <a th:href="@{${owner.homePath()}}" class="link">Back to home</a>
+            <a th:href="@{${owner.basePath()} + '/plans'}" class="link"
+               th:text="${owner.byAdvisor() ? 'All their plans' : 'All my plans'}">All my plans</a>
+            <a th:href="@{${owner.homePath()}}" class="link"
+               th:text="${owner.byAdvisor() ? 'Back to ' + owner.name() : 'Back to home'}">Back to home</a>
         </div>
     </main>
 

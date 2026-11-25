@@ -164,6 +164,9 @@ class AdvisorPlanControllerTest {
         mockMvc.perform(get(jackPages + "/plan").session(sessionFor(advisor)))
                .andExpect(status().isOk())
                .andExpect(view().name("student/plan"))
+               .andExpect(content().string(containsString("Planning for Jack (jack@example.com).")))
+               .andExpect(content().string(containsString("All their plans")))
+               .andExpect(content().string(containsString("Back to Jack")))
                .andExpect(content().string(containsString("CMPT 276")))
                .andExpect(content().string(containsString("action=\"" + jackPages + "/plan/terms\"")))
                .andExpect(content().string(containsString("href=\"" + jackPages + "/plans\"")))
@@ -302,6 +305,7 @@ class AdvisorPlanControllerTest {
 
         mockMvc.perform(get(jackPages + "/plans/{id}", coop).session(sessionFor(advisor)))
                .andExpect(status().isOk())
+               .andExpect(content().string(containsString("This isn't their main plan")))
                .andExpect(content().string(containsString("name=\"planId\" value=\"" + coop + "\"")))
                .andExpect(content().string(not(containsString("\"/student/"))));
 
@@ -332,11 +336,27 @@ class AdvisorPlanControllerTest {
         mockMvc.perform(get(jackPages + "/plans").session(sessionFor(advisor)))
                .andExpect(status().isOk())
                .andExpect(view().name("student/plans"))
+               .andExpect(content().string(containsString("<h1 class=\"page-title\">Plans for Jack</h1>")))
+               .andExpect(content().string(containsString("Planning for Jack (jack@example.com).")))
                .andExpect(content().string(containsString(
                        "href=\"" + jackPages + "/plans/" + planId(jack, "Co-op plan") + "\"")))
                .andExpect(content().string(containsString("action=\"" + jackPages + "/plans\"")))
                .andExpect(content().string(containsString("href=\"" + jackPages + "\"")))
                .andExpect(content().string(not(containsString("\"/student/"))));
+    }
+
+    // The student's own pages say "my" and have no advisor line
+    @Test
+    void studentsOwnPagesKeepTheirWording() throws Exception {
+        planListService.create(jack, "My plan", null);
+
+        mockMvc.perform(get("/student/plan").session(sessionFor(jack.getUser())))
+               .andExpect(content().string(containsString("All my plans")))
+               .andExpect(content().string(containsString("Back to home")))
+               .andExpect(content().string(not(containsString("Planning for"))));
+        mockMvc.perform(get("/student/plans").session(sessionFor(jack.getUser())))
+               .andExpect(content().string(containsString("<h1 class=\"page-title\">All my plans</h1>")))
+               .andExpect(content().string(not(containsString("Planning for"))));
     }
 
     // The student's own list still points at the student's pages

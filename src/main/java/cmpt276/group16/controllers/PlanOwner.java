@@ -18,6 +18,11 @@ public record PlanOwner(StudentProfile student, String basePath, boolean byAdvis
         return byAdvisor ? basePath : "/student/home";
     }
 
+    // The student's name, for the advisor's version of the pages
+    public String name() {
+        return student.getUser().getDisplayName();
+    }
+
     @Component
     public static class Finder {
 
