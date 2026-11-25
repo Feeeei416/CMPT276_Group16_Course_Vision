@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
+import cmpt276.group16.services.CourseOptions;
 import cmpt276.group16.transcript.CourseInput;
 import cmpt276.group16.transcript.TranscriptService;
 import jakarta.servlet.http.HttpSession;
@@ -32,12 +33,14 @@ public class EditCourseController {
     private final CurrentStudent currentStudent;
     private final TranscriptCourseRepository transcriptCourseRepository;
     private final TranscriptService transcriptService;
+    private final CourseOptions courseOptions;
 
     public EditCourseController(CurrentStudent currentStudent, TranscriptCourseRepository transcriptCourseRepository,
-            TranscriptService transcriptService) {
+            TranscriptService transcriptService, CourseOptions courseOptions) {
         this.currentStudent = currentStudent;
         this.transcriptCourseRepository = transcriptCourseRepository;
         this.transcriptService = transcriptService;
+        this.courseOptions = courseOptions;
     }
 
     @GetMapping("/edit")
@@ -78,6 +81,7 @@ public class EditCourseController {
         }
 
         redirectAttributes.addFlashAttribute("message", "Saved " + CourseForms.name(edited) + ".");
+        CourseForms.addUnitsNote(redirectAttributes, courseOptions, edited);
         return "redirect:/student/courses";
     }
 
@@ -101,7 +105,7 @@ public class EditCourseController {
 
     private String showEditPage(Model model, TranscriptCourse course, Map<String, String> form, List<String> errors) {
         model.addAttribute("courseId", course.getId());
-        CourseForms.addTo(model, form, errors);
+        CourseForms.addTo(model, form, errors, courseOptions.allCourses());
         return "student/edit-course";
     }
 

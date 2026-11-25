@@ -20,6 +20,10 @@
       >
         Added CMPT 120 to 2025 Fall.
       </div>
+      <!-- Set when the saved units don't match what SFU lists now. The course is still saved -->
+      <div th:if="${unitsNote}" th:text="${unitsNote}" class="field-note" role="status">
+        SFU currently lists CMPT 225 as 3 units. Check your transcript if yours is different.
+      </div>
       <div
         th:if="${error}"
         th:text="${error}"
@@ -75,5 +79,6 @@
         </form>
       </details>
     </main>
+    <script th:src="@{/js/course-search.js}" defer></script>
   </body>
 </html>
