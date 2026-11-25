@@ -19,6 +19,7 @@ import cmpt276.group16.models.StudentProfileRepository;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.models.User;
+import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.services.EligibilityService;
 import cmpt276.group16.services.NextSemesterScheduleService;
 import cmpt276.group16.services.PlanPrerequisites;
@@ -35,6 +36,7 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 public class AdvisorStudentController {
 
+    private final UserRepository userRepository;
     private final AdvisorAssignmentRepository advisorAssignmentRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final TranscriptCourseRepository transcriptCourseRepository;
@@ -43,11 +45,13 @@ public class AdvisorStudentController {
     private final PlanService planService;
     private final PlanPrerequisites planPrerequisites;
 
-    public AdvisorStudentController(AdvisorAssignmentRepository advisorAssignmentRepository,
+    public AdvisorStudentController(UserRepository userRepository,
+            AdvisorAssignmentRepository advisorAssignmentRepository,
             StudentProfileRepository studentProfileRepository,
             TranscriptCourseRepository transcriptCourseRepository, EligibilityService eligibilityService,
             NextSemesterScheduleService scheduleService, PlanService planService,
             PlanPrerequisites planPrerequisites) {
+        this.userRepository = userRepository;
         this.advisorAssignmentRepository = advisorAssignmentRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.transcriptCourseRepository = transcriptCourseRepository;
@@ -60,7 +64,8 @@ public class AdvisorStudentController {
     /** GET /advisor/students/5 : the overview of student 5, if they're assigned to the logged-in advisor. */
     @GetMapping("/advisor/students/{studentId}")
     public String showStudent(@PathVariable Long studentId, HttpSession session, Model model) {
-        User advisor = (User) session.getAttribute(LoginController.SESSION_USER);
+        // AuthInterceptor has already checked this user exists, so orElseThrow can't fail here
+        User advisor = SessionUser.user(session, userRepository).orElseThrow();
 
         // Checked before anything about the student is loaded. Another advisor's student and an id that
         // doesn't exist get the same answer, so the page doesn't reveal which students exist

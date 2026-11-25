@@ -39,6 +39,7 @@ import cmpt276.group16.models.Term;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.models.User;
+import cmpt276.group16.models.UserRepository;
 import cmpt276.group16.services.EligibilityService;
 import cmpt276.group16.services.EligibilityService.CourseResult;
 import cmpt276.group16.services.EligibilityService.Eligibility;
@@ -75,17 +76,26 @@ class AdvisorStudentControllerTest {
     @MockitoBean
     private PlanPrerequisites planPrerequisites;
 
+    // AuthInterceptor loads the signed-in user by id on each request
+    @MockitoBean
+    private UserRepository userRepository;
+
     // The password hash is never checked on these pages, so any text works
     private final User advisor = new User("advisor@test.com", "hash", "Test Advisor", Role.ADVISOR);
     private final User itManager = new User("it@test.com", "hash", "Test IT Manager", Role.IT_MANAGER);
     private final User priyaUser = new User("priya@example.com", "hash", "Priya", Role.STUDENT);
     private final StudentProfile priya = new StudentProfile(priyaUser, Program.COMPUTING_SCIENCE, 2024);
 
-    // Priya (id 5) is assigned to the advisor (id 10). Every other student isn't
+    // Priya (id 5) is assigned to the advisor (id 10). Every other student isn't.
+    // Each user gets an id and can be found by AuthInterceptor, as if they were saved in the database
     @BeforeEach
     void setUp() {
         advisor.setId(10L);
         priyaUser.setId(5L);
+        itManager.setId(3L);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(advisor));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(priyaUser));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(itManager));
         when(advisorAssignmentRepository.existsByAdvisorIdAndStudentUserId(10L, 5L)).thenReturn(true);
         when(studentProfileRepository.findById(5L)).thenReturn(Optional.of(priya));
         when(eligibilityService.forNextSemester(priya))
@@ -99,7 +109,7 @@ class AdvisorStudentControllerTest {
     // An advisor opens an assigned student's overview
     @Test
     void assignedStudent_showsOverview() throws Exception {
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(view().name("advisor/student"))
                .andExpect(model().attribute("student", priya))
@@ -116,7 +126,7 @@ class AdvisorStudentControllerTest {
                 new TranscriptCourse(priya, "2025 Fall", "CMPT", "225", "Data Structures and Programming",
                         new BigDecimal("3.00"), "A")));
 
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("2025 Fall")))
                .andExpect(content().string(containsString("Data Structures and Programming")))
@@ -132,7 +142,7 @@ class AdvisorStudentControllerTest {
                         List.of("Needs CMPT 225 with C- or better, you have D."))),
                 List.of()));
 
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("Can take (1)")))
                .andExpect(content().string(containsString("Introduction to Software Engineering")))
@@ -146,7 +156,7 @@ class AdvisorStudentControllerTest {
         when(eligibilityService.forNextSemester(priya))
                 .thenReturn(new Eligibility("2027 Spring", false, List.of(), List.of(), List.of()));
 
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("Course offerings for 2027 Spring have not been loaded yet.")))
                .andExpect(content().string(not(containsString("Can take"))));
@@ -164,7 +174,7 @@ class AdvisorStudentControllerTest {
         when(planPrerequisites.missingFor(priya, termPlans))
                 .thenReturn(Map.of(7L, List.of("Needs CMPT 225 before 2027 Fall.")));
 
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("2027 Fall")))
                .andExpect(content().string(containsString("CMPT 300")))
@@ -175,7 +185,7 @@ class AdvisorStudentControllerTest {
     // A student with nothing saved yet gets a message in each section instead of an empty list
     @Test
     void studentWithNothingSaved_showsAMessageInEachSection() throws Exception {
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("No courses in their record yet.")))
                .andExpect(content().string(containsString("No courses in their schedule yet.")))
@@ -191,7 +201,7 @@ class AdvisorStudentControllerTest {
         PlanTerm fall = new PlanTerm(new Plan(priya, "My plan", true), new Term(2027, Season.FALL));
         when(planService.termPlans(priya)).thenReturn(List.of(new TermPlan(fall, List.of())));
 
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(not(containsString("/edit"))))
                .andExpect(content().string(not(containsString("Remove"))))
@@ -201,7 +211,7 @@ class AdvisorStudentControllerTest {
     // Another advisor's student, or an id that doesn't exist, is refused, and nothing about them is loaded
     @Test
     void unassignedStudent_isRefused() throws Exception {
-        mockMvc.perform(get("/advisor/students/6").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/students/6").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isForbidden());
 
         verify(studentProfileRepository, never()).findById(any());
@@ -211,7 +221,7 @@ class AdvisorStudentControllerTest {
     // Students never reach it: AuthInterceptor sends them to their own home page
     @Test
     void student_isSentToTheirOwnHome() throws Exception {
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, priyaUser))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, priyaUser.getId()))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/student/home"));
     }
@@ -219,7 +229,7 @@ class AdvisorStudentControllerTest {
     // IT managers still can't see any student's coursework
     @Test
     void itManager_isSentToTheirOwnHome() throws Exception {
-        mockMvc.perform(get("/advisor/students/5").sessionAttr(LoginController.SESSION_USER, itManager))
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, itManager.getId()))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/it/home"));
 

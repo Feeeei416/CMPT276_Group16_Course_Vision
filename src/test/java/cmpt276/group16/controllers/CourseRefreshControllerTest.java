@@ -71,7 +71,7 @@ class CourseRefreshControllerTest {
     private MockHttpSession sessionFor(Role role) {
         User user = userRepository.save(new User(role.name().toLowerCase(Locale.ROOT) + "@example.com", "hash", "Faye", role));
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute(LoginController.SESSION_USER, user);
+        SessionUser.signIn(session, user);
         return session;
     }
  
