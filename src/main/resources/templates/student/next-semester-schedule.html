@@ -15,7 +15,6 @@
         grid-template-rows: 2rem repeat(60, 0.6rem);
       }
       .timetable-block {
-        background: #d6e4ff;
         border-radius: 4px;
         padding: 2px 4px;
         font-size: 0.8rem;
@@ -33,6 +32,14 @@
         color: #666;
         border-top: 1px solid #eee;
       }
+      .colour-0 { background: #cfe2ff; }
+      .colour-1 { background: #d1f2d9; }
+      .colour-2 { background: #fde2b8; }
+      .colour-3 { background: #e5d4f5; }
+      .colour-4 { background: #fbd3d3; }
+      .colour-5 { background: #fff3b0; }
+      .colour-6 { background: #c9f0f0; }
+      .colour-7 { background: #f0d9c9; }
     </style>
     <title>My schedule</title>
   </head>
@@ -171,7 +178,7 @@
         </div>
       </div>
       <ul class="plan-courses" th:unless="${courses.isEmpty()}">
-        <li th:each="c : ${courses}">
+        <li th:each="c, i : ${courses}" th:classappend="|colour-${i.index % 8}|">
           <span
             th:text="${c.offering.course.subject + ' ' + c.offering.course.number}"
             >CMPT 225</span
@@ -216,7 +223,7 @@
           <div
             class="timetable-block"
             th:each="b : ${timetableBlocks}"
-            th:classappend="${b.conflict()} ? 'conflict'"
+            th:classappend="|colour-${b.color()}| + (${b.conflict()} ? ' conflict' : '')"
             th:style="|grid-column: ${b.column()}; grid-row: ${b.rowStart()} / ${b.rowEnd()};|"
             th:text="${b.label()}"
           >

@@ -320,7 +320,7 @@ public class NextSemesterScheduleService {
     }
 
     private static final int MINUTES_PER_ROW = 10;
-    private static final int COLORS = 6;
+    private static final int COLORS = 8;
 
     // Row 1 is the day names, so 8:00 is row 2, 8:10 is row 3, and so on
     static int rowFor(LocalTime time) {

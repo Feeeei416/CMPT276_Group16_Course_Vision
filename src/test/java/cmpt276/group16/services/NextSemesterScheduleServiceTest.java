@@ -244,7 +244,7 @@ public class NextSemesterScheduleServiceTest {
     }
 
     @Test
-void eachCourseGetsItsOwnColour() {
+    void eachCourseGetsItsOwnColour() {
     Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
     Section math = saveLecture("MATH", "152", "4", DayOfWeek.TUESDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
     service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
