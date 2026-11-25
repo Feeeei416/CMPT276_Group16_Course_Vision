@@ -52,6 +52,17 @@
     font-size: 24px;
 }
 
+/* The header's Course Vision is a link home on every page, but reads as the app's name, not a link */
+a.site-title {
+    color: inherit;
+    text-decoration: none;
+}
+
+a.site-title:hover,
+a.site-title:focus-visible {
+    color: var(--color-primary);
+}
+
 /* Basic Element Sytles */
 .input {
     background-color: var(--color-surface);

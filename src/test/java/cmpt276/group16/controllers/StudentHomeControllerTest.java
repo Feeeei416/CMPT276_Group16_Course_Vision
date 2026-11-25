@@ -96,6 +96,17 @@ class StudentHomeControllerTest {
                 .andExpect(content().string(containsString("No courses yet")));
     }
 
+    // #76: Course Vision in the header goes home from every page, and the button uses the page's own name
+    @Test
+    void headerLinksHomeAndTheCoursesButtonIsCalledMyCourses() throws Exception {
+        StudentProfile student = saveStudent();
+
+        mockMvc.perform(get("/student/home").session(sessionFor(student.getUser())))
+                .andExpect(content().string(containsString("<a href=\"/\" class=\"site-title\">Course Vision</a>")))
+                .andExpect(content().string(containsString(">My courses</a>")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("View My Courses"))));
+    }
+
     // Acceptance criterion (#42): the student home page links to My plan
     @Test
     void homeLinksToMyPlan() throws Exception {

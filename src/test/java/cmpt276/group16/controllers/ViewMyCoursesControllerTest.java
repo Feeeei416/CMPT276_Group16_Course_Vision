@@ -198,6 +198,15 @@ class ViewMyCoursesControllerTest {
         .andExpect(content().string(org.hamcrest.Matchers.not(containsString("CGPA <strong>"))));
     }
 
+    // #76: every page has a way back home
+    @Test
+    void myCoursesLinksBackHome() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(containsString("href=\"/student/home\" class=\"link\">Back to home</a>")));
+    }
+
     // #50 An empty record shows the upload link instead of "0.00 units earned"
     @Test
     void noUnitTotalWithoutCourses() throws Exception {
