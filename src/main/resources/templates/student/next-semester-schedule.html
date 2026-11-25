@@ -32,14 +32,42 @@
         color: #666;
         border-top: 1px solid #eee;
       }
-      .colour-0 { background: #cfe2ff; }
-      .colour-1 { background: #d1f2d9; }
-      .colour-2 { background: #fde2b8; }
-      .colour-3 { background: #e5d4f5; }
-      .colour-4 { background: #fbd3d3; }
-      .colour-5 { background: #fff3b0; }
-      .colour-6 { background: #c9f0f0; }
-      .colour-7 { background: #f0d9c9; }
+      .colour-0 {
+        background: #cfe2ff;
+      }
+      .colour-1 {
+        background: #d1f2d9;
+      }
+      .colour-2 {
+        background: #fde2b8;
+      }
+      .colour-3 {
+        background: #e5d4f5;
+      }
+      .colour-4 {
+        background: #fbd3d3;
+      }
+      .colour-5 {
+        background: #fff3b0;
+      }
+      .colour-6 {
+        background: #c9f0f0;
+      }
+      .colour-7 {
+        background: #f0d9c9;
+      }
+      .week-list {
+        display: none;
+      }
+
+      @media (max-width: 600px) {
+        .timetable {
+          display: none;
+        }
+        .week-list {
+          display: block;
+        }
+      }
     </style>
     <title>My schedule</title>
   </head>
@@ -178,7 +206,10 @@
         </div>
       </div>
       <ul class="plan-courses" th:unless="${courses.isEmpty()}">
-        <li th:each="c, i : ${courses}" th:classappend="|colour-${i.index % 8}|">
+        <li
+          th:each="c, i : ${courses}"
+          th:classappend="|colour-${i.index % 8}|"
+        >
           <span
             th:text="${c.offering.course.subject + ' ' + c.offering.course.number}"
             >CMPT 225</span
@@ -238,7 +269,7 @@
         >
           CMPT 225: Times not confirmed
         </p>
-        <div th:each="day : ${meetingsByDay}">
+        <div class="week-list" th:each="day : ${meetingsByDay}">
           <h3
             th:text="${#strings.capitalize(day.key.toString().toLowerCase())}"
           >
