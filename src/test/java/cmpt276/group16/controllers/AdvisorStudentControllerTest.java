@@ -48,11 +48,13 @@ import cmpt276.group16.services.NextSemesterScheduleService;
 import cmpt276.group16.services.PlanPrerequisites;
 import cmpt276.group16.services.PlanService;
 import cmpt276.group16.services.PlanService.TermPlan;
+import cmpt276.group16.services.UnitText;
 
 // #71: loads only AdvisorStudentController and the web layer (including AuthInterceptor); everything else is a mock.
-// AssignedStudent is the real one, since it's the check that refuses other advisors' students
+// AssignedStudent is the real one, since it's the check that refuses other advisors' students.
+// UnitText is real too, since the page uses it to show units as "3" rather than "3.00"
 @WebMvcTest(AdvisorStudentController.class)
-@Import(AssignedStudent.class)
+@Import({AssignedStudent.class, UnitText.class})
 class AdvisorStudentControllerTest {
 
     @Autowired
@@ -133,7 +135,7 @@ class AdvisorStudentControllerTest {
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("2025 Fall")))
                .andExpect(content().string(containsString("Data Structures and Programming")))
-               .andExpect(content().string(containsString("3.00 units earned")));
+               .andExpect(content().string(containsString("3 units earned")));
     }
 
     // Eligible courses for next semester, and what's missing for the others

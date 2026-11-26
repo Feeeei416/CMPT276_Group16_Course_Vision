@@ -4,12 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" th:href="@{/css/main.css}" />
-    <title>My courses</title>
+    <title th:text="${owner.byAdvisor() ? 'Courses for ' + owner.name() : 'My courses'}">My courses</title>
   </head>
   <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-      <h1 class="page-title">My courses</h1>
+      <h1 class="page-title" th:text="${owner.byAdvisor() ? 'Courses for ' + owner.name() : 'My courses'}">My courses</h1>
+      <!-- #78: an advisor fixing an assigned student's record in an appointment -->
+      <p class="muted" th:if="${owner.byAdvisor()}"
+         th:text="|Editing the record of ${owner.name()} (${owner.student().user.email}). Changes are saved to their record, and they see them on My courses.|">
+        Editing the record of Jack (jack@example.com).</p>
 
       <!-- Set after adding, editing or removing a course -->
       <div
@@ -56,11 +60,14 @@
           <span th:unless="${gpa.hasUpperDivision()}" class="muted">No upper-division GPA yet</span>
         </p>
         <p class="muted" th:unless="${gpa.hasCumulative()}">No GPA yet. It starts once a course has a letter grade.</p>
-        <p class="muted field-hint" th:if="${gpa.hasCumulative()}">Calculated from your record with SFU's grading
-          scale. Your official GPA is on your SFU transcript.</p>
+        <p class="muted field-hint" th:if="${gpa.hasCumulative() and !owner.byAdvisor()}">Calculated from your record
+          with SFU's grading scale. Your official GPA is on your SFU transcript.</p>
+        <p class="muted field-hint" th:if="${gpa.hasCumulative() and owner.byAdvisor()}">Calculated from their record
+          with SFU's grading scale. Their official GPA is on their SFU transcript.</p>
       </th:block>
 
-      <p th:if="${coursesByTerm.isEmpty()}">
+      <p th:if="${coursesByTerm.isEmpty() and owner.byAdvisor()}">No courses in their record yet. Add a course below.</p>
+      <p th:if="${coursesByTerm.isEmpty() and !owner.byAdvisor()}">
         You don't have any saved courses yet.
         <a th:href="@{/student/transcript}" class="link"
           >Upload your transcript</a
@@ -83,7 +90,7 @@
           Add a course the transcript missed, or transfer credit from another
           school.
         </p>
-        <form th:action="@{/student/courses}" method="post">
+        <form th:action="@{${owner.basePath()} + '/courses'}" method="post">
           <th:block
             th:replace="~{fragments/course-form :: courseFields}"
           ></th:block>
@@ -94,7 +101,8 @@
       </details>
 
       <div class="actions">
-        <a th:href="@{/student/home}" class="link">Back to home</a>
+        <a th:href="@{${owner.homePath()}}" class="link"
+           th:text="${owner.byAdvisor() ? 'Back to ' + owner.name() : 'Back to home'}">Back to home</a>
       </div>
     </main>
     <script th:src="@{/js/course-search.js}" defer></script>

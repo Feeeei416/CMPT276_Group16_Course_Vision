@@ -8,7 +8,8 @@
   </head>
   <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
-    <!-- #71: read-only, so nothing on this page changes the student's record, schedule or plan -->
+    <!-- #71: nothing on this page changes the student's record, schedule or plan. The buttons open the pages
+         that do: their courses (#78) and their plans (#73) -->
     <main class="page-content">
       <h1 class="page-title" th:text="${student.user.displayName}">Priya</h1>
       <p class="muted"
@@ -17,12 +18,15 @@
 
       <section>
         <h2 class="section-label">Course record</h2>
+        <p class="actions">
+          <a class="btn btn-primary" th:href="@{/advisor/students/{id}/courses(id=${student.user.id})}">Edit their courses</a>
+        </p>
         <p th:if="${coursesByTerm.isEmpty()}">No courses in their record yet.</p>
         <!-- Each course counts once, from its most recent passing attempt, the same as My courses -->
         <p th:unless="${coursesByTerm.isEmpty()}">
-          <strong th:text="|${units.earned()} units earned|">45.00 units earned</strong>
+          <strong th:text="|${@unitText.number(units.earned())} units earned|">45 units earned</strong>
           <span th:if="${units.inProgress().signum() > 0}" class="muted"
-                th:text="|(${units.inProgress()} in progress)|">(9.00 in progress)</span>
+                th:text="|(${@unitText.number(units.inProgress())} in progress)|">(9 in progress)</span>
         </p>
         <!-- The shared course table, read-only since editable is not set -->
         <th:block th:each="entry : ${coursesByTerm}">
