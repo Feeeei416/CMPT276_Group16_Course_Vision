@@ -572,4 +572,6 @@ button.link {
     clip: auto;
     white-space: normal;
   }
+
+.timetable-time { display: block; font-size: 0.7rem; } 
 }

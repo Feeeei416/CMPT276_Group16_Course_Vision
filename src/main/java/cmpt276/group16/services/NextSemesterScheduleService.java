@@ -377,8 +377,8 @@ public class NextSemesterScheduleService {
             boolean conflict,
             int color,
             int lane,
-            int lanes) {
-    }
+            int lanes,
+            String time) {}
 
     private static final int MINUTES_PER_ROW = 10;
     private static final int COLORS = 8;
@@ -500,7 +500,8 @@ public class NextSemesterScheduleService {
                         clashing.getOrDefault(day.getKey(), Set.of()).contains(t),
                         courseOrder.indexOf(t.course()) % COLORS,
                         place.lane(),
-                        place.lanes()));
+                        place.lanes(),
+                        t.timeText()));
             }
         }
         return blocks;

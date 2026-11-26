@@ -229,6 +229,7 @@ public class NextSemesterScheduleServiceTest {
         assertThat(block.rowEnd()).isEqualTo(22); // 11:20
         assertThat(block.label()).isEqualTo("MACM 201 D100 LEC");
         assertThat(block.conflict()).isFalse();
+        assertThat(block.time()).contains("10:30");
     }
 
     @Test
