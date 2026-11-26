@@ -153,7 +153,24 @@ class AdvisorStudentControllerTest {
                .andExpect(content().string(containsString("Needs CMPT 225 with C- or better, you have D.")));
     }
 
-    // Next semester's offerings aren't loaded yet, so the page says so instead of showing empty lists
+        // One course the app couldn't read says "course has", more than one says "courses have"
+    @Test
+    void uncheckedCourses_useTheRightPlural() throws Exception {
+        CourseResult cmpt415 = new CourseResult(course("CMPT", "415", "Special Research Projects"), List.of());
+        CourseResult cmpt416 = new CourseResult(course("CMPT", "416", "Special Project Laboratory"), List.of());
+
+        when(eligibilityService.forNextSemester(priya))
+                .thenReturn(new Eligibility("2027 Spring", true, List.of(), List.of(), List.of(cmpt415)));
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("1 more course has prerequisites")));
+
+        when(eligibilityService.forNextSemester(priya))
+                .thenReturn(new Eligibility("2027 Spring", true, List.of(), List.of(), List.of(cmpt415, cmpt416)));
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("2 more courses have prerequisites")));
+    }// Next semester's offerings aren't loaded yet, so the page says so instead of showing empty lists
     @Test
     void eligibleCoursesNotLoadedYet() throws Exception {
         when(eligibilityService.forNextSemester(priya))
