@@ -94,7 +94,7 @@ class NextSemesterScheduleControllerTest {
 
     private MockHttpSession sessionFor(StudentProfile student) {
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute(LoginController.SESSION_USER, student.getUser());
+        SessionUser.signIn(session, student.getUser());
         return session;
     }
 

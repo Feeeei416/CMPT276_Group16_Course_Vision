@@ -75,7 +75,7 @@ class ManualCoursesTest {
 
     private MockHttpSession sessionFor(User user) {
         MockHttpSession s = new MockHttpSession();
-        s.setAttribute(LoginController.SESSION_USER, user);
+        SessionUser.signIn(s, user);
         return s;
     }
 

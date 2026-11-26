@@ -69,7 +69,7 @@ class PlanListControllerTest {
 
     private MockHttpSession sessionFor(User user) {
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute(LoginController.SESSION_USER, user);
+        SessionUser.signIn(session, user);
         return session;
     }
 

@@ -33,7 +33,8 @@ public class HomeController {
     /** GET /advisor/home : home page for course advisors, listing the students they support. */
     @GetMapping("/advisor/home")
     public String getAdvisorHome(Model model, HttpSession session) {
-        User user = (User) session.getAttribute(LoginController.SESSION_USER);
+        // AuthInterceptor has already checked this user exists, so orElseThrow can't fail here
+        User user = SessionUser.user(session, userRepository).orElseThrow();
 
         // Only this advisor's assignments, so an advisor never sees other advisors' students
         List<StudentProfile> students = advisorAssignmentRepository
@@ -50,7 +51,8 @@ public class HomeController {
     /** GET /it/home : home page for IT managers, listing every account. */
     @GetMapping("/it/home")
     public String getITManagerHome(Model model, HttpSession session) {
-        User user = (User) session.getAttribute(LoginController.SESSION_USER);
+        // AuthInterceptor has already checked this user exists, so orElseThrow can't fail here
+        User user = SessionUser.user(session, userRepository).orElseThrow();
 
         // Accounts only (name, email, role); IT managers never see students' coursework
         model.addAttribute("user", user);
