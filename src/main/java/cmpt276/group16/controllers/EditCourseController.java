@@ -69,13 +69,14 @@ public class EditCourseController {
             return notFound(redirectAttributes);
         }
 
-        // Same checks as adding a course; nothing changes unless they all pass
-        List<String> errors = CourseInput.validate(form);
+        // Same checks as adding a course; nothing changes unless they all pass.
+        // The units it has now are always allowed, since uploaded courses aren't capped
+        List<String> errors = CourseInput.validate(form, course.get().getUnits());
         if (!errors.isEmpty()) {
             return showEditPage(model, course.get(), form, errors);
         }
 
-        CourseInput edited = CourseInput.from(form);
+        CourseInput edited = CourseInput.from(form, course.get().getUnits());
         if (!transcriptService.editByHand(course.get(), edited)) {
             return showEditPage(model, course.get(), form, List.of(CourseForms.alreadyInRecord(edited)));
         }
@@ -105,7 +106,7 @@ public class EditCourseController {
 
     private String showEditPage(Model model, TranscriptCourse course, Map<String, String> form, List<String> errors) {
         model.addAttribute("courseId", course.getId());
-        CourseForms.addTo(model, form, errors, courseOptions.allCourses());
+        CourseForms.addTo(model, form, errors, courseOptions.allCourses(), course.getUnits());
         return "student/edit-course";
     }
 

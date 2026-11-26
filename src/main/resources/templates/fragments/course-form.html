@@ -48,8 +48,8 @@
                 </div>
                 <div class="form-field">
                     <label for="units" class="form-label">Units</label>
-                    <input type="number" class="input" id="units" name="units" min="0" max="9" step="1"
-                           placeholder="3" th:value="${form['units']}" required>
+                    <input type="number" class="input" id="units" name="units" min="0"
+                           th:attr="max=${unitsMax},step=${unitsStep}" placeholder="3" th:value="${form['units']}" required>
                 </div>
             </div>
             <!-- Filled in by the script when the units don't match what SFU lists now. Only a note: the course still saves -->

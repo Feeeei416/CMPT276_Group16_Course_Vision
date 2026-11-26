@@ -41,6 +41,13 @@ public record CourseInput(String term, String subject, String number, String tit
 
     // Returns every problem with the form; an empty list means from(form) is safe to call
     public static List<String> validate(Map<String, String> form) {
+        return validate(form, null);
+    }
+
+    // For the Edit form. keptUnits are the course's units now: an uploaded transcript isn't capped, so a course
+    // could have 15 or 4.5 units. Leaving them as they are is always allowed, so the grade can still be fixed.
+    // Changing them goes through the usual whole-number check
+    public static List<String> validate(Map<String, String> form, BigDecimal keptUnits) {
         List<String> errors = new ArrayList<>();
 
         String year = clean(form, "year");
@@ -78,7 +85,7 @@ public record CourseInput(String term, String subject, String number, String tit
         String units = clean(form, "units");
         if (units.isEmpty()) {
             errors.add("Units are required.");
-        } else if (parseUnits(units) == null) {
+        } else if (parseUnits(units, keptUnits) == null) {
             errors.add("Units must be a whole number from 0 to " + MAX_UNITS + ", such as 3.");
         }
 
@@ -93,13 +100,18 @@ public record CourseInput(String term, String subject, String number, String tit
 
     // Only call this after validate(form) returned no errors
     public static CourseInput from(Map<String, String> form) {
+        return from(form, null);
+    }
+
+    // Only call this after validate(form, keptUnits) returned no errors
+    public static CourseInput from(Map<String, String> form, BigDecimal keptUnits) {
         String grade = upper(form, "grade");
         return new CourseInput(
                 Terms.of(parseYear(clean(form, "year")), clean(form, "season")),
                 upper(form, "subject"),
                 upper(form, "number"),
                 clean(form, "title"),
-                parseUnits(clean(form, "units")),
+                parseUnits(clean(form, "units"), keptUnits),
                 grade.isEmpty() ? null : grade);
     }
 
@@ -126,10 +138,14 @@ public record CourseInput(String term, String subject, String number, String tit
         }
     }
 
-    // null unless it's a whole number from 0 to MAX_UNITS. "3.00" counts as 3, since that's how transcripts print it
-    private static BigDecimal parseUnits(String units) {
+    // null unless it's a whole number from 0 to MAX_UNITS, or the same as keptUnits.
+    // "3.00" counts as 3, since that's how transcripts print it
+    private static BigDecimal parseUnits(String units, BigDecimal keptUnits) {
         try {
             BigDecimal value = new BigDecimal(units);
+            if (keptUnits != null && value.compareTo(keptUnits) == 0) {
+                return keptUnits.setScale(2, RoundingMode.HALF_UP);
+            }
             if (value.signum() < 0 || value.compareTo(BigDecimal.valueOf(MAX_UNITS)) > 0 || value.stripTrailingZeros().scale() > 0) {
                 return null;
             }

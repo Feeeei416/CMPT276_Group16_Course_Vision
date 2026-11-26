@@ -149,6 +149,17 @@ class GpaTest {
         assertThat(gpa.upperDivisionText()).isEqualTo("3.50");
     }
 
+    // Graduate courses (500 and up) aren't upper division, but still count in the CGPA
+    @Test
+    void graduateCoursesArentUpperDivision() {
+        Gpa.Result gpa = Gpa.of(List.of(
+                course("2026 Fall", "CMPT", "300", "3.00", "A"),
+                course("2027 Spring", "CMPT", "726", "3.00", "C")));
+
+        assertThat(gpa.cumulativeText()).isEqualTo("3.00");
+        assertThat(gpa.upperDivisionText()).isEqualTo("4.00");
+    }
+
     @Test
     void noUpperDivisionCoursesMeansNoUpperDivisionGpa() {
         Gpa.Result gpa = Gpa.of(List.of(course("2025 Fall", "CMPT", "120", "3.00", "A")));

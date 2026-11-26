@@ -121,6 +121,33 @@ class CourseInputTest {
         assertThat(CourseInput.validate(validFormWith("units", units))).isEmpty();
     }
 
+    // #76 Edit: the course's units now are always allowed, since uploads aren't capped
+    @ParameterizedTest
+    @ValueSource(strings = {"15", "15.00"})
+    void keepingUnitsOverTheCapIsAllowed(String units) {
+        Map<String, String> form = validFormWith("units", units);
+        BigDecimal kept = new BigDecimal("15.00");
+
+        assertThat(CourseInput.validate(form, kept)).isEmpty();
+        assertThat(CourseInput.from(form, kept).units()).isEqualTo(new BigDecimal("15.00"));
+    }
+
+    @Test
+    void keepingAPartUnitIsAllowed() {
+        Map<String, String> form = validFormWith("units", "4.5");
+
+        assertThat(CourseInput.validate(form, new BigDecimal("4.50"))).isEmpty();
+        assertThat(CourseInput.from(form, new BigDecimal("4.50")).units()).isEqualTo(new BigDecimal("4.50"));
+    }
+
+    @Test
+    void changingToOtherUnitsStillHasTheUsualCheck() {
+        assertThat(CourseInput.validate(validFormWith("units", "12"), new BigDecimal("15.00")))
+                .containsExactly("Units must be a whole number from 0 to 9, such as 3.");
+        assertThat(CourseInput.validate(validFormWith("units", "3.5"), new BigDecimal("4.50")))
+                .containsExactly("Units must be a whole number from 0 to 9, such as 3.");
+    }
+
     // Co-op terms are worth 0 units
     @Test
     void acceptsZeroUnits() {

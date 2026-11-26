@@ -1,5 +1,7 @@
 package cmpt276.group16.controllers;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +22,23 @@ final class CourseForms {
     // form holds the typed values (or the course being edited), errors the problems to show above it.
     // courses are the ones "Find a course" can suggest, so picking one fills in its code, title and units
     static void addTo(Model model, Map<String, String> form, List<String> errors, List<CourseOptions.Option> courses) {
+        addTo(model, form, errors, courses, null);
+    }
+
+    // For the Edit form: keptUnits are the course's units now, which the Units box has to accept even when an
+    // uploaded transcript gave it more than MAX_UNITS or a part unit
+    static void addTo(Model model, Map<String, String> form, List<String> errors, List<CourseOptions.Option> courses,
+            BigDecimal keptUnits) {
+        int unitsMax = CourseInput.MAX_UNITS;
+        String unitsStep = "1";
+        if (keptUnits != null) {
+            unitsMax = Math.max(unitsMax, keptUnits.setScale(0, RoundingMode.CEILING).intValue());
+            if (keptUnits.stripTrailingZeros().scale() > 0) {
+                unitsStep = "any";
+            }
+        }
+        model.addAttribute("unitsMax", unitsMax);
+        model.addAttribute("unitsStep", unitsStep);
         model.addAttribute("courseOptionsJson", CourseOptions.json(courses));
         model.addAttribute("form", form);
         model.addAttribute("formErrors", errors);

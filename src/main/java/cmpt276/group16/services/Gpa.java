@@ -111,7 +111,8 @@ public final class Gpa {
     // 300- and 400-level courses, for example CMPT 300 or CMPT 405W
     static boolean isUpperDivision(TranscriptCourse course) {
         String number = course.getNumber();
-        return !number.isEmpty() && Character.isDigit(number.charAt(0)) && number.charAt(0) >= '3';
+        // Graduate courses (500 and up, like CMPT 726) aren't upper division
+        return !number.isEmpty() && (number.charAt(0) == '3' || number.charAt(0) == '4');
     }
 
     // The same grouping as UnitTotals: "CMPT 225" in any case is one course, and unassigned transfer credit

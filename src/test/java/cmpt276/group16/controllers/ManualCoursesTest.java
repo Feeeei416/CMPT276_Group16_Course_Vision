@@ -382,6 +382,59 @@ class ManualCoursesTest {
         assertThat(transcriptCourseRepository.findById(course.getId()).orElseThrow().getGrade()).isEqualTo("A");
     }
 
+    // #76 Uploads aren't capped, so an uploaded course can have more than 9 units or a part unit.
+    // Keeping those units is allowed, so the grade can still be fixed
+    @Test
+    void editingKeepsUnitsFromAnUploadThatAreOverTheCap() throws Exception {
+        TranscriptCourse course = transcriptCourseRepository.save(new TranscriptCourse(jack, "2025 Fall", "EDUC",
+                "405", "Teaching Practice", new BigDecimal("15.00"), "P"));
+        TranscriptCourse halfUnit = transcriptCourseRepository.save(new TranscriptCourse(jack, "2025 Fall", "KIN",
+                "142", "Intro Kinesiology", new BigDecimal("4.50"), "B"));
+
+        mockMvc.perform(get("/student/courses/" + course.getId() + "/edit").session(session))
+                .andExpect(content().string(containsString("max=\"15\" step=\"1\"")));
+        mockMvc.perform(get("/student/courses/" + halfUnit.getId() + "/edit").session(session))
+                .andExpect(content().string(containsString("max=\"9\" step=\"any\"")));
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"), "year", "2025",
+                        "season", "Fall", "subject", "EDUC", "number", "405", "units", "15", "grade", "CR")
+                        .session(session))
+                .andExpect(redirectedUrl("/student/courses"));
+        mockMvc.perform(courseForm(post("/student/courses/" + halfUnit.getId() + "/edit"), "year", "2025",
+                        "season", "Fall", "subject", "KIN", "number", "142", "units", "4.5", "grade", "A")
+                        .session(session))
+                .andExpect(redirectedUrl("/student/courses"));
+
+        TranscriptCourse saved = transcriptCourseRepository.findById(course.getId()).orElseThrow();
+        assertThat(saved.getGrade()).isEqualTo("CR");
+        assertThat(saved.getUnits()).isEqualByComparingTo("15");
+        assertThat(transcriptCourseRepository.findById(halfUnit.getId()).orElseThrow().getUnits())
+                .isEqualByComparingTo("4.5");
+    }
+
+    // Changing the units still goes through the usual check
+    @Test
+    void editingToOtherUnitsOverTheCapIsTurnedDown() throws Exception {
+        TranscriptCourse course = transcriptCourseRepository.save(new TranscriptCourse(jack, "2025 Fall", "EDUC",
+                "405", "Teaching Practice", new BigDecimal("15.00"), "P"));
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"), "year", "2025",
+                        "season", "Fall", "subject", "EDUC", "number", "405", "units", "12", "grade", "P")
+                        .session(session))
+                .andExpect(view().name("student/edit-course"))
+                .andExpect(content().string(containsString("Units must be a whole number from 0 to 9")));
+
+        assertThat(transcriptCourseRepository.findById(course.getId()).orElseThrow().getUnits())
+                .isEqualByComparingTo("15");
+    }
+
+    // Adding a course keeps the usual whole-number box
+    @Test
+    void addCourseBoxTakesWholeUnitsUpToNine() throws Exception {
+        mockMvc.perform(get("/student/courses").session(session))
+                .andExpect(content().string(containsString("max=\"9\" step=\"1\"")));
+    }
+
     @Test
     void removeDeletesTheCourse() throws Exception {
         TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
