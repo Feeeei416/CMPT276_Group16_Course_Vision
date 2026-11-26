@@ -68,7 +68,7 @@
             </ul>
           </details>
           <p th:unless="${e.unchecked().isEmpty()}" class="muted"
-             th:text="|${e.unchecked().size()} more courses have prerequisites the app couldn't read.|">
+             th:text="|${e.unchecked().size()} more ${e.unchecked().size() == 1 ? 'course has' : 'courses have'} prerequisites the app couldn't read.|">
             3 more courses have prerequisites the app couldn't read.</p>
         </th:block>
       </section>
