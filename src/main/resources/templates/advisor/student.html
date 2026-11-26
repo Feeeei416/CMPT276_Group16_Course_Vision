@@ -15,11 +15,15 @@
       <p class="muted"
          th:text="|${student.user.email} · ${student.program.showName} · Cohort ${student.cohortYear}|">
         priya@example.com · Computing Science · Cohort 2024</p>
+      <!-- Set after confirming or cancelling a transcript upload for the student (#78) -->
+      <div th:if="${message}" th:text="${message}" class="notice-message" role="status">
+        Saved 8 courses from Priya's transcript.</div>
 
       <section>
         <h2 class="section-label">Course record</h2>
         <p class="actions">
           <a class="btn btn-primary" th:href="@{/advisor/students/{id}/courses(id=${student.user.id})}">Edit their courses</a>
+          <a class="link" th:href="@{/advisor/students/{id}/transcript(id=${student.user.id})}">Upload their transcript</a>
         </p>
         <p th:if="${coursesByTerm.isEmpty()}">No courses in their record yet.</p>
         <!-- Each course counts once, from its most recent passing attempt, the same as My courses -->

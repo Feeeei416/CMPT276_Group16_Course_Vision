@@ -66,7 +66,11 @@
           with SFU's grading scale. Their official GPA is on their SFU transcript.</p>
       </th:block>
 
-      <p th:if="${coursesByTerm.isEmpty() and owner.byAdvisor()}">No courses in their record yet. Add a course below.</p>
+      <p th:if="${coursesByTerm.isEmpty() and owner.byAdvisor()}">
+        No courses in their record yet.
+        <a th:href="@{${owner.basePath()} + '/transcript'}" class="link">Upload their transcript</a>
+        or add a course below.
+      </p>
       <p th:if="${coursesByTerm.isEmpty() and !owner.byAdvisor()}">
         You don't have any saved courses yet.
         <a th:href="@{/student/transcript}" class="link"
