@@ -16,7 +16,7 @@ import cmpt276.group16.services.PlanChange;
 import cmpt276.group16.services.PlanListService;
 import jakarta.servlet.http.HttpSession;
 
-// My plans: every plan a student has, such as a lighter load or one with a co-op term.
+// All my plans: every plan a student has, such as a lighter load or one with a co-op term.
 // Every change redirects back to the page, so refreshing it doesn't send the form again
 @Controller
 public class PlanListController {

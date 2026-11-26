@@ -78,7 +78,7 @@ class TranscriptControllerTest {
         User user = userRepository.save(new User("priya@example.com", "hash", "Priya", Role.STUDENT));
         student = studentProfileRepository.save(new StudentProfile(user, Program.COMPUTING_SCIENCE, 2024));
         session = new MockHttpSession();
-        session.setAttribute(LoginController.SESSION_USER, user);
+        SessionUser.signIn(session, user);
     }
 
     private MockMultipartFile pdf(byte[] bytes) {

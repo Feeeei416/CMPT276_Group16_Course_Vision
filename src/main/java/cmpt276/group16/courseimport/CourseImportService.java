@@ -21,6 +21,8 @@ import cmpt276.group16.models.CourseDesignation;
 import cmpt276.group16.models.CourseDesignationRepository;
 import cmpt276.group16.models.CourseOffering;
 import cmpt276.group16.models.CourseOfferingRepository;
+import cmpt276.group16.models.CourseRefresh;
+import cmpt276.group16.models.CourseRefreshRepository;
 import cmpt276.group16.models.CourseRepository;
 import cmpt276.group16.models.Designation;
 import cmpt276.group16.models.Season;
@@ -37,6 +39,7 @@ import cmpt276.group16.services.TermCreator;
 // 1. Fetch everything from the API into memory. 
 //    Nothing is saved yet, so if the API fails here (SfuApiException) the database is exactly as it was.
 // 2. Save it all in one transaction: courses and sections are updated in place, never duplicated.
+// Every import is logged in course_refreshes, whether it worked or not
 @Service 
 public class CourseImportService {
     
@@ -51,14 +54,10 @@ public class CourseImportService {
         }
     }
 
-    // What the last import did, shown on the IT manager's course data page.
-    // error is null when it worked; notes lists what was skipped and why
+    // What an import that worked did, for the message after a manual refresh. The log keeps the same counts.
+    // notes lists what was skipped and why. An import that fails throws instead of returning one
     public record ImportRun(int year, Season season, Instant finishedAt, int courses, int sections,
-            int removedSections, int notOffered, List<String> notes, String error) {
- 
-        static ImportRun failed(int year, Season season, Instant finishedAt, String error) {
-            return new ImportRun(year, season, finishedAt, 0, 0, 0, 0, List.of(), error);
-        }
+            int removedSections, int notOffered, List<String> notes) {
  
         // for example "2027 Spring"
         public String termName() {
@@ -80,20 +79,22 @@ public class CourseImportService {
     private final CourseOfferingRepository offeringRepository;
     private final SectionRepository sectionRepository;
     private final RequisiteImportService requisiteImportService;
+    private final CourseRefreshRepository refreshRepository;
     private final TransactionTemplate transaction;
     private final Clock clock;
 
     // Only one import at a time: two at once would update the same rows
     private final AtomicBoolean running = new AtomicBoolean(false);
 
-    // Kept in memory only, so it is empty again after the app restarts
-    private final AtomicReference<ImportRun> lastRun = new AtomicReference<>();
+    // The log row of the import running now, so the log can tell it apart from one that was cut off.
+    // In memory, so after a restart nothing reads as running
+    private final AtomicReference<Long> runningRefreshId = new AtomicReference<>();
  
     public CourseImportService(SfuCourseOutlinesClient client, SfuOutlineMapper mapper,
             TermRepository termRepository, TermCreator termCreator, CourseRepository courseRepository,
             CourseDesignationRepository designationRepository, CourseOfferingRepository offeringRepository,
             SectionRepository sectionRepository, RequisiteImportService requisiteImportService,
-            PlatformTransactionManager transactionManager, Clock clock) {
+            CourseRefreshRepository refreshRepository, PlatformTransactionManager transactionManager, Clock clock) {
         this.client = client;
         this.mapper = mapper;
         this.termRepository = termRepository;
@@ -103,48 +104,94 @@ public class CourseImportService {
         this.offeringRepository = offeringRepository;
         this.sectionRepository = sectionRepository;
         this.requisiteImportService = requisiteImportService;
+        this.refreshRepository = refreshRepository;
         // Runs only the save step in a transaction, so the slow API calls before it don't hold a database connection,
         // and a failure while saving rolls back everything saved in this import
         this.transaction = new TransactionTemplate(transactionManager);
         this.clock = clock;
     }
 
-    public Optional<ImportRun> lastRun() {
-        return Optional.ofNullable(lastRun.get());
+    // The log on the Course refresh page, newest first
+    public List<CourseRefresh> refreshLog() {
+        return refreshRepository.findTop50ByOrderByStartedAtDescIdDesc();
     }
- 
+
     public boolean isRunning() {
         return running.get();
     }
 
+    // Whether this refresh from the log is the one running now.
+    // One that hasn't finished and isn't running was cut off by the app stopping
+    public boolean isRunning(CourseRefresh refresh) {
+        Long id = runningRefreshId.get();
+        return id != null && id.equals(refresh.getId());
+    }
+
+    // A refresh an IT manager started on the Course refresh page.
     // Throws SfuApiException if the API can't be used (nothing is saved then),
     // and ImportAlreadyRunningException if another import hasn't finished
     public ImportRun importTerm(int year, Season season) {
+        return importTerm(year, season, false);
+    }
+
+    // The same, for a refresh the app starts on its own
+    public ImportRun importTermAutomatically(int year, Season season) {
+        return importTerm(year, season, true);
+    }
+
+    // Has to be called outside a transaction (the controller and the scheduler are), so the log row is saved
+    // straight away and the save step gets its own transaction
+    private ImportRun importTerm(int year, Season season, boolean automatic) {
         if (!running.compareAndSet(false, true)) {
             throw new ImportAlreadyRunningException();
         }
+        CourseRefresh refresh = null;
         try {
+            // Logged before anything else, so a refresh cut off by the app stopping still shows up
+            refresh = refreshRepository.save(new CourseRefresh(year, season, automatic, Instant.now(clock)));
+            runningRefreshId.set(refresh.getId());
+            Long refreshId = refresh.getId();
             List<String> notes = new ArrayList<>();
             List<FetchedCourse> fetched = fetch(year, season, notes);
             Term term = findOrCreateTerm(year, season);
-            ImportRun run = transaction.execute(status -> save(term, fetched, notes));
+            ImportRun run = transaction.execute(status -> {
+                ImportRun saved = save(term, fetched, notes);
+                // In the same transaction as the courses, so the log can't say it finished
+                // when the courses weren't saved, or the other way round
+                refreshRepository.findById(refreshId).orElseThrow().finish(saved.finishedAt(), saved.courses(),
+                        saved.sections(), saved.removedSections(), saved.notOffered(), saved.notes());
+                return saved;
+            });
             log.info("Imported {}: {} courses, {} sections, {} sections no longer offered, {} courses no longer offered",
                     run.termName(), run.courses(), run.sections(), run.removedSections(), run.notOffered());
-            lastRun.set(run);
             return run;
         } catch (SfuApiException e) {
             log.warn("Import of {} {} stopped: {}", year, season, e.getMessage());
-            lastRun.set(ImportRun.failed(year, season, Instant.now(clock), e.getMessage()));
+            logFailure(refresh, e.getMessage());
             throw e;
         } catch (RuntimeException e) {
             // For example a database error while saving. The save transaction is rolled back,
             // so nothing was changed; the details go to the server log
             log.error("Import of {} {} failed", year, season, e);
-            lastRun.set(ImportRun.failed(year, season, Instant.now(clock), 
-                    "Saving the course data failed, so nothing was changed. Details are in the server log."));
+            logFailure(refresh, "Saving the course data failed, so nothing was changed. Details are in the server log.");
             throw e;
         } finally {
+            runningRefreshId.set(null);
             running.set(false);
+        }
+    }
+
+    // refresh is null when saving the log row is what failed (the database being down, for example).
+    // A failure here is only written to the server log, so it can't hide the import's own error
+    private void logFailure(CourseRefresh refresh, String error) {
+        if (refresh == null) {
+            return;
+        }
+        try {
+            refresh.fail(Instant.now(clock), error);
+            refreshRepository.save(refresh);
+        } catch (RuntimeException e) {
+            log.error("Couldn't log the failed import of {}", refresh.getTermName(), e);
         }
     }
     
@@ -257,7 +304,7 @@ public class CourseImportService {
         }
         int notOffered = markOthersNotOffered(term, offeringIds);
         return new ImportRun(term.getTermYear(), term.getSeason(), Instant.now(clock), courses, sections,
-                removedSections, notOffered, List.copyOf(notes), null);
+                removedSections, notOffered, List.copyOf(notes));
     }
  
     // Updates the course if it is already saved (for example a demo course), otherwise adds it.

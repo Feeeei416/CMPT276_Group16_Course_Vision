@@ -94,6 +94,12 @@ public final class PlanRules {
     return new YearAndSeason(next / TERMS_PER_YEAR, SEASONS[next % TERMS_PER_YEAR]);
     }
 
+    // Returns this term's year and season, for example 2026 and FALL in November 2026
+    public static YearAndSeason currentTermYearAndSeason(LocalDate today) {
+        int current = currentTerm(today);
+        return new YearAndSeason(current / TERMS_PER_YEAR, SEASONS[current % TERMS_PER_YEAR]);
+    }
+
     // The years to offer on the My plan page, from the first plannable term to the last
     public static List<Integer> plannableYears(LocalDate today) {
         int firstYear = (currentTerm(today) + 2) / TERMS_PER_YEAR;
@@ -116,11 +122,22 @@ public final class PlanRules {
     // Takes a name that's already trimmed. Whether the student already has a plan with that name is checked
     // by the service, since that needs the database
     public static List<String> problemsWithPlanName(String name) {
+        return problemsWithName(name, "plan");
+    }
+
+    // Schedules follow the same rules as plans, so both lists fit names of the same length
+    public static List<String> problemsWithScheduleName(String name) {
+        return problemsWithName(name, "schedule");
+    }
+
+    // thing is "plan" or "schedule", for the messages
+    private static List<String> problemsWithName(String name, String thing) {
         if (name.isEmpty()) {
-            return List.of("Give the plan a name.");
+            return List.of("Give the " + thing + " a name.");
         }
         if (name.length() > MAX_PLAN_NAME_LENGTH) {
-            return List.of("Plan names can be at most " + MAX_PLAN_NAME_LENGTH + " characters.");
+            String capitalized = Character.toUpperCase(thing.charAt(0)) + thing.substring(1);
+            return List.of(capitalized + " names can be at most " + MAX_PLAN_NAME_LENGTH + " characters.");
         }
         return List.of();
     }

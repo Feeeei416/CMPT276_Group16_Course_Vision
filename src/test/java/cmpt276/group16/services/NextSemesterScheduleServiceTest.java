@@ -220,7 +220,7 @@ public class NextSemesterScheduleServiceTest {
         Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
         service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
 
-        List<TimetableBlock> blocks = service.timetableBlocks(priya);
+        List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
 
         assertThat(blocks).hasSize(1);
         TimetableBlock block = blocks.get(0);
@@ -238,7 +238,7 @@ public class NextSemesterScheduleServiceTest {
         service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
         service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
 
-        List<TimetableBlock> blocks = service.timetableBlocks(priya);
+        List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
 
         assertThat(blocks).hasSize(2);
         assertThat(blocks).allMatch(TimetableBlock::conflict);
@@ -251,7 +251,7 @@ public class NextSemesterScheduleServiceTest {
     service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
     service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
 
-    List<TimetableBlock> blocks = service.timetableBlocks(priya);
+    List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
 
     assertThat(blocks).extracting(TimetableBlock::color).containsExactlyInAnyOrder(0, 1);
     }
@@ -265,7 +265,7 @@ public class NextSemesterScheduleServiceTest {
     service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
     service.addCourse(priya, stat.getOffering().getId(), stat.getId(), null);
 
-    List<TimetableBlock> blocks = service.timetableBlocks(priya);
+    List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
 
     TimetableBlock alone = blocks.stream().filter(b -> b.label().startsWith("STAT")).findFirst().orElseThrow();
     List<TimetableBlock> sharing = blocks.stream().filter(b -> !b.label().startsWith("STAT")).toList();
@@ -281,7 +281,55 @@ public class NextSemesterScheduleServiceTest {
         Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(7, 30), LocalTime.of(8, 20));
         service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
 
-        assertThat(service.gridHours(priya)).isEqualTo(new GridHours(7, 18));
-        assertThat(service.timetableBlocks(priya).get(0).rowStart()).isEqualTo(5);
+        assertThat(service.gridHours(service.coursesFor(priya))).isEqualTo(new GridHours(7, 18));
+        assertThat(service.timetableBlocks(service.coursesFor(priya)).get(0).rowStart()).isEqualTo(5);
+    }
+
+    private NextSemesterSchedule saveSchedule(StudentProfile student, String name, boolean main) {
+        Term spring2027 = termRepository.findByTermYearAndSeason(2027, Season.SPRING).orElseThrow();
+        return scheduleRepository.save(new NextSemesterSchedule(student, spring2027, name, main));
+    }
+
+    // #61: a course can go into any of the student's schedules, and the main one stays as it was
+    @Test
+    void addsACourseToTheScheduleItsGiven() {
+        saveSchedule(priya, "My schedule", true);
+        NextSemesterSchedule morning = saveSchedule(priya, "Morning labs", false);
+
+        assertThat(service.addCourseTo(priya, morning.getId(), cmpt225.getId(), d100.getId(), d101.getId())).isEmpty();
+
+        assertThat(service.coursesFor(morning)).hasSize(1);
+        assertThat(service.coursesFor(priya)).isEmpty();
+    }
+
+    // #61: the schedule id comes from the form, so it can be changed to Marcus's
+    @Test
+    void cantAddToAnotherStudentsSchedule() {
+        NextSemesterSchedule marcusSchedule = saveSchedule(marcus, "My schedule", true);
+
+        assertThat(service.addCourseTo(priya, marcusSchedule.getId(), cmpt225.getId(), d100.getId(), d101.getId()))
+                .containsExactly("That schedule isn't one of yours.");
+        assertThat(service.coursesFor(marcusSchedule)).isEmpty();
+        assertThat(service.mainSchedule(priya)).isEmpty();
+    }
+
+    // #61: units and overlaps are worked out from the courses given, so each schedule gets its own
+    @Test
+    void eachScheduleHasItsOwnUnitsAndOverlaps() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        Section math = saveLecture("MATH", "152", "4", DayOfWeek.MONDAY, LocalTime.of(11, 0), LocalTime.of(12, 0));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+        service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+        NextSemesterSchedule justMacm = saveSchedule(priya, "Just MACM", false);
+        service.addCourseTo(priya, justMacm.getId(), macm.getOffering().getId(), macm.getId(), null);
+
+        List<ScheduledCourse> mainCourses = service.coursesFor(priya);
+        List<ScheduledCourse> justMacmCourses = service.coursesFor(justMacm);
+
+        assertThat(service.totalUnits(mainCourses)).isEqualByComparingTo("7");
+        assertThat(service.conflicts(mainCourses)).hasSize(1);
+        assertThat(service.totalUnits(justMacmCourses)).isEqualByComparingTo("3");
+        assertThat(service.conflicts(justMacmCourses)).isEmpty();
+
     }
 }

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>All my schedules</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">All my schedules</h1>
+        <p>Keep other versions of your schedule for next semester<span th:if="${term != null}"
+            th:text="| (${term.termYear} ${term.season.showName})|"> (2027 Spring)</span>, like one with a morning
+            lab and one with an afternoon lab. Your main schedule is the one My schedule shows.</p>
+
+        <!-- Set by the last change, before redirecting back here -->
+        <div class="notice-message" th:if="${message}" th:text="${message}" role="status">Made Morning labs.</div>
+        <div class="error-message" th:if="${!errors.isEmpty()}" role="alert">
+            <div th:each="e : ${errors}" th:text="${e}"></div>
+        </div>
+
+        <p th:if="${term == null}" class="muted">Next semester's courses aren't available yet, so there's nothing
+            to schedule.</p>
+
+        <!-- Above the schedules, so it's in the same place however many schedules there are -->
+        <section class="plan-add-term" th:if="${term != null}">
+            <h2 class="section-label">New schedule</h2>
+            <form method="post" class="inline-form" th:action="@{/student/schedules}">
+                <!-- Start with what was typed when making a schedule just failed -->
+                <input type="text" name="name" class="input" maxlength="40" placeholder="Name, e.g. Morning labs"
+                       aria-label="Schedule name" th:value="${typedName}" required>
+                <select name="copyFrom" class="input" aria-label="Start from">
+                    <option value="">Start empty</option>
+                    <option th:each="summary : ${schedules}" th:value="${summary.schedule.id}"
+                            th:text="|Copy of ${summary.schedule.name}|"
+                            th:selected="${chosenCopyFrom == #strings.toString(summary.schedule.id)}">Copy of My schedule</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Make schedule</button>
+            </form>
+        </section>
+
+        <p th:if="${term != null and schedules.isEmpty()}" class="muted">No schedules yet. Make one above, or start
+            adding courses on <a th:href="@{/student/schedule/next-semester}" class="link">My schedule</a>.</p>
+
+        <!-- One box per schedule, the main schedule first -->
+        <section class="plan-term" th:each="summary : ${schedules}" th:with="schedule=${summary.schedule}"
+                 th:id="|schedule-${schedule.id}|">
+            <div class="plan-term-header">
+                <div>
+                    <h2 class="section-label">
+                        <span th:text="${schedule.name}">My schedule</span>
+                        <span class="badge" th:if="${schedule.main}">Main schedule</span>
+                    </h2>
+                    <span class="muted" th:text="${summary.sizeText()}">3 courses</span>
+                </div>
+                <div class="row-actions">
+                    <a class="btn btn-primary" th:href="@{/student/schedules/{id}(id=${schedule.id})}">Open</a>
+                    <form method="post" th:unless="${schedule.main}"
+                          th:action="@{/student/schedules/{id}/main(id=${schedule.id})}">
+                        <button type="submit" class="btn btn-secondary">Make main schedule</button>
+                    </form>
+                    <!-- The script below opens the dialog instead of sending this form.
+                         The main schedule has no Delete, since there always has to be one -->
+                    <form method="post" th:unless="${schedule.main}"
+                          th:action="@{/student/schedules/{id}/delete(id=${schedule.id})}"
+                          th:data-dialog="|delete-schedule-${schedule.id}|">
+                        <button type="submit" class="btn btn-secondary">Delete</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Asks before deleting, since every course in the schedule goes with it -->
+            <dialog class="dialog" th:id="|delete-schedule-${schedule.id}|" th:unless="${schedule.main}">
+                <h2 class="dialog-title" th:text="|Delete ${schedule.name}?|">Delete Morning labs?</h2>
+                <p th:text="${summary.courseCount == 0}
+                        ? 'It has no courses in it. Your other schedules stay as they are.'
+                        : |This deletes its ${summary.sizeText()}. Your other schedules stay as they are.|">
+                    This deletes its 3 courses. Your other schedules stay as they are.</p>
+                <div class="dialog-actions">
+                    <form method="dialog">
+                        <button class="btn btn-secondary" autofocus>Cancel</button>
+                    </form>
+                    <form method="post" th:action="@{/student/schedules/{id}/delete(id=${schedule.id})}">
+                        <button type="submit" class="btn btn-primary">Delete schedule</button>
+                    </form>
+                </div>
+            </dialog>
+
+            <details class="plan-rename">
+                <summary class="link">Rename</summary>
+                <form method="post" class="inline-form" th:action="@{/student/schedules/{id}/rename(id=${schedule.id})}">
+                    <input type="text" name="name" class="input" maxlength="40" th:value="${schedule.name}"
+                           th:aria-label="|New name for ${schedule.name}|" required>
+                    <button type="submit" class="btn btn-primary">Save name</button>
+                </form>
+            </details>
+        </section>
+
+        <div class="actions">
+            <a th:href="@{/student/schedule/next-semester}" class="link">My schedule</a>
+            <a th:href="@{/student/home}" class="link">Back to home</a>
+        </div>
+    </main>
+
+    <script>
+        // Delete opens its dialog instead of deleting straight away.
+        // Without JavaScript the form still works, it just doesn't ask first
+        document.querySelectorAll('form[data-dialog]').forEach(form => {
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                document.getElementById(form.dataset.dialog).showModal();
+            });
+        });
+    </script>
+</body>
+</html>

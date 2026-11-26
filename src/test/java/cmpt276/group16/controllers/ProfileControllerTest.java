@@ -67,12 +67,9 @@ class ProfileControllerTest {
         return user;
     }
 
-    // Like a real session: holds its own copy of the user, not the object the database returns
     private MockHttpSession sessionFor(User user) {
-        User copy = new User(user.getEmail(), user.getPasswordHash(), user.getDisplayName(), user.getRole());
-        copy.setId(user.getId());
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute(LoginController.SESSION_USER, copy);
+        SessionUser.signIn(session, user);
         return session;
     }
 
@@ -140,8 +137,6 @@ class ProfileControllerTest {
         reloadFromDatabase();
 
         assertThat(userRepository.findById(advisor.getId()).orElseThrow().getDisplayName()).isEqualTo("New Name");
-        User sessionUser = (User) session.getAttribute(LoginController.SESSION_USER);
-        assertThat(sessionUser.getDisplayName()).isEqualTo("New Name");
     }
 
     @Test
