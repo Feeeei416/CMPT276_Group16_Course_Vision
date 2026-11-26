@@ -525,3 +525,51 @@ button.link {
 .gpa-summary strong {
     font-size: 1.15rem;
 }
+
+/* Weekly timetable on My schedule (next semester) */
+.timetable {
+  display: grid;
+  grid-template-columns: 4rem repeat(5, 1fr);
+  grid-template-rows: 2rem repeat(60, 0.6rem);
+}
+.timetable-day { text-align: center; font-weight: 600; }
+.timetable-hour { font-size: 0.75rem; color: #666; border-top: 1px solid #eee; }
+.timetable-block {
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.8rem;
+  overflow: hidden;
+  justify-self: start;
+  box-sizing: border-box;
+}
+.timetable-block.conflict { outline: 2px solid #a6192e; }
+
+.colour-0 { background: #cfe2ff; }
+.colour-1 { background: #d1f2d9; }
+.colour-2 { background: #fde2b8; }
+.colour-3 { background: #e5d4f5; }
+.colour-4 { background: #fbd3d3; }
+.colour-5 { background: #fff3b0; }
+.colour-6 { background: #c9f0f0; }
+.colour-7 { background: #f0d9c9; }
+
+/* The day list: on wide screens only screen readers see it, on narrow screens it replaces the grid */
+.week-list {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .timetable { display: none; }
+  .week-list {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}

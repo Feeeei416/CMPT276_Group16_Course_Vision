@@ -163,6 +163,7 @@
         <h2 class="section-label">Week</h2>
         <div
           class="timetable"
+          aria-hidden="true"
           th:style="|grid-template-columns: 4rem repeat(${dayCount}, 1fr); grid-template-rows: 2rem repeat(${(gridHours.end() - gridHours.start()) * 6}, 0.6rem);|"
         >
           <div
