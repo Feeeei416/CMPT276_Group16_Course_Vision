@@ -72,8 +72,7 @@ public class PlanService {
         // or the unit check in #44) has to leave them out with PlanRules.isCoopCourse
         public String unitsText() {
             BigDecimal total = courses.stream().map(PlannedCourse::getUnits).reduce(BigDecimal.ZERO, BigDecimal::add);
-            String units = total.stripTrailingZeros().toPlainString();
-            return units + (total.compareTo(BigDecimal.ONE) == 0 ? " unit" : " units");
+            return UnitText.units(total);
         }
     }
 

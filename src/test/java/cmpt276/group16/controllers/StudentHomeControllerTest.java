@@ -96,6 +96,17 @@ class StudentHomeControllerTest {
                 .andExpect(content().string(containsString("No courses yet")));
     }
 
+    // #76: Course Vision in the header goes home from every page, and the button uses the page's own name
+    @Test
+    void headerLinksHomeAndTheCoursesButtonIsCalledMyCourses() throws Exception {
+        StudentProfile student = saveStudent();
+
+        mockMvc.perform(get("/student/home").session(sessionFor(student.getUser())))
+                .andExpect(content().string(containsString("<a href=\"/\" class=\"site-title\">Course Vision</a>")))
+                .andExpect(content().string(containsString(">My courses</a>")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("View My Courses"))));
+    }
+
     // Acceptance criterion (#42): the student home page links to My plan
     @Test
     void homeLinksToMyPlan() throws Exception {
@@ -126,8 +137,8 @@ class StudentHomeControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(CourseTableRows.tableRows(page)).containsExactly(
-                List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
-                List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
+                List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3", "A-"),
+                List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3", "In progress"));
     }
 
     // TR is our marker for transfer credit, so the table spells it out instead of showing it as a grade
@@ -141,6 +152,6 @@ class StudentHomeControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(CourseTableRows.tableRows(page)).containsExactly(
-                List.of("2024 Summer", "MATH", "1XX", "Calculus (transfer)", "3.00", "Transfer credit"));
+                List.of("2024 Summer", "MATH", "1XX", "Calculus (transfer)", "3", "Transfer credit"));
     }
 }

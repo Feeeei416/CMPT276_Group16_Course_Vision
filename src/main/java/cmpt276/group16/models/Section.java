@@ -2,6 +2,7 @@ package cmpt276.group16.models;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.hibernate.annotations.ColumnDefault;
 
@@ -120,6 +121,30 @@ public class Section {
 
     public List<SectionMeeting> getMeetings() {
         return Collections.unmodifiableList(meetings);
+    }
+
+    // The section's times as students read them, for example "Mon, Wed, Fri 10:30–11:20 (Burnaby)".
+    // Days with the same time and campus are written together, so a lecture three times a week is one short line.
+    // Empty when SFU hasn't published times
+    public String getTimesText() {
+        // Keyed by time and campus, in the order the meetings come, so Monday's lecture stays first
+        Map<String, List<SectionMeeting>> sameTime = new LinkedHashMap<>();
+        for (SectionMeeting meeting : meetings) {
+            String key = meeting.getStartTime() + "|" + meeting.getEndTime() + "|" + meeting.getCampus();
+            sameTime.computeIfAbsent(key, k -> new ArrayList<>()).add(meeting);
+        }
+        List<String> parts = new ArrayList<>();
+        for (List<SectionMeeting> group : sameTime.values()) {
+            SectionMeeting first = group.get(0);
+            String days = group.stream()
+                    .sorted(Comparator.comparing(SectionMeeting::getDayOfWeek))
+                    .map(m -> SectionMeeting.dayName(m.getDayOfWeek()))
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+            String part = days + " " + SectionMeeting.timeRange(first.getStartTime(), first.getEndTime());
+            parts.add(first.getCampus() == null ? part : part + " (" + first.getCampus() + ")");
+        }
+        return String.join("; ", parts);
     }
 
     // Replaces all meetings with the ones from the latest fetch.

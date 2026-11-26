@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import cmpt276.group16.models.Grades;
+import cmpt276.group16.services.UnitText;
 
 // One part of a prerequisite, as read from the Calendar text and before it is saved as RequisiteRule rows.
 // The parser builds these instead of entities so it can be tested without a database.
@@ -71,7 +72,7 @@ public sealed interface Requirement {
 
         @Override
         public String toString() {
-            return units.stripTrailingZeros().toPlainString() + " units";
+            return UnitText.number(units) + " units";
         }
     }
 

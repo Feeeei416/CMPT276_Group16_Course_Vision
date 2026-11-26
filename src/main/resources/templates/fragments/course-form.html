@@ -8,6 +8,17 @@
                 <div th:each="e : ${formErrors}" th:text="${e}"></div>
             </div>
 
+            <!-- Suggests courses as the student types (static/js/course-search.js), and picking one fills in the
+                 fields below. Hidden until the script runs, since without JavaScript it would do nothing -->
+            <div class="form-field course-search" data-needs-js hidden>
+                <label for="course-find" class="form-label">Find a course</label>
+                <input type="text" class="input" id="course-find" placeholder="Code or title, e.g. CMPT 225"
+                       data-course-search="course-options" data-fill="form">
+                <p class="muted field-hint">Picking a course fills in the fields below. You can still change them.</p>
+            </div>
+            <!-- The courses it can suggest, from CourseOptions -->
+            <script type="application/json" id="course-options" th:utext="${courseOptionsJson}">[]</script>
+
             <div class="form-row">
                 <div class="form-field">
                     <label for="year" class="form-label">Year</label>
@@ -37,10 +48,12 @@
                 </div>
                 <div class="form-field">
                     <label for="units" class="form-label">Units</label>
-                    <input type="number" class="input" id="units" name="units" min="0" max="99.99" step="0.01"
-                           placeholder="3.00" th:value="${form['units']}" required>
+                    <input type="number" class="input" id="units" name="units" min="0"
+                           th:attr="max=${unitsMax},step=${unitsStep}" placeholder="3" th:value="${form['units']}" required>
                 </div>
             </div>
+            <!-- Filled in by the script when the units don't match what SFU lists now. Only a note: the course still saves -->
+            <p class="field-note" data-units-note hidden role="status"></p>
 
             <div class="form-field">
                 <label for="title" class="form-label">Title</label>

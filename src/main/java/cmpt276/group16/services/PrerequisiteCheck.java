@@ -248,7 +248,7 @@ public final class PrerequisiteCheck {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Outcome result = new Outcome();
-        result.phrase = needed.stripTrailingZeros().toPlainString() + " units";
+        result.phrase = UnitText.number(needed) + " units";
 
         if (totals.earned().compareTo(needed) >= 0) {
             result.met = true;
@@ -261,7 +261,7 @@ public final class PrerequisiteCheck {
             result.met = true;
             result.toConfirm.add("Needs " + result.phrase + ", which you'll have after the courses planned before then.");
         } else {
-            result.have = totals.earned().toPlainString();
+            result.have = UnitText.number(totals.earned());
         }
         return result;
     }
