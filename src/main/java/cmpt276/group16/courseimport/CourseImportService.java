@@ -31,6 +31,7 @@ import cmpt276.group16.models.SectionMeeting;
 import cmpt276.group16.models.SectionRepository;
 import cmpt276.group16.models.Term;
 import cmpt276.group16.models.TermRepository;
+import cmpt276.group16.models.YearAndSeason;
 import cmpt276.group16.requisites.RequisiteImportService;
 import cmpt276.group16.services.TermCreator;
 
@@ -61,7 +62,7 @@ public class CourseImportService {
  
         // for example "2027 Spring"
         public String termName() {
-            return year + " " + season.getShowName();
+            return new YearAndSeason(year, season).name();
         }
     }
 
@@ -219,7 +220,7 @@ public class CourseImportService {
         // Every department answering 404 means SFU hasn't published the term yet. Stopping here means the term
         // isn't added and its saved courses aren't all marked not offered
         if (!anyDepartment) {
-            throw new SfuApiException("SFU hasn't published " + year + " " + season.getShowName() + " yet", null);
+            throw new SfuApiException("SFU hasn't published " + new YearAndSeason(year, season).name() + " yet", null);
         }
         return result;
     }

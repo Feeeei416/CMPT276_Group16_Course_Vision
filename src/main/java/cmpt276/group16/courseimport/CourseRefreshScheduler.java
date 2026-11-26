@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 
 import cmpt276.group16.courseimport.CourseImportService.ImportAlreadyRunningException;
 import cmpt276.group16.models.CourseRefreshRepository;
+import cmpt276.group16.models.YearAndSeason;
 import cmpt276.group16.services.PlanRules;
-import cmpt276.group16.services.PlanRules.YearAndSeason;
 
 // Refreshes next semester's and this term's course data on its own
 // It checks the refresh log (app.course-refresh.* in application.properties) instead of running at
@@ -59,8 +59,8 @@ public class CourseRefreshScheduler {
     // Next semester goes first, since it's the one students are registering for
     public void refreshDueTerms() {
         LocalDate today = LocalDate.now(clock);
-        refreshIfDue(PlanRules.nextSemesterYearAndSeason(today), nextSemesterEvery);
-        refreshIfDue(PlanRules.currentTermYearAndSeason(today), currentTermEvery);
+        refreshIfDue(YearAndSeason.of(today).next(), nextSemesterEvery);
+        refreshIfDue(YearAndSeason.of(today), currentTermEvery);
     }
 
     // Due when no refresh of the term has finished within the given time. A manual or failed refresh counts too,

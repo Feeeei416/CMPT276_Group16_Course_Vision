@@ -2,6 +2,7 @@ package cmpt276.group16.controllers;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -19,6 +20,7 @@ import cmpt276.group16.courseimport.CourseRefreshScheduler;
 import cmpt276.group16.courseimport.SfuApiException;
 import cmpt276.group16.models.CourseRefresh;
 import cmpt276.group16.models.Season;
+import cmpt276.group16.models.YearAndSeason;
 
 // The IT manager's course refresh page: refresh one term's courses from the SFU API and see the log of past refreshes.
 @Controller 
@@ -31,7 +33,7 @@ public class CourseRefreshController {
         }
  
         public String name() {
-            return year + " " + season.getShowName();
+            return new YearAndSeason(year, season).name();
         }
     }
 
@@ -104,19 +106,12 @@ public class CourseRefreshController {
     }
  
     // This term and the next two, for example 2026 Fall, 2027 Spring and 2027 Summer in November 2026.
-    // Spring is January to April, Summer is May to August, and Fall is September to December
     static List<TermOption> termOptions(LocalDate today) {
-        Season[] seasons = Season.values();
-        int year = today.getYear();
-        int index = (today.getMonthValue() - 1) / 4;
+        YearAndSeason thisTerm = YearAndSeason.of(today);
         List<TermOption> options = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
-            options.add(new TermOption(year, seasons[index]));
-            index++;
-            if (index == seasons.length) {
-                index = 0;
-                year++;
-            }
+            YearAndSeason term = thisTerm.plus(i);
+            options.add(new TermOption(term.year(), term.season()));
         }
         return options;
     }
