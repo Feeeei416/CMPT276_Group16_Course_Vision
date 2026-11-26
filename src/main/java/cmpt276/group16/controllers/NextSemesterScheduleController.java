@@ -78,6 +78,7 @@ public class NextSemesterScheduleController {
         model.addAttribute("courses", scheduleService.coursesFor(student.get()));
         model.addAttribute("meetingsByDay", scheduleService.meetingsByDay(student.get()));
         model.addAttribute("timetableBlocks", scheduleService.timetableBlocks(student.get()));
+        model.addAttribute("gridHours", scheduleService.gridHours(student.get()));
         model.addAttribute("offerings", scheduleService.offeredNextSemester());
         model.addAttribute("totalUnits", scheduleService.totalUnits(student.get()));
         model.addAttribute("unitLimit", scheduleService.unitLimitFor(student.get()));

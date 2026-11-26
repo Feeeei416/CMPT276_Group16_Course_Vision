@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import cmpt276.group16.services.NextSemesterScheduleService.TimetableBlock;
+import cmpt276.group16.services.NextSemesterScheduleService.GridHours;
 
 import cmpt276.group16.models.*;
 
@@ -273,5 +274,14 @@ public class NextSemesterScheduleServiceTest {
     assertThat(alone.lanes()).isEqualTo(1);
     assertThat(sharing).extracting(TimetableBlock::lane).containsExactlyInAnyOrder(0, 1);
     assertThat(sharing).allMatch(b -> b.lanes() == 2);
-}
+   }
+
+   @Test
+    void gridStretchesForAnEarlyClass() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(7, 30), LocalTime.of(8, 20));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+
+        assertThat(service.gridHours(priya)).isEqualTo(new GridHours(7, 18));
+        assertThat(service.timetableBlocks(priya).get(0).rowStart()).isEqualTo(5);
+    }
 }

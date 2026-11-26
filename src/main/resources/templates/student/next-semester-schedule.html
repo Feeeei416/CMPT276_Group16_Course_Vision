@@ -236,7 +236,10 @@
 
       <section th:unless="${courses.isEmpty()}">
         <h2 class="section-label">Week</h2>
-        <div class="timetable" th:style="|grid-template-columns: 4rem repeat(${meetingsByDay.size()}, 1fr);|">
+        <div
+          class="timetable"
+          th:style="|grid-template-columns: 4rem repeat(${meetingsByDay.size()}, 1fr); grid-template-rows: 2rem repeat(${(gridHours.end() - gridHours.start()) * 6}, 0.6rem);|"
+        >
           <div
             class="timetable-day"
             th:each="day : ${meetingsByDay}"
@@ -247,8 +250,8 @@
           </div>
           <div
             class="timetable-hour"
-            th:each="h : ${#numbers.sequence(8, 17)}"
-            th:style="|grid-column: 1; grid-row: ${(h - 8) * 6 + 2} / span 6;|"
+            th:each="h : ${#numbers.sequence(gridHours.start(), gridHours.end() - 1)}"
+            th:style="|grid-column: 1; grid-row: ${(h - gridHours.start()) * 6 + 2} / span 6;|"
             th:text="|${h}:00|"
           >
             8:00

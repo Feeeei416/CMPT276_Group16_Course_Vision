@@ -326,9 +326,28 @@ public class NextSemesterScheduleService {
     private static final int COLORS = 8;
 
     // Row 1 is the day names, so 8:00 is row 2, 8:10 is row 3, and so on
-    static int rowFor(LocalTime time) {
-        int minutes = (time.getHour() - 8) * 60 + time.getMinute();
+    static int rowFor(LocalTime time, int startHour) {
+        int minutes = (time.getHour() - startHour) * 60 + time.getMinute();
         return minutes / MINUTES_PER_ROW + 2;
+    }
+
+    // The hours the grid covers: 8:00 to 18:00, stretched to fit earlier or later
+    // classes
+    public record GridHours(int start, int end) {
+    }
+
+    @Transactional(readOnly = true)
+    public GridHours gridHours(StudentProfile student) {
+        int start = 8;
+        int end = 18;
+        for (List<ClassTime> day : meetingsByDay(student).values()) {
+            for (ClassTime t : day) {
+                start = Math.min(start, t.start().getHour());
+                int endHour = t.end().getMinute() > 0 ? t.end().getHour() + 1 : t.end().getHour();
+                end = Math.max(end, endHour);
+            }
+        }
+        return new GridHours(start, end);
     }
 
     // Where a block sits across its day column: lane 0 is the left, lanes is how
@@ -394,6 +413,7 @@ public class NextSemesterScheduleService {
     // Every class in the student's week, turned into a box with a grid position
     @Transactional(readOnly = true)
     public List<TimetableBlock> timetableBlocks(StudentProfile student) {
+        int startHour = gridHours(student).start();
         List<String> courseOrder = new ArrayList<>();
         for (ScheduledCourse course : coursesFor(student)) {
             courseOrder.add(course.getOffering().getCourse().getSubject() + " "
@@ -415,8 +435,8 @@ public class NextSemesterScheduleService {
                 LanePlace place = places.get(i);
                 blocks.add(new TimetableBlock(
                         column,
-                        rowFor(t.start()),
-                        rowFor(t.end()),
+                        rowFor(t.start(), startHour),
+                        rowFor(t.end(), startHour),
                         t.course() + " " + t.section() + " " + t.type(),
                         clashing.contains(t),
                         courseOrder.indexOf(t.course()) % COLORS,
