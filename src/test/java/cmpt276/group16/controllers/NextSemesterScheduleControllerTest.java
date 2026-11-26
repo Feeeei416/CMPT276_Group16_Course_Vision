@@ -169,6 +169,16 @@ class NextSemesterScheduleControllerTest {
         assertThat(dropdown(html, "attached-select")).contains("value=\"" + d101.getId() + "\"", "D101");
     }
 
+    // #76: Add a course suggests next semester's courses as the student types, from JSON in the page
+    @Test
+    void addACourseCarriesNextSemestersCoursesForSuggestions() throws Exception {
+        String html = mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        assertThat(html).contains("data-course-search=\"course-options\"", "data-fill=\"submit\"",
+                "\"code\":\"CMPT 225\"", "/js/course-search.js");
+    }
+
     // A tutorial SFU has cancelled isn't offered
     @Test
     void cancelledSectionsArentListed() throws Exception {

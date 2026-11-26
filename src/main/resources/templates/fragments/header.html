@@ -8,7 +8,8 @@
 </head>
 <body>
     <header th:fragment="header" class="site-header">
-        <span class="site-title">Course Vision</span>
+        <!-- Goes home from any page: / sends a student, advisor or IT manager to their own home page -->
+        <a th:href="@{/}" class="site-title">Course Vision</a>
         <div class="nav-actions">
             <a th:href="@{/profile}" class="link">Profile</a>
             <form method="post" th:action="@{/logout}" >

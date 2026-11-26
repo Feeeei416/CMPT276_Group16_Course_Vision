@@ -26,6 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import cmpt276.group16.models.Course;
+import cmpt276.group16.models.CourseRepository;
 import cmpt276.group16.models.Program;
 import cmpt276.group16.models.Role;
 import cmpt276.group16.models.StudentProfile;
@@ -53,6 +55,9 @@ class ManualCoursesTest {
 
     @Autowired
     private TranscriptCourseRepository transcriptCourseRepository;
+
+    @Autowired
+    private CourseRepository courseRepository;
 
     private StudentProfile jack;
     private MockHttpSession session;
@@ -113,6 +118,60 @@ class ManualCoursesTest {
                 .andExpect(content().string(containsString(">Transfer credit</option>")));
     }
 
+    // #76: "Find a course" suggests the courses the app knows, with their titles and units
+    @Test
+    void myCoursesCarriesTheCoursesFindACourseCanSuggest() throws Exception {
+        courseRepository.save(new Course("CMPT", "225", "Data Structures and Programming", new BigDecimal("3.00"),
+                null, null, null));
+
+        mockMvc.perform(get("/student/courses").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-course-search=\"course-options\"")))
+                .andExpect(content().string(containsString(
+                        "{\"code\":\"CMPT 225\",\"subject\":\"CMPT\",\"number\":\"225\","
+                                + "\"title\":\"Data Structures and Programming\",\"units\":\"3\"}")))
+                .andExpect(content().string(containsString("/js/course-search.js")));
+    }
+
+    // #76: units that don't match what SFU lists now still save, with a note to check the transcript,
+    // since units change between years (ENSC 204 was 1 unit in 2023)
+    @Test
+    void unitsThatDontMatchSfuStillSaveWithANote() throws Exception {
+        courseRepository.save(new Course("ENSC", "204", "Graphical Communication for Engineering",
+                new BigDecimal("3.00"), null, null, null));
+
+        mockMvc.perform(courseForm(post("/student/courses"), "subject", "ENSC", "number", "204",
+                        "title", "Graphical Communication for Engineering", "units", "1").session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("message", "Added ENSC 204 to 2024 Summer."))
+                .andExpect(flash().attribute("unitsNote",
+                        "SFU currently lists ENSC 204 as 3 units. Check your transcript if yours is different."));
+
+        assertThat(coursesOf(jack).get(0).getUnits()).isEqualByComparingTo("1");
+    }
+
+    @Test
+    void unitsThatMatchSfuHaveNoNote() throws Exception {
+        courseRepository.save(new Course("MATH", "151", "Calculus I", new BigDecimal("3.00"), null, null, null));
+
+        mockMvc.perform(courseForm(post("/student/courses")).session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attributeCount(1));
+    }
+
+    @Test
+    void editingToUnitsThatDontMatchSfuSavesWithANote() throws Exception {
+        courseRepository.save(new Course("CMPT", "120", "Intro to Computing Science", new BigDecimal("3.00"),
+                null, null, null));
+        TranscriptCourse course = saveCourse(jack, "2025 Fall", "120", "A-");
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"), "subject", "CMPT",
+                        "number", "120", "units", "4").session(session))
+                .andExpect(redirectedUrl("/student/courses"))
+                .andExpect(flash().attribute("unitsNote",
+                        "SFU currently lists CMPT 120 as 3 units. Check your transcript if yours is different."));
+    }
+
     @Test
     void addingSavesAManualCourse() throws Exception {
         mockMvc.perform(courseForm(post("/student/courses")).session(session))
@@ -166,7 +225,7 @@ class ManualCoursesTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("student/view-courses"))
                 .andExpect(content().string(containsString("Title is required.")))
-                .andExpect(content().string(containsString("Units must be a number")))
+                .andExpect(content().string(containsString("Units must be a whole number")))
                 .andExpect(content().string(containsString("Choose a grade from the list.")))
                 // The form stays open with what the student typed
                 .andExpect(content().string(containsString("<details class=\"collapsible\" open")))
@@ -289,7 +348,7 @@ class ManualCoursesTest {
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(view().name("student/edit-course"))
-                .andExpect(content().string(containsString("Units must be a number")));
+                .andExpect(content().string(containsString("Units must be a whole number")));
 
         TranscriptCourse unchanged = transcriptCourseRepository.findById(course.getId()).orElseThrow();
         assertThat(unchanged.getNumber()).isEqualTo("120");
@@ -321,6 +380,59 @@ class ManualCoursesTest {
                 .andExpect(redirectedUrl("/student/courses"));
 
         assertThat(transcriptCourseRepository.findById(course.getId()).orElseThrow().getGrade()).isEqualTo("A");
+    }
+
+    // #76 Uploads aren't capped, so an uploaded course can have more than 9 units or a part unit.
+    // Keeping those units is allowed, so the grade can still be fixed
+    @Test
+    void editingKeepsUnitsFromAnUploadThatAreOverTheCap() throws Exception {
+        TranscriptCourse course = transcriptCourseRepository.save(new TranscriptCourse(jack, "2025 Fall", "EDUC",
+                "405", "Teaching Practice", new BigDecimal("15.00"), "P"));
+        TranscriptCourse halfUnit = transcriptCourseRepository.save(new TranscriptCourse(jack, "2025 Fall", "KIN",
+                "142", "Intro Kinesiology", new BigDecimal("4.50"), "B"));
+
+        mockMvc.perform(get("/student/courses/" + course.getId() + "/edit").session(session))
+                .andExpect(content().string(containsString("max=\"15\" step=\"1\"")));
+        mockMvc.perform(get("/student/courses/" + halfUnit.getId() + "/edit").session(session))
+                .andExpect(content().string(containsString("max=\"9\" step=\"any\"")));
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"), "year", "2025",
+                        "season", "Fall", "subject", "EDUC", "number", "405", "units", "15", "grade", "CR")
+                        .session(session))
+                .andExpect(redirectedUrl("/student/courses"));
+        mockMvc.perform(courseForm(post("/student/courses/" + halfUnit.getId() + "/edit"), "year", "2025",
+                        "season", "Fall", "subject", "KIN", "number", "142", "units", "4.5", "grade", "A")
+                        .session(session))
+                .andExpect(redirectedUrl("/student/courses"));
+
+        TranscriptCourse saved = transcriptCourseRepository.findById(course.getId()).orElseThrow();
+        assertThat(saved.getGrade()).isEqualTo("CR");
+        assertThat(saved.getUnits()).isEqualByComparingTo("15");
+        assertThat(transcriptCourseRepository.findById(halfUnit.getId()).orElseThrow().getUnits())
+                .isEqualByComparingTo("4.5");
+    }
+
+    // Changing the units still goes through the usual check
+    @Test
+    void editingToOtherUnitsOverTheCapIsTurnedDown() throws Exception {
+        TranscriptCourse course = transcriptCourseRepository.save(new TranscriptCourse(jack, "2025 Fall", "EDUC",
+                "405", "Teaching Practice", new BigDecimal("15.00"), "P"));
+
+        mockMvc.perform(courseForm(post("/student/courses/" + course.getId() + "/edit"), "year", "2025",
+                        "season", "Fall", "subject", "EDUC", "number", "405", "units", "12", "grade", "P")
+                        .session(session))
+                .andExpect(view().name("student/edit-course"))
+                .andExpect(content().string(containsString("Units must be a whole number from 0 to 9")));
+
+        assertThat(transcriptCourseRepository.findById(course.getId()).orElseThrow().getUnits())
+                .isEqualByComparingTo("15");
+    }
+
+    // Adding a course keeps the usual whole-number box
+    @Test
+    void addCourseBoxTakesWholeUnitsUpToNine() throws Exception {
+        mockMvc.perform(get("/student/courses").session(session))
+                .andExpect(content().string(containsString("max=\"9\" step=\"1\"")));
     }
 
     @Test

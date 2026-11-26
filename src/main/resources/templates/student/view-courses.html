@@ -20,6 +20,10 @@
       >
         Added CMPT 120 to 2025 Fall.
       </div>
+      <!-- Set when the saved units don't match what SFU lists now. The course is still saved -->
+      <div th:if="${unitsNote}" th:text="${unitsNote}" class="field-note" role="status">
+        SFU currently lists CMPT 225 as 3 units. Check your transcript if yours is different.
+      </div>
       <div
         th:if="${error}"
         th:text="${error}"
@@ -31,16 +35,30 @@
 
       <!-- Each course counts once, from its most recent passing attempt -->
       <p th:unless="${coursesByTerm.isEmpty()}">
-        <strong th:text="|${units.earned()} units earned|"
-          >45.00 units earned</strong
+        <strong th:text="|${@unitText.number(units.earned())} units earned|"
+          >45 units earned</strong
         >
         <span
           th:if="${units.inProgress().signum() > 0}"
           class="muted"
-          th:text="|(${units.inProgress()} in progress)|"
-          >(9.00 in progress)</span
+          th:text="|(${@unitText.number(units.inProgress())} in progress)|"
+          >(9 in progress)</span
         >
       </p>
+
+      <!-- #76: worked out from the record with SFU's grading scale (Gpa). A repeated course counts its higher grade,
+           and P, W, transfer credit and courses in progress are left out -->
+      <th:block th:unless="${coursesByTerm.isEmpty()}">
+        <p class="gpa-summary" th:if="${gpa.hasCumulative()}">
+          <span>CGPA <strong th:text="${gpa.cumulativeText()}">3.42</strong></span>
+          <span th:if="${gpa.hasUpperDivision()}">Upper-division GPA
+            <strong th:text="${gpa.upperDivisionText()}">3.60</strong></span>
+          <span th:unless="${gpa.hasUpperDivision()}" class="muted">No upper-division GPA yet</span>
+        </p>
+        <p class="muted" th:unless="${gpa.hasCumulative()}">No GPA yet. It starts once a course has a letter grade.</p>
+        <p class="muted field-hint" th:if="${gpa.hasCumulative()}">Calculated from your record with SFU's grading
+          scale. Your official GPA is on your SFU transcript.</p>
+      </th:block>
 
       <p th:if="${coursesByTerm.isEmpty()}">
         You don't have any saved courses yet.
@@ -74,6 +92,11 @@
           </div>
         </form>
       </details>
+
+      <div class="actions">
+        <a th:href="@{/student/home}" class="link">Back to home</a>
+      </div>
     </main>
+    <script th:src="@{/js/course-search.js}" defer></script>
   </body>
 </html>

@@ -5,71 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" th:href="@{/css/main.css}" />
     <style>
-      .conflict {
-        color: #a6192e;
-        font-weight: 600;
-      }
-      .timetable {
-        display: grid;
-        grid-template-columns: 4rem repeat(5, 1fr);
-        grid-template-rows: 2rem repeat(60, 0.6rem);
-      }
-      .timetable-block {
-        border-radius: 4px;
-        padding: 2px 4px;
-        font-size: 0.8rem;
-        overflow: hidden;
-        justify-self: start;
-        box-sizing: border-box;
-      }
-      .timetable-block.conflict {
-        outline: 2px solid #a6192e;
-      }
-      .timetable-day {
-        text-align: center;
-        font-weight: 600;
-      }
-      .timetable-hour {
-        font-size: 0.75rem;
-        color: #666;
-        border-top: 1px solid #eee;
-      }
-      .colour-0 {
-        background: #cfe2ff;
-      }
-      .colour-1 {
-        background: #d1f2d9;
-      }
-      .colour-2 {
-        background: #fde2b8;
-      }
-      .colour-3 {
-        background: #e5d4f5;
-      }
-      .colour-4 {
-        background: #fbd3d3;
-      }
-      .colour-5 {
-        background: #fff3b0;
-      }
-      .colour-6 {
-        background: #c9f0f0;
-      }
-      .colour-7 {
-        background: #f0d9c9;
-      }
-      .week-list {
-        display: none;
-      }
-
-      @media (max-width: 600px) {
-        .timetable {
-          display: none;
-        }
-        .week-list {
-          display: block;
-        }
-      }
+    .conflict { color: #a6192e; font-weight: 600; }
     </style>
     <title th:text="${schedule != null ? schedule.name : 'My schedule'}">My schedule</title>
   </head>
@@ -107,17 +43,24 @@
           class="inline-form"
           th:action="@{${pageUrl}}"
         >
-          <input
-            type="text"
-            name="code"
-            class="input"
-            list="course-suggestions"
-            autocomplete="off"
-            placeholder="Course code, e.g. CMPT 225"
-            aria-label="Course code"
-            th:value="${param.code}"
-            required
-          />
+          <!-- static/js/course-search.js suggests next semester's courses as the student types, and picking one
+               opens its sections. Without JavaScript the browser's own list below is used instead -->
+          <div class="course-search">
+            <input
+              type="text"
+              name="code"
+              class="input"
+              list="course-suggestions"
+              autocomplete="off"
+              placeholder="Code or title, e.g. CMPT 225"
+              aria-label="Course code"
+              data-course-search="course-options"
+              data-fill="submit"
+              th:value="${param.code}"
+              required
+            />
+          </div>
+          <script type="application/json" id="course-options" th:utext="${courseOptionsJson}">[]</script>
           <datalist id="course-suggestions">
             <option
               th:each="o : ${offerings}"
@@ -141,27 +84,21 @@
             CMPT 225 – Data Structures
           </h3>
           <input type="hidden" name="offeringId" th:value="${chosen.id}" />
-
           <input type="hidden" name="code" th:value="|${chosen.course.subject} ${chosen.course.number}|">
           <!-- Set when this page was opened from All my schedules, so the course goes into this schedule -->
           <input type="hidden" name="scheduleId" th:if="${viewedScheduleId != null}" th:value="${viewedScheduleId}">
 
           <label
             >Lecture
-            <select
-              name="primarySectionId"
-              id="lecture-select"
-              class="input"
-              required
-            >
+            <select name="primarySectionId" id="lecture-select" class="input" required>
               <option value="">-- Choose a lecture --</option>
               <option
                 th:each="s : ${lectures}"
                 th:value="${s.id}"
                 th:data-group="${s.associatedClass}"
-                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : s.timesText}|"
               >
-                D100 LEC – MONDAY 10:30-11:20
+                D100 LEC – Mon, Wed, Fri 10:30–11:20 (Burnaby)
               </option>
             </select>
           </label>
@@ -174,9 +111,9 @@
                 th:each="s : ${attachedSections}"
                 th:value="${s.id}"
                 th:data-group="${s.associatedClass}"
-                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : s.timesText}|"
               >
-                D101 TUT – FRIDAY 9:30-10:20
+                D101 TUT – Fri 9:30–10:20 (Burnaby)
               </option>
             </select>
           </label>
@@ -187,38 +124,18 @@
 
       <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
       <!-- Units and overlap warnings. They only warn; the schedule is still saved -->
-      <div th:unless="${courses.isEmpty()}">
-        <p
-          th:text="|Total: ${totalUnits.stripTrailingZeros().toPlainString()} of ${unitLimit} units|"
-        >
-          Total: 15 of 18 units
-        </p>
-        <div
-          class="error-message"
-          role="alert"
-          th:if="${totalUnits.compareTo(unitLimit) > 0}"
-          th:text="|You're over the ${unitLimit}-unit limit for a term.|"
-        >
-          You're over the 18-unit limit for a term.
-        </div>
-        <div
-          class="error-message"
-          role="alert"
-          th:unless="${conflicts.isEmpty()}"
-        >
-          <div
-            th:each="c : ${conflicts}"
-            th:text="|${c.first.course} ${c.first.section} overlaps ${c.second.course} ${c.second.section} on ${#strings.capitalize(c.day.toString().toLowerCase())}.|"
-          >
-            CMPT 225 D100 overlaps MACM 201 D100 on Monday.
-          </div>
-        </div>
-      </div>
+<div th:unless="${courses.isEmpty()}">
+    <p th:text="|Total: ${@unitText.number(totalUnits)} of ${unitLimit} units|">Total: 15 of 18 units</p>
+    <div class="error-message" role="alert" th:if="${totalUnits.compareTo(unitLimit) > 0}"
+         th:text="|You're over the ${unitLimit}-unit limit for a term.|">You're over the 18-unit limit for a term.</div>
+    <div class="error-message" role="alert" th:unless="${conflicts.isEmpty()}">
+        <div th:each="c : ${conflicts}"
+             th:text="|${c.first.course} ${c.first.section} overlaps ${c.second.course} ${c.second.section} on ${#strings.capitalize(c.day.toString().toLowerCase())}.|">
+            CMPT 225 D100 overlaps MACM 201 D100 on Monday.</div>
+    </div>
+</div>
       <ul class="plan-courses" th:unless="${courses.isEmpty()}">
-        <li
-          th:each="c, i : ${courses}"
-          th:classappend="|colour-${i.index % 8}|"
-        >
+        <li th:each="c, i : ${courses}" th:classappend="|colour-${i.index % 8}|">
           <span
             th:text="${c.offering.course.subject + ' ' + c.offering.course.number}"
             >CMPT 225</span
@@ -227,11 +144,8 @@
           <span
             th:if="${c.attachedSection != null}"
             th:text="${c.attachedSection.sectionCode}"
-            >D101</span
-          >
-          <span th:if="${c.primarySection.meetings.isEmpty()}" class="muted"
-            >Times not confirmed</span
-          >
+            >D101</span>
+          <span th:if="${c.primarySection.meetings.isEmpty()}" class="muted">Times not confirmed</span>
           <form
             method="post"
             th:action="@{/student/schedule/next-semester/courses/{id}/remove(id=${c.id})}"
@@ -242,11 +156,14 @@
         </li>
       </ul>
 
-      <section th:unless="${courses.isEmpty()}">
+      <section
+        th:unless="${courses.isEmpty()}"
+        th:with="dayCount=${meetingsByDay.keySet().toArray()[meetingsByDay.size() - 1].value}"
+      >
         <h2 class="section-label">Week</h2>
         <div
           class="timetable"
-          th:style="|grid-template-columns: 4rem repeat(${meetingsByDay.size()}, 1fr); grid-template-rows: 2rem repeat(${(gridHours.end() - gridHours.start()) * 6}, 0.6rem);|"
+          th:style="|grid-template-columns: 4rem repeat(${dayCount}, 1fr); grid-template-rows: 2rem repeat(${(gridHours.end() - gridHours.start()) * 6}, 0.6rem);|"
         >
           <div
             class="timetable-day"
@@ -301,7 +218,7 @@
             <li
               th:each="t : ${day.value}"
               th:classappend="${#lists.contains(conflicts.![first], t) or #lists.contains(conflicts.![second], t)} ? 'conflict'"
-              th:text="|${t.start}–${t.end} ${t.course} ${t.section} ${t.type}|"
+              th:text="|${t.timeText()} ${t.course} ${t.section} ${t.type}|"
             >
               10:30–11:20 CMPT 225 D100 LEC
             </li>
@@ -314,29 +231,30 @@
         <a th:href="@{/student/home}" class="link">Back to home</a>
       </div>
     </main>
+    <script th:src="@{/js/course-search.js}" defer></script>
     <script>
-      // Shows only the labs and tutorials that go with the chosen lecture (same group number).
-      // Without JavaScript every one is listed, and the server still rejects a pair that doesn't match
-      const lectureSelect = document.getElementById("lecture-select");
-      const attachedSelect = document.getElementById("attached-select");
-      if (lectureSelect && attachedSelect) {
+    // Shows only the labs and tutorials that go with the chosen lecture (same group number).
+    // Without JavaScript every one is listed, and the server still rejects a pair that doesn't match
+    const lectureSelect = document.getElementById('lecture-select');
+    const attachedSelect = document.getElementById('attached-select');
+    if (lectureSelect && attachedSelect) {
         const showMatching = () => {
-          const group = lectureSelect.selectedOptions[0].dataset.group;
-          for (const option of attachedSelect.options) {
-            if (!option.value) {
-              continue;
+            const group = lectureSelect.selectedOptions[0].dataset.group;
+            for (const option of attachedSelect.options) {
+                if (!option.value) {
+                    continue;
+                }
+                const matches = !group || option.dataset.group === group;
+                option.hidden = !matches;
+                option.disabled = !matches;
             }
-            const matches = !group || option.dataset.group === group;
-            option.hidden = !matches;
-            option.disabled = !matches;
-          }
-          if (attachedSelect.selectedOptions[0].disabled) {
-            attachedSelect.value = "";
-          }
+            if (attachedSelect.selectedOptions[0].disabled) {
+                attachedSelect.value = '';
+            }
         };
-        lectureSelect.addEventListener("change", showMatching);
+        lectureSelect.addEventListener('change', showMatching);
         showMatching();
-      }
-    </script>
+    }
+</script>
   </body>
 </html>

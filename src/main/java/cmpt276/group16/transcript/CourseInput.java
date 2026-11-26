@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 
 import cmpt276.group16.models.Grades;
 import cmpt276.group16.models.TranscriptCourse;
+import cmpt276.group16.services.UnitText;
 
 // A course typed into the Add course or Edit course form, after validate() has passed
 // Both forms use the same field names and the same checks
@@ -21,8 +22,11 @@ public record CourseInput(String term, String subject, String number, String tit
     // SFU's first term
     public static final int MIN_YEAR = 1965;
 
-    // The units column is precision 4, scale 2
-    private static final BigDecimal MAX_UNITS = new BigDecimal("99.99");
+    // SFU courses are worth whole units, so the form only takes whole numbers.
+    // Course Vision is for Computing Science and Computer Engineering students, and the largest course in either is
+    // ENSC 499, the engineering honours thesis, at 9 units (CMPT 498, the CMPT honours project, is 6).
+    // The breadth courses they take from other subjects are 3 or 4 units
+    public static final int MAX_UNITS = 9;
 
     // Same shape as the transcript parser: 2 to 4 capital letters
     private static final Pattern SUBJECT = Pattern.compile("^[A-Z]{2,4}$");
@@ -37,6 +41,13 @@ public record CourseInput(String term, String subject, String number, String tit
 
     // Returns every problem with the form; an empty list means from(form) is safe to call
     public static List<String> validate(Map<String, String> form) {
+        return validate(form, null);
+    }
+
+    // For the Edit form. keptUnits are the course's units now: an uploaded transcript isn't capped, so a course
+    // could have 15 or 4.5 units. Leaving them as they are is always allowed, so the grade can still be fixed.
+    // Changing them goes through the usual whole-number check
+    public static List<String> validate(Map<String, String> form, BigDecimal keptUnits) {
         List<String> errors = new ArrayList<>();
 
         String year = clean(form, "year");
@@ -74,8 +85,8 @@ public record CourseInput(String term, String subject, String number, String tit
         String units = clean(form, "units");
         if (units.isEmpty()) {
             errors.add("Units are required.");
-        } else if (parseUnits(units) == null) {
-            errors.add("Units must be a number from 0 to 99.99, such as 3 or 3.00.");
+        } else if (parseUnits(units, keptUnits) == null) {
+            errors.add("Units must be a whole number from 0 to " + MAX_UNITS + ", such as 3.");
         }
 
         // Empty means the course is in progress
@@ -89,13 +100,18 @@ public record CourseInput(String term, String subject, String number, String tit
 
     // Only call this after validate(form) returned no errors
     public static CourseInput from(Map<String, String> form) {
+        return from(form, null);
+    }
+
+    // Only call this after validate(form, keptUnits) returned no errors
+    public static CourseInput from(Map<String, String> form, BigDecimal keptUnits) {
         String grade = upper(form, "grade");
         return new CourseInput(
                 Terms.of(parseYear(clean(form, "year")), clean(form, "season")),
                 upper(form, "subject"),
                 upper(form, "number"),
                 clean(form, "title"),
-                parseUnits(clean(form, "units")),
+                parseUnits(clean(form, "units"), keptUnits),
                 grade.isEmpty() ? null : grade);
     }
 
@@ -107,7 +123,8 @@ public record CourseInput(String term, String subject, String number, String tit
         form.put("subject", course.getSubject());
         form.put("number", course.getNumber());
         form.put("title", course.getTitle());
-        form.put("units", course.getUnits().toPlainString());
+        // "3", not "3.00", so it fits the form's whole-number box
+        form.put("units", UnitText.number(course.getUnits()));
         form.put("grade", course.getGrade() == null ? "" : course.getGrade());
         return form;
     }
@@ -121,11 +138,15 @@ public record CourseInput(String term, String subject, String number, String tit
         }
     }
 
-    // null unless it's a number from 0 to 99.99 with at most 2 decimal places
-    private static BigDecimal parseUnits(String units) {
+    // null unless it's a whole number from 0 to MAX_UNITS, or the same as keptUnits.
+    // "3.00" counts as 3, since that's how transcripts print it
+    private static BigDecimal parseUnits(String units, BigDecimal keptUnits) {
         try {
             BigDecimal value = new BigDecimal(units);
-            if (value.signum() < 0 || value.compareTo(MAX_UNITS) > 0 || value.stripTrailingZeros().scale() > 2) {
+            if (keptUnits != null && value.compareTo(keptUnits) == 0) {
+                return keptUnits.setScale(2, RoundingMode.HALF_UP);
+            }
+            if (value.signum() < 0 || value.compareTo(BigDecimal.valueOf(MAX_UNITS)) > 0 || value.stripTrailingZeros().scale() > 0) {
                 return null;
             }
             // Stored with 2 decimal places, like the transcript prints them

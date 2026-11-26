@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>Something went wrong</title>
+</head>
+<!--/* Spring Boot shows this page for any error instead of its "Whitelabel Error Page".
+     status is set by Spring Boot, for example 404 for an address that doesn't exist.
+     These are Thymeleaf comments, so they aren't sent to the browser */-->
+<body class="page" th:with="code=${status != null ? status : 500}">
+    <!--/* No Profile or Sign out here, since someone who isn't signed in can end up on this page too */-->
+    <header class="site-header">
+        <a th:href="@{/}" class="site-title">Course Vision</a>
+    </header>
+    <main class="page-content">
+        <th:block th:switch="${code}">
+            <th:block th:case="404">
+                <h1 class="page-title">We couldn't find that page</h1>
+                <p>The address might be mistyped, or the page has moved.</p>
+            </th:block>
+            <th:block th:case="403">
+                <h1 class="page-title">You don't have access to that</h1>
+                <p>This page belongs to someone else, or to a different kind of account.</p>
+            </th:block>
+            <th:block th:case="405">
+                <h1 class="page-title">That link doesn't work like that</h1>
+                <p>Go back and use the button on the page instead.</p>
+            </th:block>
+            <th:block th:case="400">
+                <h1 class="page-title">That request didn't make sense</h1>
+                <p>Something in the address or the form wasn't what we expected.</p>
+            </th:block>
+            <th:block th:case="*">
+                <h1 class="page-title">Something went wrong</h1>
+                <p>It's on our end, not yours. Try again in a moment.</p>
+            </th:block>
+        </th:block>
+        <p class="muted" th:text="|Error ${code}|">Error 404</p>
+        <!--/* /login sends someone who's signed in to their own home page, so this works for every role */-->
+        <div class="actions">
+            <a th:href="@{/login}" class="btn btn-primary">Go to home</a>
+        </div>
+    </main>
+</body>
+</html>
