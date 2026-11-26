@@ -274,6 +274,14 @@
         >
           CMPT 225: Times not confirmed
         </p>
+        <p
+          class="muted"
+          th:each="c : ${courses}"
+          th:if="${c.attachedSection != null and c.attachedSection.meetings.isEmpty()}"
+          th:text="|${c.offering.course.subject} ${c.offering.course.number} ${c.attachedSection.sectionCode}: Times not confirmed|"
+        >
+          CMPT 225 D101: Times not confirmed
+        </p>
         <div class="week-list" th:each="day : ${meetingsByDay}">
           <h3
             th:text="${#strings.capitalize(day.key.toString().toLowerCase())}"
