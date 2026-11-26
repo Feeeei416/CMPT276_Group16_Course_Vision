@@ -65,7 +65,8 @@ public class NextSemesterScheduleService {
         return termRepository.findByTermYearAndSeason(next.year(), next.season());
     }
 
-    // The schedule My schedule opens to. Empty until the student adds their first course or makes their
+    // The schedule My schedule opens to. Empty until the student adds their first
+    // course or makes their
     // first schedule, or when next semester's courses aren't loaded yet
     @Transactional(readOnly = true)
     public Optional<NextSemesterSchedule> mainSchedule(StudentProfile student) {
@@ -73,29 +74,35 @@ public class NextSemesterScheduleService {
                 .flatMap(term -> scheduleRepository.findByStudentAndTermAndMainTrue(student, term));
     }
 
-    // Returns the courses in the student's main schedule for next semester, or empty if they don't have one yet
+    // Returns the courses in the student's main schedule for next semester, or
+    // empty if they don't have one yet
     @Transactional(readOnly = true)
     public List<ScheduledCourse> coursesFor(StudentProfile student) {
         return mainSchedule(student).map(scheduledCourseRepository::findBySchedule).orElse(List.of());
     }
 
-    // The courses in one schedule, for showing any of the student's schedules on the same page
+    // The courses in one schedule, for showing any of the student's schedules on
+    // the same page
     @Transactional(readOnly = true)
     public List<ScheduledCourse> coursesFor(NextSemesterSchedule schedule) {
         return scheduledCourseRepository.findBySchedule(schedule);
     }
 
-    // Adds a course to the student's main schedule for next semester, making the schedule if it's their
-    // first course. Calls the version below directly, so it needs its own @Transactional
+    // Adds a course to the student's main schedule for next semester, making the
+    // schedule if it's their
+    // first course. Calls the version below directly, so it needs its own
+    // @Transactional
     @Transactional
     public List<String> addCourse(StudentProfile student, Long offeringId,
             Long primarySectionId, Long attachedSectionId) {
         return addCourseTo(student, null, offeringId, primarySectionId, attachedSectionId);
     }
 
-    // Adds a course to one of the student's schedules: lecture and its lab or tutorial if it has one.
+    // Adds a course to one of the student's schedules: lecture and its lab or
+    // tutorial if it has one.
     // scheduleId is the schedule to add it to, or null for the main schedule.
-    // Named differently from addCourse, so a call with one Long too many can't quietly pick the wrong one.
+    // Named differently from addCourse, so a call with one Long too many can't
+    // quietly pick the wrong one.
     // Returns every problem found
     @Transactional
     public List<String> addCourseTo(StudentProfile student, Long scheduleId, Long offeringId,
@@ -111,7 +118,8 @@ public class NextSemesterScheduleService {
             return List.of("Next semester's courses aren't available yet.");
         }
 
-        // Checked first, since the id comes from the form and can be changed to another student's schedule
+        // Checked first, since the id comes from the form and can be changed to another
+        // student's schedule
         Optional<NextSemesterSchedule> chosenSchedule = Optional.empty();
         if (scheduleId != null) {
             chosenSchedule = scheduleRepository.findByIdAndStudentAndTerm(scheduleId, student, term.get());
@@ -169,7 +177,8 @@ public class NextSemesterScheduleService {
             attached = found.get();
         }
 
-        // The chosen schedule, or the student's main one, made now if this is their first course
+        // The chosen schedule, or the student's main one, made now if this is their
+        // first course
         NextSemesterSchedule schedule = chosenSchedule.orElseGet(() -> scheduleRepository
                 .findByStudentAndTermAndMainTrue(student, term.get())
                 .orElseGet(() -> scheduleRepository
@@ -246,14 +255,16 @@ public class NextSemesterScheduleService {
                 .toList();
     }
 
-    // The class meetings in the student's main schedule. The versions below that take a list of courses
+    // The class meetings in the student's main schedule. The versions below that
+    // take a list of courses
     // work for any schedule
     @Transactional(readOnly = true)
     public Map<DayOfWeek, List<ClassTime>> meetingsByDay(StudentProfile student) {
         return meetingsByDay(coursesFor(student));
     }
 
-    // The class meetings of these courses grouped by weekday, Monday to Friday first,
+    // The class meetings of these courses grouped by weekday, Monday to Friday
+    // first,
     // each day sorted by start time. Sections without published times aren't
     // included
     @Transactional(readOnly = true)
@@ -308,13 +319,15 @@ public class NextSemesterScheduleService {
         return MAX_UNITS;
     }
 
-    // Every pair of classes in the student's main schedule that overlap on the same day
+    // Every pair of classes in the student's main schedule that overlap on the same
+    // day
     @Transactional(readOnly = true)
     public List<Conflict> conflicts(StudentProfile student) {
         return conflicts(coursesFor(student));
     }
 
-    // Every pair of these courses' classes that overlap on the same day, for the warnings
+    // Every pair of these courses' classes that overlap on the same day, for the
+    // warnings
     @Transactional(readOnly = true)
     public List<Conflict> conflicts(List<ScheduledCourse> courses) {
         List<Conflict> conflicts = new ArrayList<>();
@@ -459,10 +472,11 @@ public class NextSemesterScheduleService {
             courseOrder.add(course.getOffering().getCourse().getSubject() + " "
                     + course.getOffering().getCourse().getNumber());
         }
-        Set<ClassTime> clashing = new HashSet<>();
+        Map<DayOfWeek, Set<ClassTime>> clashing = new EnumMap<>(DayOfWeek.class);
         for (Conflict c : conflicts(courses)) {
-            clashing.add(c.first());
-            clashing.add(c.second());
+            Set<ClassTime> onThatDay = clashing.computeIfAbsent(c.day(), d -> new HashSet<>());
+            onThatDay.add(c.first());
+            onThatDay.add(c.second());
         }
 
         List<TimetableBlock> blocks = new ArrayList<>();
@@ -478,7 +492,7 @@ public class NextSemesterScheduleService {
                         rowFor(t.start(), startHour),
                         rowFor(t.end(), startHour),
                         t.course() + " " + t.section() + " " + t.type(),
-                        clashing.contains(t),
+                        clashing.getOrDefault(day.getKey(), Set.of()).contains(t),
                         courseOrder.indexOf(t.course()) % COLORS,
                         place.lane(),
                         place.lanes()));

@@ -330,6 +330,24 @@ public class NextSemesterScheduleServiceTest {
         assertThat(service.conflicts(mainCourses)).hasSize(1);
         assertThat(service.totalUnits(justMacmCourses)).isEqualByComparingTo("3");
         assertThat(service.conflicts(justMacmCourses)).isEmpty();
+    }
 
+    // A Mon/Wed lecture that only clashes on Monday is only outlined on Monday
+    @Test
+    void clashOnlyOutlinesTheDayItHappens() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        macm.replaceMeetings(List.of(
+                new SectionMeeting(DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20), null),
+                new SectionMeeting(DayOfWeek.WEDNESDAY, LocalTime.of(10, 30), LocalTime.of(11, 20), null)));
+        sectionRepository.save(macm);
+        Section math = saveLecture("MATH", "152", "4", DayOfWeek.MONDAY, LocalTime.of(11, 0), LocalTime.of(11, 50));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+        service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+
+        List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
+
+        TimetableBlock wednesday = blocks.stream().filter(b -> b.column() == 4).findFirst().orElseThrow();
+        assertThat(wednesday.conflict()).isFalse();
+        assertThat(blocks.stream().filter(b -> b.column() == 2)).allMatch(TimetableBlock::conflict);
     }
 }
