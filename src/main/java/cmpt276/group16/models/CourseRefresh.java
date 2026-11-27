@@ -90,7 +90,7 @@ public class CourseRefresh {
 
     // for example "2027 Spring"
     public String getTermName() {
-        return termYear + " " + season.getShowName();
+        return new YearAndSeason(termYear, season).name();
     }
 
     public boolean isAutomatic() {
