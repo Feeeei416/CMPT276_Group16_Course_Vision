@@ -48,11 +48,13 @@ import cmpt276.group16.services.NextSemesterScheduleService;
 import cmpt276.group16.services.PlanPrerequisites;
 import cmpt276.group16.services.PlanService;
 import cmpt276.group16.services.PlanService.TermPlan;
+import cmpt276.group16.services.UnitText;
 
 // #71: loads only AdvisorStudentController and the web layer (including AuthInterceptor); everything else is a mock.
-// AssignedStudent is the real one, since it's the check that refuses other advisors' students
+// AssignedStudent is the real one, since it's the check that refuses other advisors' students.
+// UnitText is real too: the course table writes units with ${@unitText.number(...)}
 @WebMvcTest(AdvisorStudentController.class)
-@Import(AssignedStudent.class)
+@Import({AssignedStudent.class, UnitText.class})
 class AdvisorStudentControllerTest {
 
     @Autowired
@@ -153,7 +155,7 @@ class AdvisorStudentControllerTest {
                .andExpect(content().string(containsString("Needs CMPT 225 with C- or better, you have D.")));
     }
 
-        // One course the app couldn't read says "course has", more than one says "courses have"
+    // One course the app couldn't read says "course has", more than one says "courses have"
     @Test
     void uncheckedCourses_useTheRightPlural() throws Exception {
         CourseResult cmpt415 = new CourseResult(course("CMPT", "415", "Special Research Projects"), List.of());
@@ -170,7 +172,9 @@ class AdvisorStudentControllerTest {
         mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("2 more courses have prerequisites")));
-    }// Next semester's offerings aren't loaded yet, so the page says so instead of showing empty lists
+    }
+
+    // Next semester's offerings aren't loaded yet, so the page says so instead of showing empty lists
     @Test
     void eligibleCoursesNotLoadedYet() throws Exception {
         when(eligibilityService.forNextSemester(priya))
