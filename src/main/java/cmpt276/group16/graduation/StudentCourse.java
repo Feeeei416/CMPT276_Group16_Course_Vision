@@ -9,9 +9,17 @@ import cmpt276.group16.services.PlanRules;
 // One course as the Graduation Report (#69) counts it: from the student's record, their main plan,
 // or next semester's schedule. A course appears once, even if it was taken twice or is also planned.
 // grade: the grade of the attempt that counts, only for COMPLETED courses.
-// designations: the WQB designations the course has, empty when SFU's data for it isn't loaded
+// designations: the WQB designations the course has.
+// designationsKnown: false when the app has no SFU data for the course, so it may have designations that aren't
+//                    listed. The app only loads CMPT, ENSC, MACM and MATH, so this is most Breadth courses
 public record StudentCourse(String subject, String number, BigDecimal units, State state, String grade,
-                            Set<Designation> designations) {
+                            Set<Designation> designations, boolean designationsKnown) {
+
+    // A course whose designations are known, which is every course in RequirementCheckTest unless it says otherwise
+    public StudentCourse(String subject, String number, BigDecimal units, State state, String grade,
+                         Set<Designation> designations) {
+        this(subject, number, units, state, grade, designations, true);
+    }
 
     // Best first: a requirement uses completed courses before ones in progress, and those before planned ones
     public enum State {

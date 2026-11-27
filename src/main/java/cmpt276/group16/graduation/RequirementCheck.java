@@ -43,6 +43,9 @@ public final class RequirementCheck {
     // A choice with more options than this doesn't list them, like the BSc's 58 table courses
     static final int MAX_OPTIONS_SHOWN = 8;
 
+    // A WQB note names at most this many courses, then says how many more
+    static final int MAX_UNKNOWN_SHOWN = 5;
+
     // Completed first, then in progress, then planned. Lower numbers first within each, so Breadth, which comes
     // before Depth, uses 300-level courses and leaves the 400-level ones for Depth
     private static final Comparator<StudentCourse> BEST_FIRST = Comparator
@@ -50,8 +53,13 @@ public final class RequirementCheck {
             .thenComparingInt(StudentCourse::numberValue)
             .thenComparing(StudentCourse::code);
 
-    // The courses picked for one requirement, best first, and whether they're enough
-    private record Pick(List<StudentCourse> courses, boolean met, String progress) {
+    // The courses picked for one requirement, best first, and whether they're enough.
+    // note: set when the rule isn't met but might be, because of courses the app has no data for
+    private record Pick(List<StudentCourse> courses, boolean met, String progress, String note) {
+
+        Pick(List<StudentCourse> courses, boolean met, String progress) {
+            this(courses, met, progress, null);
+        }
     }
 
     private RequirementCheck() {
@@ -87,7 +95,7 @@ public final class RequirementCheck {
         List<RequirementCourse> named = item.courses();
 
         if (requirement.getKind() == RequirementKind.NOTE) {
-            return new Result(requirement, requirement.getText(), Status.CHECK, null, null, List.of());
+            return new Result(requirement, requirement.getText(), Status.CHECK, null, null, null, List.of());
         }
         if (requirement.getKind() == RequirementKind.TOTAL_UNITS) {
             return totalUnits(requirement, available);
@@ -100,9 +108,10 @@ public final class RequirementCheck {
             case DESIGNATION -> designation(requirement, available);
             default -> throw new IllegalStateException("Unknown kind " + requirement.getKind());
         };
-        Status status = status(pick);
+        // A rule that isn't met but might be, once someone checks the courses the app has no data for
+        Status status = pick.note() != null ? Status.CHECK : status(pick);
         return new Result(requirement, name(requirement, named), status, pick.progress(),
-                options(requirement, named, status), pick.courses());
+                options(requirement, named, status), pick.note(), pick.courses());
     }
 
     // COURSE: the one course. CHOOSE: courseCount of the listed courses
@@ -213,23 +222,48 @@ public final class RequirementCheck {
     }
 
     // Units of courses with one of the designations, like 6 units of W. outsideSubject leaves out the major,
-    // since Breadth courses have to be outside it
+    // since Breadth courses have to be outside it.
+    // The app only has SFU's data for CMPT, ENSC, MACM and MATH, so a HIST or PSYC course might have a designation
+    // it doesn't know about. When the rule isn't met and the student has courses like that, it's left for an advisor
+    // to check, with those courses named, instead of showing as Remaining
     private static Pick designation(GraduationRequirement requirement, List<StudentCourse> available) {
         List<StudentCourse> picked = new ArrayList<>();
+        List<String> unknown = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
         for (StudentCourse course : available) {
-            if (total.compareTo(requirement.getUnits()) >= 0) {
-                break;
-            }
-            boolean hasDesignation = !Collections.disjoint(course.designations(), requirement.getDesignations());
             boolean outside = requirement.getOutsideSubject() == null
                     || !requirement.getOutsideSubject().equals(course.subject());
-            if (hasDesignation && outside && !course.isCoop() && meetsMinimum(course, requirement.getMinGrade())) {
+            if (!outside || course.isCoop() || !meetsMinimum(course, requirement.getMinGrade())) {
+                continue;
+            }
+            boolean hasDesignation = !Collections.disjoint(course.designations(), requirement.getDesignations());
+            if (hasDesignation && total.compareTo(requirement.getUnits()) < 0) {
                 picked.add(course);
                 total = total.add(course.units());
+            } else if (!hasDesignation && !course.designationsKnown()) {
+                unknown.add(course.code());
             }
         }
-        return unitPick(picked, total, requirement.getUnits());
+
+        Pick pick = unitPick(picked, total, requirement.getUnits());
+        if (pick.met() || unknown.isEmpty()) {
+            return pick;
+        }
+        return new Pick(pick.courses(), false, pick.progress(), unknownNote(unknown));
+    }
+
+    // For example "No WQB data for HIST 101 and PSYC 102, so check whether they count."
+    private static String unknownNote(List<String> codes) {
+        String list;
+        if (codes.size() == 1) {
+            list = codes.get(0);
+        } else if (codes.size() <= MAX_UNKNOWN_SHOWN) {
+            list = String.join(", ", codes.subList(0, codes.size() - 1)) + " and " + codes.get(codes.size() - 1);
+        } else {
+            list = String.join(", ", codes.subList(0, MAX_UNKNOWN_SHOWN)) + " and "
+                    + (codes.size() - MAX_UNKNOWN_SHOWN) + " more";
+        }
+        return "No WQB data for " + list + ", so check whether " + (codes.size() == 1 ? "it counts." : "they count.");
     }
 
     // Units overall, or of courses numbered minNumber and above (upper division). Every course counts, so they
@@ -271,7 +305,7 @@ public final class RequirementCheck {
             progress += ", " + UnitText.number(planned) + " planned";
         }
         String name = requirement.getTitle() != null ? requirement.getTitle() : "Total units";
-        return new Result(requirement, name, status, progress, null, List.of());
+        return new Result(requirement, name, status, progress, null, null, List.of());
     }
 
     // The program's units, leaving out co-op work terms. The total needed is the set's TOTAL_UNITS rule that

@@ -49,6 +49,8 @@
                                   th:text="|Counted: ${#strings.listJoin(r.courses().![label()], ', ')}|">Counted: CMPT 225 (A)</span>
                             <span th:if="${r.options() != null}" class="report-note muted"
                                   th:text="|Choose from ${r.options()}|">Choose from MATH 150, MATH 151</span>
+                            <span th:if="${r.note() != null}" class="report-note muted"
+                                  th:text="${r.note()}">No WQB data for HIST 101, so check whether it counts.</span>
                         </div>
                         <span th:class="${r.status().badgeClass}" th:text="${r.status().label}">Completed</span>
                     </li>

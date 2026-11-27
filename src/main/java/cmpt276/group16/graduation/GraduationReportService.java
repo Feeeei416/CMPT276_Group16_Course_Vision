@@ -114,9 +114,11 @@ public class GraduationReportService {
         }
 
         Map<String, Set<Designation>> designations = designations(drafts, sfuCourses);
+        // A course the app has SFU's data for has all its designations listed. Any other course might have more
         return drafts.stream()
                 .map(draft -> new StudentCourse(draft.subject(), draft.number(), draft.units(), draft.state(),
-                        draft.grade(), designations.getOrDefault(draft.code(), Set.of())))
+                        draft.grade(), designations.getOrDefault(draft.code(), Set.of()),
+                        sfuCourses.containsKey(draft.code())))
                 .toList();
     }
 
@@ -127,13 +129,26 @@ public class GraduationReportService {
         }
     }
 
-    // WQB designations come from SFU's course data. A record course that wasn't linked to it is looked up by code.
-    // A course SFU's data doesn't have yet still counts as W when its number ends in W, like CMPT 105W
+    // WQB designations come from SFU's course data. Record courses that weren't linked to it are looked up by code,
+    // all in one query. A course SFU's data doesn't have still counts as W when its number ends in W, like CMPT 105W
     private Map<String, Set<Designation>> designations(List<Draft> drafts, Map<String, Course> sfuCourses) {
-        for (Draft draft : drafts) {
-            if (!sfuCourses.containsKey(draft.code()) && !draft.number().contains("X")) {
-                courseRepository.findBySubjectAndNumber(draft.subject(), draft.number())
-                        .ifPresent(course -> sfuCourses.put(draft.code(), course));
+        List<Draft> unlinked = drafts.stream()
+                .filter(draft -> !sfuCourses.containsKey(draft.code()) && !draft.number().contains("X"))
+                .toList();
+        if (!unlinked.isEmpty()) {
+            Set<String> wanted = new HashSet<>();
+            Set<String> subjects = new HashSet<>();
+            Set<String> numbers = new HashSet<>();
+            for (Draft draft : unlinked) {
+                wanted.add(draft.code());
+                subjects.add(draft.subject());
+                numbers.add(draft.number());
+            }
+            for (Course course : courseRepository.findBySubjectInAndNumberIn(subjects, numbers)) {
+                String code = course.getSubject() + " " + course.getNumber();
+                if (wanted.contains(code)) {
+                    sfuCourses.put(code, course);
+                }
             }
         }
 

@@ -113,6 +113,12 @@ class RequirementCheckTest {
         return course(code, State.COMPLETED, grade, designations);
     }
 
+    // A course the app has no SFU data for, like HIST 101, so its designations aren't known
+    private static StudentCourse noData(String code, String grade) {
+        String[] parts = code.split(" ");
+        return new StudentCourse(parts[0], parts[1], new BigDecimal("3"), State.COMPLETED, grade, Set.of(), false);
+    }
+
     private static StudentCourse taking(String code) {
         return course(code, State.IN_PROGRESS, null);
     }
@@ -372,6 +378,66 @@ class RequirementCheckTest {
 
         assertThat(result(report, 0).status()).isEqualTo(Status.COMPLETED);
         assertThat(result(report, 1).status()).isEqualTo(Status.COMPLETED);
+    }
+
+    @Test
+    void unmetDesignationWithCoursesTheAppHasNoDataForIsLeftToCheck() {
+        designation("Breadth, Humanities", Designation.B_HUM, "CMPT");
+
+        Result humanities = result(report(done("PHIL 120", "B", Designation.B_HUM), noData("HIST 101", "A"),
+                noData("CMPT 105", "A")), 0);
+
+        assertThat(humanities.status()).isEqualTo(Status.CHECK);
+        assertThat(humanities.progress()).isEqualTo("3 of 6 units");
+        assertThat(counted(humanities)).containsExactly("PHIL 120 (B)");
+        // CMPT courses can't count toward Breadth, so CMPT 105 isn't named
+        assertThat(humanities.note()).isEqualTo("No WQB data for HIST 101, so check whether it counts.");
+    }
+
+    @Test
+    void metDesignationDoesntMentionCoursesWithoutData() {
+        designation("Breadth, Humanities", Designation.B_HUM, "CMPT");
+
+        Result humanities = result(report(done("PHIL 120", "B", Designation.B_HUM),
+                done("PHIL 121", "A", Designation.B_HUM), noData("HIST 101", "A")), 0);
+
+        assertThat(humanities.status()).isEqualTo(Status.COMPLETED);
+        assertThat(humanities.note()).isNull();
+    }
+
+    @Test
+    void unmetDesignationWithOnlyKnownCoursesIsRemaining() {
+        designation("Breadth, Humanities", Designation.B_HUM, "CMPT");
+
+        Result humanities = result(report(done("MATH 150", "A")), 0);
+
+        assertThat(humanities.status()).isEqualTo(Status.REMAINING);
+        assertThat(humanities.note()).isNull();
+    }
+
+    @Test
+    void courseWithoutDataStillCountsAsWritingFromItsNumber() {
+        designation("Writing", Designation.W, null);
+
+        StudentCourse english = new StudentCourse("ENGL", "199W", new BigDecimal("3"), State.COMPLETED, "B",
+                Set.of(Designation.W), false);
+
+        Result writing = result(report(english, done("CMPT 376W", "A", Designation.W)), 0);
+
+        assertThat(writing.status()).isEqualTo(Status.COMPLETED);
+        assertThat(writing.note()).isNull();
+    }
+
+    @Test
+    void longListOfCoursesWithoutDataIsShortened() {
+        designation("Breadth, Social Sciences", Designation.B_SOC, "CMPT");
+
+        Result social = result(report(noData("ANTH 101", "A"), noData("ECON 103", "A"), noData("GEOG 100", "A"),
+                noData("HIST 102", "A"), noData("POL 100", "A"), noData("PSYC 102", "A"), noData("SA 150", "A")), 0);
+
+        assertThat(social.note())
+                .isEqualTo("No WQB data for GEOG 100, POL 100, ANTH 101, HIST 102, PSYC 102 and 2 more, "
+                        + "so check whether they count.");
     }
 
     @Test

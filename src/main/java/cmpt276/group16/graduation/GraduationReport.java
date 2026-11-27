@@ -46,9 +46,10 @@ public record GraduationReport(RequirementSet set, List<Category> categories, Un
     // progress: how much is done for rules that count courses, areas or units, for example "6 of 12 units";
     //           null for a single required course and for notes.
     // options: for a choice that isn't met yet, the courses to choose from; null when there are too many to list.
+    // note: for a WQB rule the app can't settle, the courses it has no data for; otherwise null.
     // courses: the courses that count toward it, best first
     public record Result(GraduationRequirement requirement, String name, Status status, String progress,
-                         String options, List<StudentCourse> courses) {
+                         String options, String note, List<StudentCourse> courses) {
     }
 
     // Units toward the degree, leaving out co-op work terms.

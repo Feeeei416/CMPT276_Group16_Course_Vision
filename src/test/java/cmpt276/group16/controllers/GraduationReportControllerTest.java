@@ -19,7 +19,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.springframework.transaction.annotation.Transactional;
 
 import cmpt276.group16.models.Course;
+import cmpt276.group16.models.CourseDesignation;
+import cmpt276.group16.models.CourseDesignationRepository;
 import cmpt276.group16.models.CourseRepository;
+import cmpt276.group16.models.Designation;
 import cmpt276.group16.models.Plan;
 import cmpt276.group16.models.PlanRepository;
 import cmpt276.group16.models.PlanTerm;
@@ -60,6 +63,9 @@ class GraduationReportControllerTest {
 
     @Autowired
     private CourseRepository courseRepository;
+
+    @Autowired
+    private CourseDesignationRepository designationRepository;
 
     @Autowired
     private TermRepository termRepository;
@@ -194,6 +200,26 @@ class GraduationReportControllerTest {
 
         assertThat(page(student))
                 .contains("Counted: CMPT 105W (B), CMPT 376W (in progress)");
+    }
+
+    @Test
+    void designationsComeFromSfusCourseData() throws Exception {
+        StudentProfile student = saveStudent("report.quantitative@example.com", Program.COMPUTING_SCIENCE);
+        Course calculus = courseRepository.save(
+                new Course("MATH", "150", "Calculus I", new BigDecimal("4.00"), null, null, null));
+        designationRepository.save(new CourseDesignation(calculus, Designation.Q));
+        record(student, took("2024 Fall", "MATH", "150", "B"));
+
+        // Quantitative is the only 6-unit rule MATH 150 counts toward. The record has it as 3 units
+        assertThat(page(student)).contains("3 of 6 units");
+    }
+
+    @Test
+    void breadthWithCoursesTheAppHasNoDataForIsLeftToCheck() throws Exception {
+        StudentProfile student = saveStudent("report.history@example.com", Program.COMPUTING_SCIENCE);
+        record(student, took("2024 Fall", "HIST", "101", "A"));
+
+        assertThat(page(student)).contains("No WQB data for HIST 101, so check whether it counts.");
     }
 
     @Test
