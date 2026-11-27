@@ -10,7 +10,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
-import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.TermKind;
 import cmpt276.group16.models.YearAndSeason;
