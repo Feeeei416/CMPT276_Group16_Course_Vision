@@ -164,7 +164,7 @@
         <div
           class="timetable"
           aria-hidden="true"
-          th:style="|grid-template-columns: 4rem repeat(${dayCount}, 1fr); grid-template-rows: 2rem repeat(${(gridHours.end() - gridHours.start()) * 6}, 0.6rem);|"
+          th:style="|grid-template-columns: 4rem repeat(${dayCount}, 1fr); grid-template-rows: 2rem repeat(${(gridHours.end() - gridHours.start()) * 6}, 0.8rem);|"
         >
           <div
             class="timetable-day"
@@ -187,6 +187,7 @@
             th:each="b : ${timetableBlocks}"
             th:classappend="|colour-${b.color()}| + (${b.conflict()} ? ' conflict' : '')"
             th:style="|grid-column: ${b.column()}; grid-row: ${b.rowStart()} / ${b.rowEnd()}; width: calc(100% / ${b.lanes()}); margin-left: calc(100% * ${b.lane()} / ${b.lanes()});|"
+            th:title="|${b.label()} ${b.time()}|"
           >
           <span th:text="${b.label()}">CMPT 225 D100 LEC</span>
             <span class="timetable-time" th:text="${b.time()}">10:30–11:20</span>  

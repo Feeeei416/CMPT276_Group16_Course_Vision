@@ -531,6 +531,8 @@ button.link {
   display: grid;
   grid-template-columns: 4rem repeat(5, 1fr);
   grid-template-rows: 2rem repeat(60, 0.6rem);
+  max-width: 50rem;
+  margin: 0 auto;
 }
 .timetable-day { text-align: center; font-weight: 600; }
 .timetable-hour { font-size: 0.75rem; color: #666; border-top: 1px solid #eee; }
@@ -541,6 +543,8 @@ button.link {
   overflow: hidden;
   justify-self: start;
   box-sizing: border-box;
+  line-height: 1.2;
+  text-align: center;
 }
 .timetable-block.conflict { outline: 2px solid #a6192e; }
 
@@ -572,6 +576,6 @@ button.link {
     clip: auto;
     white-space: normal;
   }
+}
 
 .timetable-time { display: block; font-size: 0.7rem; } 
-}
