@@ -33,16 +33,22 @@ public class AdvisorCommentService {
         return commentRepository.findByStudentOrderByCreatedAtDescIdDesc(student);
     }
 
-    // Saves the comment at the clock's current time. Returns why it wasn't saved, or an empty list when it was.
-    // Blank lines and spaces at either end are dropped
+    // Saves the comment at the clock's current time. Returns why it wasn't saved, or an empty list when it was
     @Transactional
     public List<String> add(User advisor, StudentProfile student, String text) {
-        String body = text == null ? "" : text.strip();
+        String body = clean(text);
         List<String> problems = problemsWith(body);
         if (problems.isEmpty()) {
             commentRepository.save(new AdvisorComment(student, advisor, body, Instant.now(clock)));
         }
         return problems;
+    }
+
+    // A browser counts a line break in a text box as one character for maxlength, but sends it as \r\n.
+    // Turning it back into \n makes the count here match the one the advisor saw.
+    // Blank lines and spaces at either end are dropped
+    private static String clean(String text) {
+        return text == null ? "" : text.replace("\r\n", "\n").replace('\r', '\n').strip();
     }
 
     private static List<String> problemsWith(String body) {

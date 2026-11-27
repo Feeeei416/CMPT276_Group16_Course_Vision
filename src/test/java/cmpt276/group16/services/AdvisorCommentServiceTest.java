@@ -104,6 +104,18 @@ class AdvisorCommentServiceTest {
         assertThat(commentService.commentsFor(jack)).hasSize(1);
     }
 
+    // The browser counted 2000 characters, but sent the line break as \r\n, which makes 2001
+    @Test
+    void lineBreakFromTheBrowserCountsAsOneCharacter() {
+        String sent = "a".repeat(1000) + "\r\n" + "a".repeat(999);
+
+        assertThat(commentService.add(advisor, jack, sent)).isEmpty();
+
+        assertThat(commentService.commentsFor(jack)).singleElement()
+                .extracting(AdvisorComment::getBody)
+                .isEqualTo("a".repeat(1000) + "\n" + "a".repeat(999));
+    }
+
     // Spaces and blank lines at the ends are dropped, but the ones inside are kept
     @Test
     void spacesAtTheEndsAreDropped() {
