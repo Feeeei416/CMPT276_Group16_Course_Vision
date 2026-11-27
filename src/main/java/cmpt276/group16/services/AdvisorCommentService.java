@@ -18,6 +18,7 @@ import cmpt276.group16.models.User;
 public class AdvisorCommentService {
 
     public static final String EMPTY = "A comment can't be empty.";
+    public static final String NOT_YOURS = "You can only delete your own comments.";
 
     private final AdvisorCommentRepository commentRepository;
     private final Clock clock;
@@ -42,6 +43,15 @@ public class AdvisorCommentService {
             commentRepository.save(new AdvisorComment(student, advisor, body, Instant.now(clock)));
         }
         return problems;
+    }
+
+    // Deletes one of the advisor's own comments on this student's report. Returns why it wasn't deleted, or an empty
+    // list when it was. Another advisor's comment, a comment on a different student, and an id that doesn't exist
+    // all get the same answer
+    @Transactional
+    public List<String> delete(User advisor, StudentProfile student, Long commentId) {
+        long deleted = commentRepository.deleteByIdAndStudentAndAdvisor(commentId, student, advisor);
+        return deleted == 0 ? List.of(NOT_YOURS) : List.of();
     }
 
     // A browser counts a line break in a text box as one character for maxlength, but sends it as \r\n.

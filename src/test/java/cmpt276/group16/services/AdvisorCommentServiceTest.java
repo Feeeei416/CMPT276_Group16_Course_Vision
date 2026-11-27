@@ -116,6 +116,43 @@ class AdvisorCommentServiceTest {
                 .isEqualTo("a".repeat(1000) + "\n" + "a".repeat(999));
     }
 
+    @Test
+    void advisorCanDeleteOwnComment() {
+        commentService.add(advisor, jack, "Take CMPT 225 in Spring.");
+        Long id = commentService.commentsFor(jack).get(0).getId();
+
+        assertThat(commentService.delete(advisor, jack, id)).isEmpty();
+
+        assertThat(commentService.commentsFor(jack)).isEmpty();
+    }
+
+    @Test
+    void anotherAdvisorsCommentIsntDeleted() {
+        User otherAdvisor = userRepository.save(new User("sam@example.com", "hash", "Sam", Role.ADVISOR));
+        commentService.add(otherAdvisor, jack, "From Sam");
+        Long id = commentService.commentsFor(jack).get(0).getId();
+
+        assertThat(commentService.delete(advisor, jack, id)).containsExactly(AdvisorCommentService.NOT_YOURS);
+
+        assertThat(commentService.commentsFor(jack)).hasSize(1);
+    }
+
+    // The advisor's own comment, but asked for through a different student's report
+    @Test
+    void commentOnAnotherStudentIsntDeleted() {
+        commentService.add(advisor, finn, "For Finn");
+        Long id = commentService.commentsFor(finn).get(0).getId();
+
+        assertThat(commentService.delete(advisor, jack, id)).containsExactly(AdvisorCommentService.NOT_YOURS);
+
+        assertThat(commentService.commentsFor(finn)).hasSize(1);
+    }
+
+    @Test
+    void commentThatDoesntExistIsntDeleted() {
+        assertThat(commentService.delete(advisor, jack, 999_999L)).containsExactly(AdvisorCommentService.NOT_YOURS);
+    }
+
     // Spaces and blank lines at the ends are dropped, but the ones inside are kept
     @Test
     void spacesAtTheEndsAreDropped() {
