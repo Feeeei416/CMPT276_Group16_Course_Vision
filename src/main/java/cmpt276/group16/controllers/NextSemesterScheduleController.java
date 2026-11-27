@@ -4,8 +4,10 @@ import cmpt276.group16.services.CourseOptions;
 import cmpt276.group16.services.NextSemesterScheduleService;
 import cmpt276.group16.services.PlanRules;
 import cmpt276.group16.services.ScheduleListService;
+import cmpt276.group16.services.SchedulePrerequisites;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Controller;
@@ -32,12 +34,14 @@ public class NextSemesterScheduleController {
     private final CurrentStudent currentStudent;
     private final NextSemesterScheduleService scheduleService;
     private final ScheduleListService scheduleListService;
+    private final SchedulePrerequisites schedulePrerequisites;
 
     public NextSemesterScheduleController(CurrentStudent currentStudent, NextSemesterScheduleService scheduleService,
-            ScheduleListService scheduleListService) {
+            ScheduleListService scheduleListService, SchedulePrerequisites schedulePrerequisites) {
         this.currentStudent = currentStudent;
         this.scheduleService = scheduleService;
         this.scheduleListService = scheduleListService;
+        this.schedulePrerequisites = schedulePrerequisites;
     }
 
     // scheduleId only decides which page to go back to. The course id already says which schedule it's in
@@ -131,6 +135,9 @@ public class NextSemesterScheduleController {
         model.addAttribute("totalUnits", scheduleService.totalUnits(courses));
         model.addAttribute("unitLimit", scheduleService.unitLimitFor(student));
         model.addAttribute("conflicts", scheduleService.conflicts(courses));
+        // #74: what each course's prerequisites are missing, and what to confirm, by ScheduledCourse id
+        model.addAttribute("prerequisites",
+                schedule == null ? Map.of() : schedulePrerequisites.resultsFor(student, courses, schedule.getTerm()));
         if (!model.containsAttribute("errors")) {
             model.addAttribute("errors", List.of());
         }

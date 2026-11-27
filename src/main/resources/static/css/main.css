@@ -305,6 +305,21 @@ a.btn {
     color: var(--color-error);
 }
 
+/* Something to confirm about a course's prerequisites, like one still in progress, on its own line (#74) */
+.plan-course-note {
+    display: block;
+}
+
+/* My schedule (#74): a course's prerequisite flags go on a full-width line after the rest of its row */
+.plan-courses li:has(> .schedule-prerequisites) {
+    flex-wrap: wrap;
+}
+
+.schedule-prerequisites {
+    flex-basis: 100%;
+    order: 1;
+}
+
 /* A text box or dropdowns and a button on one line, like Add course */
 .inline-form {
     display: flex;

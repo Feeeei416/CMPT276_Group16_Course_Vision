@@ -146,6 +146,14 @@
             th:text="${c.attachedSection.sectionCode}"
             >D101</span>
           <span th:if="${c.primarySection.meetings.isEmpty()}" class="muted">Times not confirmed</span>
+          <!-- #74: prerequisites this course is missing, in red like My plan, then anything to confirm.
+               main.css puts them on their own line under the course -->
+          <span class="schedule-prerequisites" th:if="${prerequisites[c.id] != null}">
+            <span class="plan-course-flag" th:each="sentence : ${prerequisites[c.id].missing()}"
+                  th:text="${sentence}">Needs CMPT 225 with C- or better.</span>
+            <span class="plan-course-note muted" th:each="note : ${prerequisites[c.id].toConfirm()}"
+                  th:text="${note}">CMPT 225 is still in progress.</span>
+          </span>
           <form
             method="post"
             th:action="@{/student/schedule/next-semester/courses/{id}/remove(id=${c.id})}"

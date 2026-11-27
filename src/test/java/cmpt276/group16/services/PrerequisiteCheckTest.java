@@ -492,6 +492,30 @@ class PrerequisiteCheckTest {
         assertThat(result.missing()).containsExactly("Needs CMPT 225 with C- or better.");
     }
 
+    // #74: on My schedule, the other courses in the same schedule count the same way, with their own wording
+    @Test
+    void concurrentPrerequisiteInTheSameScheduleCountsButIsFlagged() {
+        requires(null, "CMPT", "225", "C-").setConcurrentOk(true);
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.checkUpcoming(rules, List.of(), List.of(),
+                List.of(new PrerequisiteCheck.Upcoming("CMPT 225", new BigDecimal("3"), false, "in your schedule")));
+
+        assertThat(result.met()).isTrue();
+        assertThat(result.toConfirm())
+                .containsExactly("CMPT 225 is in your schedule too, and you need C- or better.");
+    }
+
+    @Test
+    void prerequisiteInTheSameScheduleDoesntCountUnlessConcurrent() {
+        requires(null, "CMPT", "225", "C-");
+
+        PrerequisiteCheck.Result result = PrerequisiteCheck.checkUpcoming(rules, List.of(), List.of(),
+                List.of(new PrerequisiteCheck.Upcoming("CMPT 225", new BigDecimal("3"), false, "in your schedule")));
+
+        assertThat(result.met()).isFalse();
+        assertThat(result.missing()).containsExactly("Needs CMPT 225 with C- or better.");
+    }
+
     // Units have no "concurrently", so courses in the same term don't count towards them
     @Test
     void unitRequirementDoesntCountTheSameTerm() {
