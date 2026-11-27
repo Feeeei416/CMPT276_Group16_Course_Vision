@@ -218,7 +218,7 @@
           <ul th:unless="${day.value.isEmpty()}">
             <li
               th:each="t : ${day.value}"
-              th:classappend="${#lists.contains(conflicts.![first], t) or #lists.contains(conflicts.![second], t)} ? 'conflict'"
+              th:classappend="${clashingByDay.containsKey(day.key) and clashingByDay.get(day.key).contains(t)} ? 'conflict'"
               th:text="|${t.timeText()} ${t.course} ${t.section} ${t.type}|"
             >
               10:30–11:20 CMPT 225 D100 LEC

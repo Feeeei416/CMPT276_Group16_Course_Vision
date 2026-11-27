@@ -128,6 +128,7 @@ public class NextSemesterScheduleController {
         model.addAttribute("meetingsByDay", scheduleService.meetingsByDay(courses));
         model.addAttribute("timetableBlocks", scheduleService.timetableBlocks(courses));
         model.addAttribute("gridHours", scheduleService.gridHours(courses));
+        model.addAttribute("clashingByDay", scheduleService.clashingByDay(courses));
         List<CourseOffering> offerings = scheduleService.offeredNextSemester();
         model.addAttribute("offerings", offerings);
         // The suggestions "Add a course" shows as the student types: only next semester's courses

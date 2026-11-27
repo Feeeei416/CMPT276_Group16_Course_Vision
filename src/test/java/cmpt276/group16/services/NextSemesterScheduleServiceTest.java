@@ -350,5 +350,6 @@ public class NextSemesterScheduleServiceTest {
         TimetableBlock wednesday = blocks.stream().filter(b -> b.column() == 4).findFirst().orElseThrow();
         assertThat(wednesday.conflict()).isFalse();
         assertThat(blocks.stream().filter(b -> b.column() == 2)).allMatch(TimetableBlock::conflict);
+        assertThat(service.clashingByDay(service.coursesFor(priya))).doesNotContainKey(DayOfWeek.WEDNESDAY);
     }
 }

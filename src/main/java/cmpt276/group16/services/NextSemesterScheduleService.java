@@ -468,6 +468,17 @@ public class NextSemesterScheduleService {
         return places;
     }
 
+    // For each day, the classes that overlap another class on that day
+    public Map<DayOfWeek, Set<ClassTime>> clashingByDay(List<ScheduledCourse> courses) {
+        Map<DayOfWeek, Set<ClassTime>> clashing = new EnumMap<>(DayOfWeek.class);
+        for (Conflict c : conflicts(courses)) {
+            Set<ClassTime> onThatDay = clashing.computeIfAbsent(c.day(), d -> new HashSet<>());
+            onThatDay.add(c.first());
+            onThatDay.add(c.second());
+        }
+        return clashing;
+    }
+
     // Every class in the student's week, turned into a box with a grid position
     @Transactional(readOnly = true)
     public List<TimetableBlock> timetableBlocks(List<ScheduledCourse> courses) {
@@ -477,12 +488,7 @@ public class NextSemesterScheduleService {
             courseOrder.add(course.getOffering().getCourse().getSubject() + " "
                     + course.getOffering().getCourse().getNumber());
         }
-        Map<DayOfWeek, Set<ClassTime>> clashing = new EnumMap<>(DayOfWeek.class);
-        for (Conflict c : conflicts(courses)) {
-            Set<ClassTime> onThatDay = clashing.computeIfAbsent(c.day(), d -> new HashSet<>());
-            onThatDay.add(c.first());
-            onThatDay.add(c.second());
-        }
+        Map<DayOfWeek, Set<ClassTime>> clashing = clashingByDay(courses);
 
         List<TimetableBlock> blocks = new ArrayList<>();
         for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(courses).entrySet()) {
