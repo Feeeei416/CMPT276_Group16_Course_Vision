@@ -27,7 +27,11 @@
             </thead>
             <tbody>
               <tr th:each="student : ${students}">
-                <td th:text="${student.user.displayName}">Priya</td>
+                <td>
+                  <!-- #71: opens the student's read-only overview -->
+                  <a class="link" th:href="@{/advisor/students/{id}(id=${student.user.id})}"
+                     th:text="${student.user.displayName}">Priya</a>
+                </td>
                 <td th:text="${student.user.email}">priya@example.com</td>
                 <td th:text="${student.program.showName}">Computing Science</td>
                 <td th:text="${student.cohortYear}">2024</td>

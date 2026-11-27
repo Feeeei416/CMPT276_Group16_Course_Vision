@@ -52,6 +52,17 @@
     font-size: 24px;
 }
 
+/* The header's Course Vision is a link home on every page, but reads as the app's name, not a link */
+a.site-title {
+    color: inherit;
+    text-decoration: none;
+}
+
+a.site-title:hover,
+a.site-title:focus-visible {
+    color: var(--color-primary);
+}
+
 /* Basic Element Sytles */
 .input {
     background-color: var(--color-surface);
@@ -420,4 +431,97 @@ button.link {
 .badge-muted {
     background-color: var(--color-bg);
     color: var(--color-text);
+}
+
+/* Course suggestions as you type (static/js/course-search.js), on My schedule and My courses.
+   The list floats under the box, so it doesn't push the page down */
+.course-search {
+    position: relative;
+}
+
+.inline-form .course-search {
+    flex: 1 1 220px;
+}
+
+.inline-form .course-search .input {
+    width: 100%;
+}
+
+.course-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.course-suggestions li {
+    padding: 6px var(--space-sm);
+    cursor: pointer;
+    line-height: 1.25;
+}
+
+.course-suggestions li + li {
+    border-top: 1px solid var(--color-bg);
+}
+
+.course-suggestions li:hover,
+.course-suggestions li[aria-selected="true"] {
+    background: var(--color-bg);
+}
+
+.course-suggestion-code {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.course-suggestion-title {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+}
+
+/* The part of the code or title that matches what was typed */
+.course-suggestions mark {
+    background: rgb(255, 229, 143);
+    color: inherit;
+    padding: 0;
+}
+
+.field-hint {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+}
+
+/* A gentle note, not an error: for example units that don't match what SFU lists now */
+.field-note {
+    margin: var(--space-sm) 0;
+    padding: var(--space-sm) var(--space-md);
+    border-left: 4px solid rgb(214, 158, 46);
+    background: rgb(255, 248, 225);
+    color: var(--color-text);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+}
+
+/* My courses: CGPA and upper-division GPA next to units earned */
+.gpa-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-bottom: 0;
+}
+
+.gpa-summary strong {
+    font-size: 1.15rem;
 }

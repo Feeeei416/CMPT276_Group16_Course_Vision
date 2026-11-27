@@ -21,8 +21,8 @@ public final class PrerequisiteCheck {
     // met: the student can take the course.
     // missing: one sentence for each requirement they don't meet, for example
     //          "Needs CMPT 225 with C- or better, you have D."
-    // toConfirm: things the app can't be sure of, such as a prerequisite still in progress
-    //            or "permission of the instructor". The student should check these themselves
+    // toConfirm: things the app can't be sure of, such as a prerequisite still in progress, a P where a minimum
+    //            grade is needed, or "permission of the instructor". The student should check these themselves
     public record Result(boolean met, List<String> missing, List<String> toConfirm) {
     }
 
@@ -163,6 +163,17 @@ public final class PrerequisiteCheck {
             result.met = true;
             return result;
         }
+        // P, CR, CC and AE earn credit but aren't letter grades, so the app can't tell whether they meet a minimum.
+        // The course counts, and the student checks the grade themselves
+        Optional<TranscriptCourse> creditWithoutLetter = minGrade == null
+                ? Optional.empty()
+                : attempts.stream().filter(c -> isCreditWithoutLetter(c.getGrade())).findFirst();
+        if (creditWithoutLetter.isPresent()) {
+            result.met = true;
+            result.toConfirm.add(code + " has a grade of " + creditWithoutLetter.get().getGrade()
+                    + ", so check that it counts as " + minGrade + " or better.");
+            return result;
+        }
         // A course in progress will be finished before next semester, so it counts for now
         if (attempts.stream().anyMatch(TranscriptCourse::isInProgress)) {
             result.met = true;
@@ -211,6 +222,12 @@ public final class PrerequisiteCheck {
         return index >= 0 && minIndex >= 0 && index <= minIndex;
     }
 
+    // A grade that earns credit without being a letter grade: P, CR, CC or AE.
+    // Transfer credit is left out, since it meets any minimum
+    private static boolean isCreditWithoutLetter(String grade) {
+        return Grades.earnsCredit(grade) && !Grades.TRANSFER.equals(grade) && !Grades.LETTER.contains(grade);
+    }
+
     // The best letter grade among the attempts, to show the student what they have; null if there is none
     private static String bestLetterGrade(List<TranscriptCourse> attempts) {
         return attempts.stream()
@@ -231,7 +248,7 @@ public final class PrerequisiteCheck {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Outcome result = new Outcome();
-        result.phrase = needed.stripTrailingZeros().toPlainString() + " units";
+        result.phrase = UnitText.number(needed) + " units";
 
         if (totals.earned().compareTo(needed) >= 0) {
             result.met = true;
@@ -244,7 +261,7 @@ public final class PrerequisiteCheck {
             result.met = true;
             result.toConfirm.add("Needs " + result.phrase + ", which you'll have after the courses planned before then.");
         } else {
-            result.have = totals.earned().toPlainString();
+            result.have = UnitText.number(totals.earned());
         }
         return result;
     }

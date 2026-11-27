@@ -61,14 +61,14 @@ class TranscriptControllerTest {
 
     // The table the review page should show for TestTranscripts.samplePdf()
     private static final List<List<String>> SAMPLE_ROWS = List.of(
-            List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
-            List.of("2025 Fall", "MACM", "101", "Discrete Math I", "3.00", "A"),
-            List.of("2025 Fall", "MATH", "151", "Calculus I", "3.00", "B+"),
-            List.of("2026 Spring", "CMPT", "125", "Intro.Cmpt.Sci/Programming II", "3.00", "B"),
-            List.of("2026 Spring", "ENSC", "195", "Industrial Internship I", "3.00", "P"),
-            List.of("2026 Fall", "CMPT", "105W", "Social Issues&Comm Strategies", "3.00", "In progress"),
-            List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"),
-            List.of("2026 Fall", "CMPT", "419", "Special Topics in AI", "3.00", "In progress"));
+            List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3", "A-"),
+            List.of("2025 Fall", "MACM", "101", "Discrete Math I", "3", "A"),
+            List.of("2025 Fall", "MATH", "151", "Calculus I", "3", "B+"),
+            List.of("2026 Spring", "CMPT", "125", "Intro.Cmpt.Sci/Programming II", "3", "B"),
+            List.of("2026 Spring", "ENSC", "195", "Industrial Internship I", "3", "P"),
+            List.of("2026 Fall", "CMPT", "105W", "Social Issues&Comm Strategies", "3", "In progress"),
+            List.of("2026 Fall", "CMPT", "225", "Data Structures/Programming", "3", "In progress"),
+            List.of("2026 Fall", "CMPT", "419", "Special Topics in AI", "3", "In progress"));
 
     private StudentProfile student;
     private MockHttpSession session;

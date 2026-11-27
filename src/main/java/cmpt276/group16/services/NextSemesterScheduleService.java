@@ -28,6 +28,11 @@ public class NextSemesterScheduleService {
 
     public record ClassTime(String course, String section, SectionType type,
             LocalTime start, LocalTime end) {
+
+        // For example "8:30–9:20"
+        public String timeText() {
+            return SectionMeeting.timeRange(start, end);
+        }
     }
 
     // Two classes that meet at the same time on the same day

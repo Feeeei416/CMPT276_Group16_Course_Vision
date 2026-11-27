@@ -5,7 +5,6 @@ import java.util.Optional;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.verify;
@@ -61,9 +60,15 @@ public class HomeControllerTest {
     }
 
 
-    // A student assigned to the advisor, built the same way the app builds one
+    // Ids for the test students, since only the database sets them
+    private long nextStudentId = 100;
+
+    // A student assigned to the advisor, built the same way the app builds one.
+    // Each gets an id, because the advisor home links to /advisor/students/{id}
     private StudentProfile studentProfile(String email, String name, Program program, int cohortYear) {
-        return new StudentProfile(new User(email, "hash", name, Role.STUDENT), program, cohortYear);
+        User user = new User(email, "hash", name, Role.STUDENT);
+        user.setId(nextStudentId++);
+        return new StudentProfile(user, program, cohortYear);
     }
 
     // #9 A home page redirects to /login when not logged in
@@ -150,6 +155,19 @@ public class HomeControllerTest {
                .andExpect(status().isOk())
                .andExpect(model().attribute("students", List.of()))
                .andExpect(content().string(containsString("No students are assigned to you yet.")));
+    }
+
+    // #71: each student's name links to their overview
+    @Test
+    void advisorHome_linksEachStudentToTheirOverview() throws Exception {
+        StudentProfile priya = studentProfile("priya@example.com", "Priya", Program.COMPUTING_SCIENCE, 2024);
+        when(advisorAssignmentRepository.findByAdvisorIdOrderByStudentUserDisplayNameAsc(10L))
+                .thenReturn(List.of(new AdvisorAssignment(advisor, priya)));
+
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString(
+                       "href=\"/advisor/students/" + priya.getUser().getId() + "\"")));
     }
 
     // IT home: lists every account with a readable role

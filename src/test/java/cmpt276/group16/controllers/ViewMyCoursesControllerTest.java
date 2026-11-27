@@ -88,9 +88,9 @@ class ViewMyCoursesControllerTest {
         assertThat(page).containsSubsequence("<h2 class=\"section-label\">2025 Fall</h2>", "<h2 class=\"section-label\">2026 Spring</h2>");
 
         assertThat(CourseTableRows.tableRows(page)).containsExactly(
-            List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3.00", "A-"),
-            List.of("2025 Fall", "MATH", "151", "Calculus I", "3.00", "B+"),
-            List.of("2026 Spring", "CMPT", "225", "Data Structures/Programming", "3.00", "In progress"));
+            List.of("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", "3", "A-"),
+            List.of("2025 Fall", "MATH", "151", "Calculus I", "3", "B+"),
+            List.of("2026 Spring", "CMPT", "225", "Data Structures/Programming", "3", "In progress"));
     }
 
     // A course added by hand can be from a term older than the ones already saved
@@ -140,8 +140,8 @@ class ViewMyCoursesControllerTest {
 
         mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
         .andExpect(status().isOk())
-        .andExpect(content().string(containsString("3.00 units earned")))
-        .andExpect(content().string(containsString("(3.00 in progress)")));
+        .andExpect(content().string(containsString("3 units earned")))
+        .andExpect(content().string(containsString("(3 in progress)")));
     }
 
     // #50 Nothing in progress, so only the earned total is shown
@@ -152,8 +152,59 @@ class ViewMyCoursesControllerTest {
             new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "A-")));
 
         mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
-        .andExpect(content().string(containsString("3.00 units earned")))
+        .andExpect(content().string(containsString("3 units earned")))
         .andExpect(content().string(org.hamcrest.Matchers.not(containsString("in progress)"))));
+    }
+
+    // #76 CGPA and upper-division GPA, from SFU's grading scale: (3.67 x 3 + 0 x 3) / 6 = 1.84 overall,
+    // and only CMPT 300's A- in the upper division
+    @Test
+    void showsCgpaAndUpperDivisionGpa() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "MATH", "151", "Calculus I", new BigDecimal("3.00"), "F"),
+            new ParsedCourse("2026 Fall", "CMPT", "300", "Operating Systems I", new BigDecimal("3.00"), "A-")));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("CGPA <strong>1.84</strong>")))
+        .andExpect(content().string(containsString("Upper-division GPA")))
+        .andExpect(content().string(containsString("<strong>3.67</strong>")))
+        .andExpect(content().string(containsString("Your official GPA is on your SFU transcript.")));
+    }
+
+    // #76 No 300- or 400-level courses yet, so only the CGPA is shown
+    @Test
+    void saysThereIsNoUpperDivisionGpaYet() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "CMPT", "120", "Intro.Cmpt.Sci/Programming I", new BigDecimal("3.00"), "B")));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(containsString("CGPA <strong>3.00</strong>")))
+        .andExpect(content().string(containsString("No upper-division GPA yet")));
+    }
+
+    // #76 Only pass/fail and in-progress courses: no GPA yet, rather than 0.00
+    @Test
+    void saysThereIsNoGpaYetWithoutLetterGrades() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+        transcriptService.replaceCourses(student, List.of(
+            new ParsedCourse("2025 Fall", "ENSC", "195", "Industrial Internship I", new BigDecimal("3.00"), "P"),
+            new ParsedCourse("2026 Spring", "CMPT", "225", "Data Structures/Programming", new BigDecimal("3.00"), null)));
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(containsString("No GPA yet. It starts once a course has a letter grade.")))
+        .andExpect(content().string(org.hamcrest.Matchers.not(containsString("CGPA <strong>"))));
+    }
+
+    // #76: every page has a way back home
+    @Test
+    void myCoursesLinksBackHome() throws Exception {
+        StudentProfile student = saveStudent("emma@example.com", "Emma");
+
+        mockMvc.perform(get("/student/courses").session(sessionFor(student.getUser())))
+        .andExpect(content().string(containsString("href=\"/student/home\" class=\"link\">Back to home</a>")));
     }
 
     // #50 An empty record shows the upload link instead of "0.00 units earned"

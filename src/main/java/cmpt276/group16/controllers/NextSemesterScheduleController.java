@@ -1,5 +1,6 @@
 package cmpt276.group16.controllers;
 
+import cmpt276.group16.services.CourseOptions;
 import cmpt276.group16.services.NextSemesterScheduleService;
 import cmpt276.group16.services.PlanRules;
 import cmpt276.group16.services.ScheduleListService;
@@ -123,7 +124,10 @@ public class NextSemesterScheduleController {
         model.addAttribute("pageUrl", pageFor(viewedScheduleId));
         model.addAttribute("courses", courses);
         model.addAttribute("meetingsByDay", scheduleService.meetingsByDay(courses));
-        model.addAttribute("offerings", scheduleService.offeredNextSemester());
+        List<CourseOffering> offerings = scheduleService.offeredNextSemester();
+        model.addAttribute("offerings", offerings);
+        // The suggestions "Add a course" shows as the student types: only next semester's courses
+        model.addAttribute("courseOptionsJson", CourseOptions.json(CourseOptions.of(offerings)));
         model.addAttribute("totalUnits", scheduleService.totalUnits(courses));
         model.addAttribute("unitLimit", scheduleService.unitLimitFor(student));
         model.addAttribute("conflicts", scheduleService.conflicts(courses));
