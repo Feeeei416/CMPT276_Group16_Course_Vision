@@ -135,7 +135,7 @@
     </div>
 </div>
       <ul class="plan-courses" th:unless="${courses.isEmpty()}">
-        <li th:each="c : ${courses}">
+        <li th:each="c, i : ${courses}" th:classappend="|colour-${i.index % 8}|">
           <span
             th:text="${c.offering.course.subject + ' ' + c.offering.course.number}"
             >CMPT 225</span
@@ -156,9 +156,60 @@
         </li>
       </ul>
 
-      <section th:unless="${courses.isEmpty()}">
+      <section
+        th:unless="${courses.isEmpty()}"
+        th:with="dayCount=${meetingsByDay.keySet().toArray()[meetingsByDay.size() - 1].value}"
+      >
         <h2 class="section-label">Week</h2>
-        <div th:each="day : ${meetingsByDay}">
+        <div
+          class="timetable"
+          aria-hidden="true"
+          th:style="|grid-template-columns: 4rem repeat(${dayCount}, 1fr); grid-template-rows: 2rem repeat(${(gridHours.end() - gridHours.start()) * 6}, 0.8rem);|"
+        >
+          <div
+            class="timetable-day"
+            th:each="day : ${meetingsByDay}"
+            th:style="|grid-column: ${day.key.value + 1}; grid-row: 1;|"
+            th:text="${#strings.capitalize(day.key.toString().toLowerCase()).substring(0, 3)}"
+          >
+            Mon
+          </div>
+          <div
+            class="timetable-hour"
+            th:each="h : ${#numbers.sequence(gridHours.start(), gridHours.end() - 1)}"
+            th:style="|grid-column: 1; grid-row: ${(h - gridHours.start()) * 6 + 2} / span 6;|"
+            th:text="|${h}:00|"
+          >
+            8:00
+          </div>
+          <div
+            class="timetable-block"
+            th:each="b : ${timetableBlocks}"
+            th:classappend="|colour-${b.color()}| + (${b.conflict()} ? ' conflict' : '')"
+            th:style="|grid-column: ${b.column()}; grid-row: ${b.rowStart()} / ${b.rowEnd()}; width: calc(100% / ${b.lanes()}); margin-left: calc(100% * ${b.lane()} / ${b.lanes()});|"
+            th:title="|${b.label()} ${b.time()}|"
+          >
+          <span th:text="${b.label()}">CMPT 225 D100 LEC</span>
+            <span class="timetable-time" th:text="${b.time()}">10:30–11:20</span>  
+          </div>
+        </div>
+        <p
+          class="muted"
+          th:each="c : ${courses}"
+          th:if="${c.primarySection.meetings.isEmpty()}"
+          th:text="|${c.offering.course.subject} ${c.offering.course.number}: Times not confirmed|"
+        >
+          CMPT 225: Times not confirmed
+        </p>
+        <p
+          class="muted"
+          th:each="c : ${courses}"
+          th:if="${c.attachedSection != null and c.attachedSection.meetings.isEmpty()}"
+          th:text="|${c.offering.course.subject} ${c.offering.course.number} ${c.attachedSection.sectionCode}: Times not confirmed|"
+        >
+          CMPT 225 D101: Times not confirmed
+        </p>
+        <div class="week-list" th:each="day : ${meetingsByDay}">
           <h3
             th:text="${#strings.capitalize(day.key.toString().toLowerCase())}"
           >
@@ -168,7 +219,7 @@
           <ul th:unless="${day.value.isEmpty()}">
             <li
               th:each="t : ${day.value}"
-              th:classappend="${#lists.contains(conflicts.![first], t) or #lists.contains(conflicts.![second], t)} ? 'conflict'"
+              th:classappend="${clashingByDay.containsKey(day.key) and clashingByDay.get(day.key).contains(t)} ? 'conflict'"
               th:text="|${t.timeText()} ${t.course} ${t.section} ${t.type}|"
             >
               10:30–11:20 CMPT 225 D100 LEC

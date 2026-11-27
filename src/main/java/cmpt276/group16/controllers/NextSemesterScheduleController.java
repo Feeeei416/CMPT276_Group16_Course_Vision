@@ -95,6 +95,8 @@ public class NextSemesterScheduleController {
         if (student.isEmpty()) {
             return "redirect:/login";
         }
+
+        
         NextSemesterSchedule main = scheduleService.mainSchedule(student.get()).orElse(null);
         return showSchedulePage(student.get(), main, null, code, model);
     }
@@ -124,6 +126,9 @@ public class NextSemesterScheduleController {
         model.addAttribute("pageUrl", pageFor(viewedScheduleId));
         model.addAttribute("courses", courses);
         model.addAttribute("meetingsByDay", scheduleService.meetingsByDay(courses));
+        model.addAttribute("timetableBlocks", scheduleService.timetableBlocks(courses));
+        model.addAttribute("gridHours", scheduleService.gridHours(courses));
+        model.addAttribute("clashingByDay", scheduleService.clashingByDay(courses));
         List<CourseOffering> offerings = scheduleService.offeredNextSemester();
         model.addAttribute("offerings", offerings);
         // The suggestions "Add a course" shows as the student types: only next semester's courses

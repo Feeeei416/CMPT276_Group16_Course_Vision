@@ -6,12 +6,15 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.util.Optional;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
 import cmpt276.group16.models.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -67,7 +70,8 @@ public class NextSemesterScheduleService {
         return termRepository.findByTermYearAndSeason(next.year(), next.season());
     }
 
-    // The schedule My schedule opens to. Empty until the student adds their first course or makes their
+    // The schedule My schedule opens to. Empty until the student adds their first
+    // course or makes their
     // first schedule, or when next semester's courses aren't loaded yet
     @Transactional(readOnly = true)
     public Optional<NextSemesterSchedule> mainSchedule(StudentProfile student) {
@@ -75,29 +79,35 @@ public class NextSemesterScheduleService {
                 .flatMap(term -> scheduleRepository.findByStudentAndTermAndMainTrue(student, term));
     }
 
-    // Returns the courses in the student's main schedule for next semester, or empty if they don't have one yet
+    // Returns the courses in the student's main schedule for next semester, or
+    // empty if they don't have one yet
     @Transactional(readOnly = true)
     public List<ScheduledCourse> coursesFor(StudentProfile student) {
         return mainSchedule(student).map(scheduledCourseRepository::findBySchedule).orElse(List.of());
     }
 
-    // The courses in one schedule, for showing any of the student's schedules on the same page
+    // The courses in one schedule, for showing any of the student's schedules on
+    // the same page
     @Transactional(readOnly = true)
     public List<ScheduledCourse> coursesFor(NextSemesterSchedule schedule) {
         return scheduledCourseRepository.findBySchedule(schedule);
     }
 
-    // Adds a course to the student's main schedule for next semester, making the schedule if it's their
-    // first course. Calls the version below directly, so it needs its own @Transactional
+    // Adds a course to the student's main schedule for next semester, making the
+    // schedule if it's their
+    // first course. Calls the version below directly, so it needs its own
+    // @Transactional
     @Transactional
     public List<String> addCourse(StudentProfile student, Long offeringId,
             Long primarySectionId, Long attachedSectionId) {
         return addCourseTo(student, null, offeringId, primarySectionId, attachedSectionId);
     }
 
-    // Adds a course to one of the student's schedules: lecture and its lab or tutorial if it has one.
+    // Adds a course to one of the student's schedules: lecture and its lab or
+    // tutorial if it has one.
     // scheduleId is the schedule to add it to, or null for the main schedule.
-    // Named differently from addCourse, so a call with one Long too many can't quietly pick the wrong one.
+    // Named differently from addCourse, so a call with one Long too many can't
+    // quietly pick the wrong one.
     // Returns every problem found
     @Transactional
     public List<String> addCourseTo(StudentProfile student, Long scheduleId, Long offeringId,
@@ -113,7 +123,8 @@ public class NextSemesterScheduleService {
             return List.of("Next semester's courses aren't available yet.");
         }
 
-        // Checked first, since the id comes from the form and can be changed to another student's schedule
+        // Checked first, since the id comes from the form and can be changed to another
+        // student's schedule
         Optional<NextSemesterSchedule> chosenSchedule = Optional.empty();
         if (scheduleId != null) {
             chosenSchedule = scheduleRepository.findByIdAndStudentAndTerm(scheduleId, student, term.get());
@@ -171,7 +182,8 @@ public class NextSemesterScheduleService {
             attached = found.get();
         }
 
-        // The chosen schedule, or the student's main one, made now if this is their first course
+        // The chosen schedule, or the student's main one, made now if this is their
+        // first course
         NextSemesterSchedule schedule = chosenSchedule.orElseGet(() -> scheduleRepository
                 .findByStudentAndTermAndMainTrue(student, term.get())
                 .orElseGet(() -> scheduleRepository
@@ -239,7 +251,8 @@ public class NextSemesterScheduleService {
     }
 
     // A course's sections, sorted by code, with their times loaded, for the lecture
-    // and tutorial dropdowns. Sections SFU has cancelled are kept by the import but left out here
+    // and tutorial dropdowns. Sections SFU has cancelled are kept by the import but
+    // left out here
     @Transactional(readOnly = true)
     public List<Section> sectionsOf(CourseOffering offering) {
         return sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId()).stream()
@@ -247,14 +260,16 @@ public class NextSemesterScheduleService {
                 .toList();
     }
 
-    // The class meetings in the student's main schedule. The versions below that take a list of courses
+    // The class meetings in the student's main schedule. The versions below that
+    // take a list of courses
     // work for any schedule
     @Transactional(readOnly = true)
     public Map<DayOfWeek, List<ClassTime>> meetingsByDay(StudentProfile student) {
         return meetingsByDay(coursesFor(student));
     }
 
-    // The class meetings of these courses grouped by weekday, Monday to Friday first,
+    // The class meetings of these courses grouped by weekday, Monday to Friday
+    // first,
     // each day sorted by start time. Sections without published times aren't
     // included
     @Transactional(readOnly = true)
@@ -309,13 +324,15 @@ public class NextSemesterScheduleService {
         return MAX_UNITS;
     }
 
-    // Every pair of classes in the student's main schedule that overlap on the same day
+    // Every pair of classes in the student's main schedule that overlap on the same
+    // day
     @Transactional(readOnly = true)
     public List<Conflict> conflicts(StudentProfile student) {
         return conflicts(coursesFor(student));
     }
 
-    // Every pair of these courses' classes that overlap on the same day, for the warnings
+    // Every pair of these courses' classes that overlap on the same day, for the
+    // warnings
     @Transactional(readOnly = true)
     public List<Conflict> conflicts(List<ScheduledCourse> courses) {
         List<Conflict> conflicts = new ArrayList<>();
@@ -351,4 +368,148 @@ public class NextSemesterScheduleService {
         return Objects.equals(attached.getAssociatedClass(), lecture.getAssociatedClass());
     }
 
+    // Information to describe one class on the timetable grid
+    public record TimetableBlock(
+            int column,
+            int rowStart,
+            int rowEnd,
+            String label,
+            boolean conflict,
+            int color,
+            int lane,
+            int lanes,
+            String time) {}
+
+    private static final int MINUTES_PER_ROW = 10;
+    private static final int COLORS = 8;
+
+    // Row 1 is the day names, so 8:00 is row 2, 8:10 is row 3, and so on
+    static int rowFor(LocalTime time, int startHour) {
+        int minutes = (time.getHour() - startHour) * 60 + time.getMinute();
+        return minutes / MINUTES_PER_ROW + 2;
+    }
+
+    // The hours the grid covers: 8:00 to 18:00, stretched to fit earlier or later
+    // classes
+    public record GridHours(int start, int end) {
+    }
+
+    @Transactional(readOnly = true)
+    public GridHours gridHours(List<ScheduledCourse> courses) {
+        int start = 8;
+        int end = 18;
+        for (List<ClassTime> day : meetingsByDay(courses).values()) {
+            for (ClassTime t : day) {
+                start = Math.min(start, t.start().getHour());
+                int endHour = t.end().getMinute() > 0 ? t.end().getHour() + 1 : t.end().getHour();
+                end = Math.max(end, endHour);
+            }
+        }
+        return new GridHours(start, end);
+    }
+
+    // Where a block sits across its day column: lane 0 is the left, lanes is how
+    // many share the width
+    record LanePlace(int lane, int lanes) {
+    }
+
+    // Seats one day's classes (sorted by start time) side by side where they
+    // overlap
+    static List<LanePlace> lanesFor(List<ClassTime> classes) {
+        int[] lane = new int[classes.size()];
+        int[] lanes = new int[classes.size()];
+        List<LocalTime> laneEnds = new ArrayList<>();
+        int groupStart = 0;
+        LocalTime groupEnd = null;
+
+        for (int i = 0; i < classes.size(); i++) {
+            ClassTime t = classes.get(i);
+
+            // This class starts after the whole group has ended, so close that group
+            if (groupEnd != null && !t.start().isBefore(groupEnd)) {
+                for (int k = groupStart; k < i; k++) {
+                    lanes[k] = laneEnds.size();
+                }
+                laneEnds.clear();
+                groupStart = i;
+                groupEnd = null;
+            }
+
+            // Take the first lane that's free by the time this class starts
+            int chosen = -1;
+            for (int l = 0; l < laneEnds.size(); l++) {
+                if (!t.start().isBefore(laneEnds.get(l))) {
+                    chosen = l;
+                    break;
+                }
+            }
+            // No lane is free, so open a new one
+            if (chosen == -1) {
+                laneEnds.add(t.end());
+                chosen = laneEnds.size() - 1;
+            } else {
+                laneEnds.set(chosen, t.end());
+            }
+            lane[i] = chosen;
+
+            if (groupEnd == null || t.end().isAfter(groupEnd)) {
+                groupEnd = t.end();
+            }
+        }
+        // Close the last group
+        for (int k = groupStart; k < classes.size(); k++) {
+            lanes[k] = laneEnds.size();
+        }
+
+        List<LanePlace> places = new ArrayList<>();
+        for (int i = 0; i < classes.size(); i++) {
+            places.add(new LanePlace(lane[i], lanes[i]));
+        }
+        return places;
+    }
+
+    // For each day, the classes that overlap another class on that day
+    public Map<DayOfWeek, Set<ClassTime>> clashingByDay(List<ScheduledCourse> courses) {
+        Map<DayOfWeek, Set<ClassTime>> clashing = new EnumMap<>(DayOfWeek.class);
+        for (Conflict c : conflicts(courses)) {
+            Set<ClassTime> onThatDay = clashing.computeIfAbsent(c.day(), d -> new HashSet<>());
+            onThatDay.add(c.first());
+            onThatDay.add(c.second());
+        }
+        return clashing;
+    }
+
+    // Every class in the student's week, turned into a box with a grid position
+    @Transactional(readOnly = true)
+    public List<TimetableBlock> timetableBlocks(List<ScheduledCourse> courses) {
+        int startHour = gridHours(courses).start();
+        List<String> courseOrder = new ArrayList<>();
+        for (ScheduledCourse course : courses) {
+            courseOrder.add(course.getOffering().getCourse().getSubject() + " "
+                    + course.getOffering().getCourse().getNumber());
+        }
+        Map<DayOfWeek, Set<ClassTime>> clashing = clashingByDay(courses);
+
+        List<TimetableBlock> blocks = new ArrayList<>();
+        for (Map.Entry<DayOfWeek, List<ClassTime>> day : meetingsByDay(courses).entrySet()) {
+            int column = day.getKey().getValue() + 1; // column 1 is the times, Monday is 2
+            List<ClassTime> classes = day.getValue();
+            List<LanePlace> places = lanesFor(classes);
+            for (int i = 0; i < classes.size(); i++) {
+                ClassTime t = classes.get(i);
+                LanePlace place = places.get(i);
+                blocks.add(new TimetableBlock(
+                        column,
+                        rowFor(t.start(), startHour),
+                        rowFor(t.end(), startHour),
+                        t.course() + " " + t.section() + " " + t.type(),
+                        clashing.getOrDefault(day.getKey(), Set.of()).contains(t),
+                        courseOrder.indexOf(t.course()) % COLORS,
+                        place.lane(),
+                        place.lanes(),
+                        t.timeText()));
+            }
+        }
+        return blocks;
+    }
 }

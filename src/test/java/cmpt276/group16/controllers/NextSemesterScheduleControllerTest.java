@@ -12,7 +12,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -155,7 +157,8 @@ class NextSemesterScheduleControllerTest {
         return html.substring(start, html.indexOf("</select>", start));
     }
 
-    // Choosing a course fills both dropdowns, and each option sends its section's id
+    // Choosing a course fills both dropdowns, and each option sends its section's
+    // id
     @Test
     void choosingACourseListsItsSections() throws Exception {
         String html = mockMvc.perform(get("/student/schedule/next-semester").param("code", "CMPT 225")
@@ -201,6 +204,33 @@ class NextSemesterScheduleControllerTest {
         assertThat(scheduleService.coursesFor(priya)).hasSize(1);
     }
 
+    // The weekly grid puts each class at its day and time
+    @Test
+    void showsClassesOnTheWeeklyGrid() throws Exception {
+        d100.replaceMeetings(
+                List.of(new SectionMeeting(DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20), null)));
+        sectionRepository.save(d100);
+        scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+
+        mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"timetable\"")))
+                .andExpect(content().string(containsString("grid-column: 2; grid-row: 17 / 22;")))
+                .andExpect(content().string(not(containsString(">Sat<"))));
+    }
+
+    // Saturday only gets a column when a class meets then
+    @Test
+    void showsSaturdayWhenAClassMeetsThen() throws Exception {
+        d100.replaceMeetings(
+                List.of(new SectionMeeting(DayOfWeek.SATURDAY, LocalTime.of(9, 30), LocalTime.of(12, 20), null)));
+        sectionRepository.save(d100);
+        scheduleService.addCourse(priya, cmpt225.getId(), d100.getId(), d101.getId());
+
+        mockMvc.perform(get("/student/schedule/next-semester").session(sessionFor(priya)))
+                .andExpect(content().string(containsString(">Sat<")))
+                .andExpect(content().string(not(containsString(">Sun<"))));
+        }
     private NextSemesterSchedule saveSchedule(StudentProfile student, String name, boolean main) {
         return scheduleRepository.save(new NextSemesterSchedule(student, spring2027, name, main));
     }
@@ -297,5 +327,6 @@ class NextSemesterScheduleControllerTest {
                 .andExpect(flash().attribute("message", "Course removed."));
 
         assertThat(scheduleService.coursesFor(afternoon)).isEmpty();
+
     }
 }

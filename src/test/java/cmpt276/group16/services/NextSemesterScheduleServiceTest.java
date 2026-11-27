@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import cmpt276.group16.services.NextSemesterScheduleService.TimetableBlock;
+import cmpt276.group16.services.NextSemesterScheduleService.GridHours;
 
 import cmpt276.group16.models.*;
 
@@ -213,6 +215,77 @@ public class NextSemesterScheduleServiceTest {
         assertThat(service.conflicts(priya)).isEmpty();
     }
 
+    @Test
+    void classIsPlacedAtItsDayAndTime() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+
+        List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
+
+        assertThat(blocks).hasSize(1);
+        TimetableBlock block = blocks.get(0);
+        assertThat(block.column()).isEqualTo(2); // Monday
+        assertThat(block.rowStart()).isEqualTo(17); // 10:30
+        assertThat(block.rowEnd()).isEqualTo(22); // 11:20
+        assertThat(block.label()).isEqualTo("MACM 201 D100 LEC");
+        assertThat(block.conflict()).isFalse();
+        assertThat(block.time()).contains("10:30");
+    }
+
+    @Test
+    void overlappingClassesAreMarkedAsConflicts() {
+        Section math = saveLecture("MATH", "152", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(11, 0), LocalTime.of(11, 50));
+        service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+
+        List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
+
+        assertThat(blocks).hasSize(2);
+        assertThat(blocks).allMatch(TimetableBlock::conflict);
+    }
+
+    @Test
+    void eachCourseGetsItsOwnColour() {
+    Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
+    Section math = saveLecture("MATH", "152", "4", DayOfWeek.TUESDAY, LocalTime.of(9, 30), LocalTime.of(10, 20));
+    service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+    service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+
+    List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
+
+    assertThat(blocks).extracting(TimetableBlock::color).containsExactlyInAnyOrder(0, 1);
+    }
+
+    @Test
+    void overlappingClassesSitSideBySide() {
+    Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+    Section math = saveLecture("MATH", "152", "4", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+    Section stat = saveLecture("STAT", "270", "3", DayOfWeek.MONDAY, LocalTime.of(13, 30), LocalTime.of(14, 20));
+    service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+    service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+    service.addCourse(priya, stat.getOffering().getId(), stat.getId(), null);
+
+    List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
+
+    TimetableBlock alone = blocks.stream().filter(b -> b.label().startsWith("STAT")).findFirst().orElseThrow();
+    List<TimetableBlock> sharing = blocks.stream().filter(b -> !b.label().startsWith("STAT")).toList();
+
+    assertThat(alone.lane()).isEqualTo(0);
+    assertThat(alone.lanes()).isEqualTo(1);
+    assertThat(sharing).extracting(TimetableBlock::lane).containsExactlyInAnyOrder(0, 1);
+    assertThat(sharing).allMatch(b -> b.lanes() == 2);
+   }
+
+   @Test
+    void gridStretchesForAnEarlyClass() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(7, 30), LocalTime.of(8, 20));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+
+        assertThat(service.gridHours(service.coursesFor(priya))).isEqualTo(new GridHours(7, 18));
+        assertThat(service.timetableBlocks(service.coursesFor(priya)).get(0).rowStart()).isEqualTo(5);
+    }
+
     private NextSemesterSchedule saveSchedule(StudentProfile student, String name, boolean main) {
         Term spring2027 = termRepository.findByTermYearAndSeason(2027, Season.SPRING).orElseThrow();
         return scheduleRepository.save(new NextSemesterSchedule(student, spring2027, name, main));
@@ -258,5 +331,25 @@ public class NextSemesterScheduleServiceTest {
         assertThat(service.conflicts(mainCourses)).hasSize(1);
         assertThat(service.totalUnits(justMacmCourses)).isEqualByComparingTo("3");
         assertThat(service.conflicts(justMacmCourses)).isEmpty();
+    }
+
+    // A Mon/Wed lecture that only clashes on Monday is only outlined on Monday
+    @Test
+    void clashOnlyOutlinesTheDayItHappens() {
+        Section macm = saveLecture("MACM", "201", "3", DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20));
+        macm.replaceMeetings(List.of(
+                new SectionMeeting(DayOfWeek.MONDAY, LocalTime.of(10, 30), LocalTime.of(11, 20), null),
+                new SectionMeeting(DayOfWeek.WEDNESDAY, LocalTime.of(10, 30), LocalTime.of(11, 20), null)));
+        sectionRepository.save(macm);
+        Section math = saveLecture("MATH", "152", "4", DayOfWeek.MONDAY, LocalTime.of(11, 0), LocalTime.of(11, 50));
+        service.addCourse(priya, macm.getOffering().getId(), macm.getId(), null);
+        service.addCourse(priya, math.getOffering().getId(), math.getId(), null);
+
+        List<TimetableBlock> blocks = service.timetableBlocks(service.coursesFor(priya));
+
+        TimetableBlock wednesday = blocks.stream().filter(b -> b.column() == 4).findFirst().orElseThrow();
+        assertThat(wednesday.conflict()).isFalse();
+        assertThat(blocks.stream().filter(b -> b.column() == 2)).allMatch(TimetableBlock::conflict);
+        assertThat(service.clashingByDay(service.coursesFor(priya))).doesNotContainKey(DayOfWeek.WEDNESDAY);
     }
 }
