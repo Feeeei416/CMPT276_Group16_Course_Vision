@@ -152,23 +152,10 @@
         </form>
 
         <p th:if="${comments.isEmpty()}">No comments yet.</p>
-        <!-- Newest first -->
-        <ul class="comments" th:unless="${comments.isEmpty()}">
-          <li class="comment" th:each="c : ${comments}">
-            <!-- A div, since a form can't go inside a p -->
-            <div class="comment-header">
-              <strong th:text="${c.advisorName()}">Alex</strong>
-              <span class="muted" th:text="${c.date()}">Nov 25, 2026</span>
-              <!-- Only on the advisor's own comments. The service checks again, so a hand-made request can't
-                   delete someone else's -->
-              <form th:if="${c.byViewer()}" method="post" onsubmit="return confirm('Delete this comment?')"
-                    th:action="@{/advisor/students/{id}/comments/{commentId}/delete(id=${student.user.id},commentId=${c.id()})}">
-                <button type="submit" class="link">Delete</button>
-              </form>
-            </div>
-            <p class="comment-body" th:text="${c.body()}">Take CMPT 225 in Spring.</p>
-          </li>
-        </ul>
+        <!-- The same list the student sees on their report, with Delete on this advisor's own comments -->
+        <th:block th:unless="${comments.isEmpty()}">
+          <ul th:replace="~{fragments/comments :: commentList(${comments}, ${student.user.id})}"></ul>
+        </th:block>
       </section>
 
       <p class="actions"><a th:href="@{/advisor/home}" class="link">Back to your students</a></p>
