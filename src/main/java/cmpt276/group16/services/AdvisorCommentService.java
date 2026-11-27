@@ -2,7 +2,9 @@ package cmpt276.group16.services;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,10 +30,26 @@ public class AdvisorCommentService {
         this.clock = clock;
     }
 
+    // A comment the way a page shows it, for example "Alex" and "Nov 25, 2026"
+    public record CommentRow(Long id, String advisorName, String date, String body) {
+    }
+
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
+
     // One student's comments, newest first
     @Transactional(readOnly = true)
     public List<AdvisorComment> commentsFor(StudentProfile student) {
         return commentRepository.findByStudentOrderByCreatedAtDescIdDesc(student);
+    }
+
+    // The same comments, ready for a page. The date is in the clock's time zone (Vancouver), since Render's
+    // servers run on UTC and an evening comment would show the next day's date
+    @Transactional(readOnly = true)
+    public List<CommentRow> rowsFor(StudentProfile student) {
+        return commentsFor(student).stream()
+                .map(comment -> new CommentRow(comment.getId(), comment.getAdvisor().getDisplayName(),
+                        DATE.format(comment.getCreatedAt().atZone(clock.getZone())), comment.getBody()))
+                .toList();
     }
 
     // Saves the comment at the clock's current time. Returns why it wasn't saved, or an empty list when it was

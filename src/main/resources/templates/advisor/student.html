@@ -130,6 +130,40 @@
         </th:block>
       </section>
 
+      <hr>
+
+      <!-- #72: comments on the student's Graduation Report. The student reads them there -->
+      <section id="comments">
+        <h2 class="section-label">Comments</h2>
+        <p class="muted" th:text="|${student.user.displayName} sees these on their Graduation Report.|">
+          Priya sees these on their Graduation Report.</p>
+        <!-- Set when a comment was turned down. The text goes back in the box so it isn't lost -->
+        <div class="error-message" role="alert" th:if="${commentErrors}">
+          <div th:each="error : ${commentErrors}" th:text="${error}">A comment can't be empty.</div>
+        </div>
+        <form method="post" th:action="@{/advisor/students/{id}/comments(id=${student.user.id})}">
+          <div class="form-field">
+            <label class="form-label" for="comment-body">New comment</label>
+            <!-- maxlength matches AdvisorComment.MAX_LENGTH -->
+            <textarea id="comment-body" name="body" rows="4" maxlength="2000" required
+                      th:text="${commentText}"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Post comment</button>
+        </form>
+
+        <p th:if="${comments.isEmpty()}">No comments yet.</p>
+        <!-- Newest first -->
+        <ul class="comments" th:unless="${comments.isEmpty()}">
+          <li class="comment" th:each="c : ${comments}">
+            <p class="comment-header">
+              <strong th:text="${c.advisorName()}">Alex</strong>
+              <span class="muted" th:text="${c.date()}">Nov 25, 2026</span>
+            </p>
+            <p class="comment-body" th:text="${c.body()}">Take CMPT 225 in Spring.</p>
+          </li>
+        </ul>
+      </section>
+
       <p class="actions"><a th:href="@{/advisor/home}" class="link">Back to your students</a></p>
     </main>
   </body>

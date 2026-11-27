@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
 import cmpt276.group16.models.AdvisorComment;
+import cmpt276.group16.models.AdvisorCommentRepository;
 import cmpt276.group16.models.Program;
 import cmpt276.group16.models.Role;
 import cmpt276.group16.models.StudentProfile;
@@ -39,6 +40,9 @@ class AdvisorCommentServiceTest {
 
     @Autowired
     private AdvisorCommentService commentService;
+
+    @Autowired
+    private AdvisorCommentRepository commentRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -79,6 +83,16 @@ class AdvisorCommentServiceTest {
         commentService.add(advisor, finn, "For Finn");
 
         assertThat(commentService.commentsFor(jack)).extracting(AdvisorComment::getBody).containsExactly("For Jack");
+    }
+
+    // 03:00 on Nov 26 in UTC is the evening of Nov 25 in Vancouver, so the page says Nov 25
+    @Test
+    void rowShowsTheAdvisorsNameAndTheDateInVancouver() {
+        AdvisorComment saved = commentRepository.save(
+                new AdvisorComment(jack, advisor, "Take CMPT 225 in Spring.", Instant.parse("2026-11-26T03:00:00Z")));
+
+        assertThat(commentService.rowsFor(jack)).containsExactly(new AdvisorCommentService.CommentRow(
+                saved.getId(), "Alex", "Nov 25, 2026", "Take CMPT 225 in Spring."));
     }
 
     @Test
