@@ -20,8 +20,10 @@ import cmpt276.group16.courseimport.SfuApiException;
 import cmpt276.group16.models.CourseRefresh;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.YearAndSeason;
+import cmpt276.group16.services.PastOfferings;
 
-// The IT manager's course refresh page: refresh one term's courses from the SFU API and see the log of past refreshes.
+// The IT manager's course refresh page: refresh one term's courses from the SFU API, 
+// import past terms' course lists, and see the log of past refreshes.
 @Controller 
 public class CourseRefreshController {
 
@@ -100,6 +102,36 @@ public class CourseRefreshController {
             // The service has already logged it and recorded it as a failed refresh
             redirectAttributes.addFlashAttribute("error",
                     "The refresh failed, so nothing was changed. Try again, and check the server log if it keeps failing.");
+        }
+        return "redirect:/it/course-refresh";
+    }
+
+    /** POST /it/course-refresh/past-terms : records which courses ran in each of the last 6 terms. */
+    @PostMapping("/it/course-refresh/past-terms")
+    public String importPastTerms(RedirectAttributes redirectAttributes) {
+        List<String> imported = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+        for (YearAndSeason term : PastOfferings.recentTerms(LocalDate.now(clock))) {
+            try {
+                ImportRun run = importService.importPastTerm(term.year(), term.season());
+                imported.add(term.name());
+            } catch (ImportAlreadyRunningException e) {
+                // Every term after this one would be turned down too
+                redirectAttributes.addFlashAttribute("error", "A refresh is already running, so past terms "
+                        + (imported.isEmpty() ? "weren't imported" : "after " + imported.get(imported.size() - 1)
+                        + " weren't imported") + ". Wait for it to finish, then try again.");
+                return "redirect:/it/course-refresh";
+            } catch (RuntimeException e) {
+                // SfuApiException or a database error. The service has logged it, so the other terms go on
+                failed.add(term.name());
+            }
+        }
+        if (!imported.isEmpty()) {
+            redirectAttributes.addFlashAttribute("message", "Imported past terms: " + String.join(", ", imported) + ".");
+        }
+        if (!failed.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Couldn't import " + String.join(", ", failed) + ". The log below says why.");
         }
         return "redirect:/it/course-refresh";
     }
