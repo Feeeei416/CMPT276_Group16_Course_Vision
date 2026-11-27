@@ -1,6 +1,7 @@
 package cmpt276.group16.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -91,8 +92,22 @@ class AdvisorCommentServiceTest {
         AdvisorComment saved = commentRepository.save(
                 new AdvisorComment(jack, advisor, "Take CMPT 225 in Spring.", Instant.parse("2026-11-26T03:00:00Z")));
 
-        assertThat(commentService.rowsFor(jack)).containsExactly(new AdvisorCommentService.CommentRow(
-                saved.getId(), "Alex", "Nov 25, 2026", "Take CMPT 225 in Spring."));
+        assertThat(commentService.rowsFor(jack, advisor.getId())).containsExactly(new AdvisorCommentService.CommentRow(
+                saved.getId(), "Alex", "Nov 25, 2026", "Take CMPT 225 in Spring.", true));
+    }
+
+    // Only the viewer's own comments can be deleted from the page
+    @Test
+    void rowSaysWhetherTheViewerWroteIt() {
+        User otherAdvisor = userRepository.save(new User("sam@example.com", "hash", "Sam", Role.ADVISOR));
+        commentService.add(advisor, jack, "From Alex");
+        commentService.add(otherAdvisor, jack, "From Sam");
+
+        assertThat(commentService.rowsFor(jack, advisor.getId()))
+                .extracting(AdvisorCommentService.CommentRow::body, AdvisorCommentService.CommentRow::byViewer)
+                .containsExactlyInAnyOrder(tuple("From Alex", true), tuple("From Sam", false));
+        // null is for a page where nothing can be deleted
+        assertThat(commentService.rowsFor(jack, null)).noneMatch(AdvisorCommentService.CommentRow::byViewer);
     }
 
     @Test

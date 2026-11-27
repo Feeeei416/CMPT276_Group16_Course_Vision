@@ -47,6 +47,19 @@ public class AdvisorCommentController {
         return "redirect:/advisor/students/" + studentId + "#comments";
     }
 
+    /** POST /advisor/students/5/comments/9/delete : deletes comment 9 on student 5's report, if it's this advisor's. */
+    @PostMapping("/advisor/students/{studentId}/comments/{commentId}/delete")
+    public String deleteComment(@PathVariable Long studentId, @PathVariable Long commentId, HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        // A 403 unless the student is assigned to this advisor
+        StudentProfile student = assignedStudent.find(session, studentId);
+        List<String> problems = commentService.delete(signedInAdvisor(session), student, commentId);
+        if (!problems.isEmpty()) {
+            redirectAttributes.addFlashAttribute("commentErrors", problems);
+        }
+        return "redirect:/advisor/students/" + studentId + "#comments";
+    }
+
     // AssignedStudent has already checked the signed-in user is an advisor, so this only fails if the account
     // was removed in between
     private User signedInAdvisor(HttpSession session) {

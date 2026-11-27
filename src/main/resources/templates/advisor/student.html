@@ -155,10 +155,17 @@
         <!-- Newest first -->
         <ul class="comments" th:unless="${comments.isEmpty()}">
           <li class="comment" th:each="c : ${comments}">
-            <p class="comment-header">
+            <!-- A div, since a form can't go inside a p -->
+            <div class="comment-header">
               <strong th:text="${c.advisorName()}">Alex</strong>
               <span class="muted" th:text="${c.date()}">Nov 25, 2026</span>
-            </p>
+              <!-- Only on the advisor's own comments. The service checks again, so a hand-made request can't
+                   delete someone else's -->
+              <form th:if="${c.byViewer()}" method="post" onsubmit="return confirm('Delete this comment?')"
+                    th:action="@{/advisor/students/{id}/comments/{commentId}/delete(id=${student.user.id},commentId=${c.id()})}">
+                <button type="submit" class="link">Delete</button>
+              </form>
+            </div>
             <p class="comment-body" th:text="${c.body()}">Take CMPT 225 in Spring.</p>
           </li>
         </ul>

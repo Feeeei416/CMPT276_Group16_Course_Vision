@@ -77,7 +77,8 @@ public class AdvisorStudentController {
         model.addAttribute("conflicts", scheduleService.conflicts(scheduledCourses));
         model.addAttribute("termPlans", termPlans);
         model.addAttribute("missing", planPrerequisites.missingFor(student, termPlans));
-        model.addAttribute("comments", commentService.rowsFor(student));
+        // The advisor's own comments get a Delete button
+        model.addAttribute("comments", commentService.rowsFor(student, SessionUser.id(session).orElse(null)));
         return "advisor/student";
     }
 }

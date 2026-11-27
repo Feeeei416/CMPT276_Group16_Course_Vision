@@ -121,4 +121,48 @@ class AdvisorCommentControllerTest {
 
         verify(commentService, never()).add(any(), any(), any());
     }
+
+    @Test
+    void advisor_deletesOwnComment() throws Exception {
+        when(commentService.delete(advisor, jack, 9L)).thenReturn(List.of());
+
+        mockMvc.perform(post("/advisor/students/5/comments/9/delete")
+                       .sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().is3xxRedirection())
+               .andExpect(redirectedUrl("/advisor/students/5#comments"))
+               .andExpect(flash().attributeCount(0));
+
+        verify(commentService).delete(advisor, jack, 9L);
+    }
+
+    // Another advisor's comment (or one that doesn't exist) stays, and the overview says why
+    @Test
+    void someoneElsesComment_sendsTheReasonBack() throws Exception {
+        when(commentService.delete(advisor, jack, 9L)).thenReturn(List.of(AdvisorCommentService.NOT_YOURS));
+
+        mockMvc.perform(post("/advisor/students/5/comments/9/delete")
+                       .sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().is3xxRedirection())
+               .andExpect(redirectedUrl("/advisor/students/5#comments"))
+               .andExpect(flash().attribute("commentErrors", List.of(AdvisorCommentService.NOT_YOURS)));
+    }
+
+    @Test
+    void deleteOnAnUnassignedStudent_isRefused() throws Exception {
+        mockMvc.perform(post("/advisor/students/6/comments/9/delete")
+                       .sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isForbidden());
+
+        verify(commentService, never()).delete(any(), any(), any());
+    }
+
+    @Test
+    void student_cantDeleteAComment() throws Exception {
+        mockMvc.perform(post("/advisor/students/5/comments/9/delete")
+                       .sessionAttr(SessionUser.SESSION_USER_ID, jackUser.getId()))
+               .andExpect(status().is3xxRedirection())
+               .andExpect(redirectedUrl("/student/home"));
+
+        verify(commentService, never()).delete(any(), any(), any());
+    }
 }

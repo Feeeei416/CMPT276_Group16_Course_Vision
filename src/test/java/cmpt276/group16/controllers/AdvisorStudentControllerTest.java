@@ -225,9 +225,9 @@ class AdvisorStudentControllerTest {
     // #72: the comments on the student's report, with each advisor's name and date
     @Test
     void showsTheComments() throws Exception {
-        when(commentService.rowsFor(priya)).thenReturn(List.of(
-                new CommentRow(2L, "Test Advisor", "Nov 25, 2026", "Take CMPT 225 in Spring."),
-                new CommentRow(1L, "Sam", "Nov 20, 2026", "Bring your transcript next time.")));
+        when(commentService.rowsFor(priya, advisor.getId())).thenReturn(List.of(
+                new CommentRow(2L, "Test Advisor", "Nov 25, 2026", "Take CMPT 225 in Spring.", true),
+                new CommentRow(1L, "Sam", "Nov 20, 2026", "Bring your transcript next time.", false)));
 
         mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
@@ -236,6 +236,19 @@ class AdvisorStudentControllerTest {
                .andExpect(content().string(containsString("Bring your transcript next time.")))
                .andExpect(content().string(containsString("Sam")))
                .andExpect(content().string(not(containsString("No comments yet."))));
+    }
+
+    // Delete only shows on the advisor's own comment (2), not on Sam's (1)
+    @Test
+    void onlyTheAdvisorsOwnCommentHasDelete() throws Exception {
+        when(commentService.rowsFor(priya, advisor.getId())).thenReturn(List.of(
+                new CommentRow(2L, "Test Advisor", "Nov 25, 2026", "Take CMPT 225 in Spring.", true),
+                new CommentRow(1L, "Sam", "Nov 20, 2026", "Bring your transcript next time.", false)));
+
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("action=\"/advisor/students/5/comments/2/delete\"")))
+               .andExpect(content().string(not(containsString("/advisor/students/5/comments/1/delete"))));
     }
 
     // The form posts to AdvisorCommentController, and the browser stops a comment at 2000 characters

@@ -30,8 +30,9 @@ public class AdvisorCommentService {
         this.clock = clock;
     }
 
-    // A comment the way a page shows it, for example "Alex" and "Nov 25, 2026"
-    public record CommentRow(Long id, String advisorName, String date, String body) {
+    // A comment the way a page shows it, for example "Alex" and "Nov 25, 2026".
+    // byViewer is true when the person looking at the page wrote it, so it gets a Delete button
+    public record CommentRow(Long id, String advisorName, String date, String body, boolean byViewer) {
     }
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
@@ -43,12 +44,14 @@ public class AdvisorCommentService {
     }
 
     // The same comments, ready for a page. The date is in the clock's time zone (Vancouver), since Render's
-    // servers run on UTC and an evening comment would show the next day's date
+    // servers run on UTC and an evening comment would show the next day's date.
+    // viewerId is the signed-in user's id, or null when nobody's comments can be deleted from the page
     @Transactional(readOnly = true)
-    public List<CommentRow> rowsFor(StudentProfile student) {
+    public List<CommentRow> rowsFor(StudentProfile student, Long viewerId) {
         return commentsFor(student).stream()
                 .map(comment -> new CommentRow(comment.getId(), comment.getAdvisor().getDisplayName(),
-                        DATE.format(comment.getCreatedAt().atZone(clock.getZone())), comment.getBody()))
+                        DATE.format(comment.getCreatedAt().atZone(clock.getZone())), comment.getBody(),
+                        comment.getAdvisor().getId().equals(viewerId)))
                 .toList();
     }
 
