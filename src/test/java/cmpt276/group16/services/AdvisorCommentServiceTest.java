@@ -64,7 +64,7 @@ class AdvisorCommentServiceTest {
 
     @Test
     void commentIsSavedWithTheClocksTime() {
-        commentService.add(advisor, jack, "Take CMPT 225 in Spring.");
+        assertThat(commentService.add(advisor, jack, "Take CMPT 225 in Spring.")).isEmpty();
 
         assertThat(commentService.commentsFor(jack)).singleElement().satisfies(comment -> {
             assertThat(comment.getBody()).isEqualTo("Take CMPT 225 in Spring.");
@@ -79,5 +79,38 @@ class AdvisorCommentServiceTest {
         commentService.add(advisor, finn, "For Finn");
 
         assertThat(commentService.commentsFor(jack)).extracting(AdvisorComment::getBody).containsExactly("For Jack");
+    }
+
+    @Test
+    void emptyCommentIsntSaved() {
+        assertThat(commentService.add(advisor, jack, " \n\t ")).containsExactly(AdvisorCommentService.EMPTY);
+        assertThat(commentService.add(advisor, jack, null)).containsExactly(AdvisorCommentService.EMPTY);
+
+        assertThat(commentService.commentsFor(jack)).isEmpty();
+    }
+
+    @Test
+    void commentOverTheLimitIsntSaved() {
+        assertThat(commentService.add(advisor, jack, "a".repeat(2001)))
+                .containsExactly("A comment can be at most 2000 characters (this one has 2001).");
+
+        assertThat(commentService.commentsFor(jack)).isEmpty();
+    }
+
+    @Test
+    void commentRightAtTheLimitIsSaved() {
+        assertThat(commentService.add(advisor, jack, "a".repeat(2000))).isEmpty();
+
+        assertThat(commentService.commentsFor(jack)).hasSize(1);
+    }
+
+    // Spaces and blank lines at the ends are dropped, but the ones inside are kept
+    @Test
+    void spacesAtTheEndsAreDropped() {
+        assertThat(commentService.add(advisor, jack, "\n  First line\n\nSecond line  \n")).isEmpty();
+
+        assertThat(commentService.commentsFor(jack)).singleElement()
+                .extracting(AdvisorComment::getBody)
+                .isEqualTo("First line\n\nSecond line");
     }
 }
