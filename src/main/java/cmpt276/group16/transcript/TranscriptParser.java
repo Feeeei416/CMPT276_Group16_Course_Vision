@@ -34,6 +34,9 @@ public class TranscriptParser {
             "^([A-Z]{2,4}) (\\d{3}[A-Z]?) (.+?) (\\d+\\.\\d{2}) (\\d+\\.\\d{2})(?: ([A-Z]{1,2}[+-]?))?"
                     + " \\d+\\.\\d{2} \\S+ \\d+$");
 
+    // The line SFU prints right under a special-topics course, for example "Course Topic: ST-Robotics"
+    private static final Pattern TOPIC = Pattern.compile("^Course Topic: (.+)$");
+
     // Starts like a course row, used to catch rows that COURSE missed
     private static final Pattern LOOKS_LIKE_COURSE = Pattern.compile("^[A-Z]{2,4} \\d{3}[A-Z]?\\b.*");
 
@@ -64,22 +67,41 @@ public class TranscriptParser {
         List<ParsedCourse> courses = new ArrayList<>();
         List<String> skippedLines = new ArrayList<>();
         String term = null;
+        //So a topic line is only attached to the course right above it
+        boolean lastLineWasCourse = false;
 
         for (String rawLine : text.split("\\R")) {
             // PDFBox sometimes puts extra spaces between words, for example "ECON 103"
             String line = rawLine.trim().replaceAll("\\s+", " ");
+            if (line.isEmpty()) {
+                continue;
+            }
 
             if (TERM.matcher(line).matches()) {
                 term = line;
+                lastLineWasCourse = false;
+                continue;
+            }
+
+            Matcher topic = TOPIC.matcher(line);
+            if (topic.matches()) {
+                if (lastLineWasCourse) {
+                    int last = courses.size() - 1;
+                    courses.set(last, courses.get(last).withTopic(topic.group(1)));
+                }
+                lastLineWasCourse = false;
                 continue;
             }
 
             Matcher course = COURSE.matcher(line);
             if (course.matches() && term != null) {
                 courses.add(toCourse(term, course));
+                lastLineWasCourse = true;
+                continue;
             } else if (LOOKS_LIKE_COURSE.matcher(line).matches()) {
                 skippedLines.add(line);
-            }
+            } 
+            lastLineWasCourse = false;
         }
         return new TranscriptParseResult(courses, skippedLines);
     }

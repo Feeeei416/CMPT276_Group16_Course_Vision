@@ -13,10 +13,21 @@ public record ParsedCourse(
         String number,
         String title,
         BigDecimal units,
-        String grade) implements Serializable {
+        String grade,
+        String topic ) implements Serializable {
 
     // Keeps saved sessions readable
     private static final long serialVersionUID = 1L;
+
+    //Normal courses(not special courses) have no "Course Topic" so their topic is null
+    public ParsedCourse(String term, String subject, String number, String title, BigDecimal units, String grade){
+        this(term, subject, number, title, units, grade, null);
+    }
+
+    // The same course with its topic filled in. Records can't be changed, so this makes a copy
+    public ParsedCourse withTopic(String topic) {
+        return new ParsedCourse(term, subject, number, title, units, grade, topic);
+    }
 
     // Courses that are still in progress will have no grade yet
     public boolean isInProgress() {
