@@ -433,6 +433,17 @@ button.link {
     color: var(--color-text);
 }
 
+/* A red badge, like Remaining on the Graduation Report */
+.badge-remaining {
+    background-color: var(--color-error-bg);
+    color: var(--color-error);
+}
+
+/* Graduation Report: the courses counted toward a requirement, on their own line under its name */
+.report-note {
+    display: block;
+}
+
 /* Course suggestions as you type (static/js/course-search.js), on My schedule and My courses.
    The list floats under the box, so it doesn't push the page down */
 .course-search {

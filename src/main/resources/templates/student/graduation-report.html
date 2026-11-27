@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>Graduation Report</title>
+</head>
+<body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+        <h1 class="page-title">Graduation Report</h1>
+
+        <!-- No requirements saved for this program and entry year -->
+        <p th:if="${report == null}"
+           th:text="|There are no graduation requirements for ${student.program.showName}, entry ${student.cohortYear} yet.|">
+            There are no graduation requirements for Computing Science, entry 2024 yet.</p>
+
+        <th:block th:if="${report != null}">
+            <p>
+                <span th:text="|${report.set().showName}, from the |">Computing Science, entry 2024, from the </span>
+                <a class="link" th:href="${report.set().calendarUrl}" target="_blank" rel="noopener">SFU Calendar</a>.
+                Courses in your record count once they have a passing grade, and planned courses come from your
+                main plan and next semester's schedule.
+            </p>
+
+            <section th:with="u=${report.units()}">
+                <h2 class="section-label">Units</h2>
+                <p>
+                    <strong th:text="|${@unitText.number(u.completed())} completed|">57 completed</strong>,
+                    <span th:text="|${@unitText.number(u.inProgress())} in progress|">15 in progress</span>,
+                    <span th:text="|${@unitText.number(u.planned())} planned|">30 planned</span>
+                    <th:block th:if="${u.required() != null}">
+                        <span th:text="|of ${@unitText.units(u.required())}.|">of 120 units.</span>
+                        <strong th:text="|${@unitText.number(u.needed())} still needed.|">18 still needed.</strong>
+                    </th:block>
+                </p>
+                <p class="muted">Co-op work terms don't count toward these units.</p>
+            </section>
+
+            <section th:each="category : ${report.categories()}" class="plan-term">
+                <h2 class="section-label" th:text="${category.name()}">Lower division</h2>
+                <ul class="plan-courses">
+                    <li th:each="r : ${category.results()}">
+                        <div>
+                            <strong th:text="${r.name()}">CMPT 225</strong>
+                            <span th:if="${r.progress() != null}" class="muted" th:text="${r.progress()}">6 of 12 units</span>
+                            <span th:if="${!r.courses().isEmpty()}" class="report-note"
+                                  th:text="|Counted: ${#strings.listJoin(r.courses().![label()], ', ')}|">Counted: CMPT 225 (A)</span>
+                            <span th:if="${r.options() != null}" class="report-note muted"
+                                  th:text="|Choose from ${r.options()}|">Choose from MATH 150, MATH 151</span>
+                        </div>
+                        <span th:class="${r.status().badgeClass}" th:text="${r.status().label}">Completed</span>
+                    </li>
+                </ul>
+            </section>
+        </th:block>
+
+        <p class="actions"><a th:href="@{/student/home}" class="link">Back to home</a></p>
+    </main>
+</body>
+</html>
