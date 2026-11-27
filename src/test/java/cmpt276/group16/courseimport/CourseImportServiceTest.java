@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -75,6 +77,7 @@ class CourseImportServiceTest {
     private CourseRefreshRepository refreshRepository;
  
     private Term spring;
+    private Term pastFall;
 
     private static String saved(String name) throws IOException {
         try (InputStream in = CourseImportServiceTest.class.getResourceAsStream("/sfu/" + name)) {
@@ -87,6 +90,7 @@ class CourseImportServiceTest {
     @BeforeEach
     void setUp() throws IOException {
         spring = termRepository.saveAndFlush(new Term(2027, Season.SPRING));
+        pastFall = termRepository.saveAndFlush(new Term(2025, Season.FALL));
         when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenReturn(Optional.of(CMPT_COURSES));
         answerSections(saved("cmpt-225-sections.json"));
         when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), eq("D100")))
@@ -399,6 +403,7 @@ class CourseImportServiceTest {
         } finally {
             refreshRepository.deleteAll();
             termRepository.delete(spring);
+            termRepository.delete(pastFall);
         }
     }
 
@@ -477,5 +482,92 @@ class CourseImportServiceTest {
         importService.importTerm(2027, Season.SPRING);
 
         assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).hasSize(1);
+    }
+
+    // -- Past terms --
+
+    // A past term only gets an offering for each saved course: no sections are fetched or saved
+    @Test
+    void pastTermRecordsOfferingsOnly() {
+        importService.importTerm(2027, Season.SPRING);
+
+        ImportRun run = importService.importPastTerm(2025, Season.FALL);
+
+        assertThat(run.courses()).isEqualTo(1);
+        assertThat(run.sections()).isZero();
+
+        CourseOffering offering = offeringRepository.findByCourseIdAndTermId(cmpt225().getId(), pastFall.getId()).orElseThrow();
+
+        assertThat(offering.isOffered()).isTrue();
+        assertThat(sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId())).isEmpty();
+
+        verify(client, never()).listSections(eq(2025), eq(Season.FALL), any(), any());
+    }
+
+    // A past term doesn't change the course's details, prerequisite rules or parse status
+    @Test
+    void pastTermDoesntChangeTheCourse() {
+        importService.importTerm(2027, Season.SPRING);
+        Course before = cmpt225();
+        String title = before.getTitle();
+        BigDecimal units = before.getUnits();
+        String prereqText = before.getPrereqText();
+        Course.ParseStatus parseStatus = before.getParseStatus();
+        long rules = requisiteRuleRepository.count();
+
+        importService.importPastTerm(2025, Season.FALL);
+
+        Course after = cmpt225();
+        assertThat(after.getTitle()).isEqualTo(title);
+        assertThat(after.getUnits()).isEqualByComparingTo(units);
+        assertThat(after.getPrereqText()).isEqualTo(prereqText);
+        assertThat(after.getParseStatus()).isEqualTo(parseStatus);
+        assertThat(requisiteRuleRepository.count()).isEqualTo(rules);
+    }
+
+    // A course that isn't saved yet can't be added from a course list (it has no units), so it's skipped
+    @Test
+    void pastTermSkipsCoursesThatArentSaved() {
+        // No full import first, so CMPT 225 isn't saved
+
+        ImportRun run = importService.importPastTerm(2025, Season.FALL);
+
+        assertThat(run.courses()).isZero();
+        assertThat(run.notes()).anySatisfy(note -> assertThat(note).contains("CMPT 225"));
+        assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
+    }
+
+    // A saved course that isn't in the past term's list is marked not offered in that term only
+    @Test
+    void pastTermMarksOtherCoursesNotOffered() {
+        importService.importTerm(2027, Season.SPRING);
+        Course cmpt999 = courseRepository.save(
+                new Course("CMPT", "999", "Not in the list", new BigDecimal("3"), null, null, null));
+        CourseOffering offering = offeringRepository.save(new CourseOffering(cmpt999, pastFall, true));
+
+        ImportRun run = importService.importPastTerm(2025, Season.FALL);
+
+        assertThat(run.notOffered()).isEqualTo(1);
+        assertThat(offering.isOffered()).isFalse();
+    }
+
+    // A past term is logged like any other import
+    @Test
+    void pastTermIsLogged() {
+        importService.importTerm(2027, Season.SPRING);
+
+        importService.importPastTerm(2025, Season.FALL);
+
+        CourseRefresh refresh = latestRefresh();
+        assertThat(refresh.getTermName()).isEqualTo("2025 Fall");
+        assertThat(refresh.getFinishedAt()).isNotNull();
+        assertThat(refresh.getCourses()).isEqualTo(1);
+    }
+
+    // This term and later ones need the full import, with sections
+    @Test
+    void onlyPastTermsCanBeImportedAsPast() {
+        assertThatThrownBy(() -> importService.importPastTerm(2098, Season.FALL))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 }
