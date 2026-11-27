@@ -145,7 +145,7 @@
           <div class="form-field">
             <label class="form-label" for="comment-body">New comment</label>
             <!-- maxlength matches AdvisorComment.MAX_LENGTH -->
-            <textarea id="comment-body" name="body" rows="4" maxlength="2000" required
+            <textarea id="comment-body" class="input" name="body" rows="4" maxlength="2000" required
                       th:text="${commentText}"></textarea>
           </div>
           <button type="submit" class="btn btn-primary">Post comment</button>
