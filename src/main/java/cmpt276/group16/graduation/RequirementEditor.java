@@ -56,6 +56,12 @@ public class RequirementEditor {
         return setRepository.findByProgramAndEntryYear(program, entryYear);
     }
 
+    // The set to add a requirement to
+    @Transactional(readOnly = true)
+    public RequirementSet setById(Long setId) {
+        return setRepository.findById(setId).orElseThrow();
+    }
+
     // The set's requirements in the order they're shown, each with its JSON
     @Transactional(readOnly = true)
     public List<Row> rows(RequirementSet set) {

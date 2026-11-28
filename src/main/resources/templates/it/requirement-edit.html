@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <title>Edit requirement</title>
+  </head>
+  <body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+      <h1 class="page-title">Edit requirement</h1>
+      <p class="muted" th:text="${set.showName}">Computing Science, entry 2024</p>
+
+      <div class="error-message" th:if="${error}" th:text="${error}" role="alert"></div>
+
+      <p class="muted">
+        Written the same way as one requirement in requirements.json. Saving replaces it in the same place.
+      </p>
+      <form method="post" th:action="@{/it/requirements/{id}/edit(id=${requirementId})}">
+        <textarea name="json" class="input json-input" aria-label="Requirement as JSON" required
+                  th:text="${json}"></textarea>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Save</button>
+          <a th:href="@{/it/requirements(set=${set.id})}" class="link">Cancel</a>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

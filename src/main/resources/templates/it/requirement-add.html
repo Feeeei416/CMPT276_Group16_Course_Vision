@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <title>Add a requirement</title>
+  </head>
+  <body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+      <h1 class="page-title">Add a requirement</h1>
+      <p class="muted" th:text="${set.showName}">Computing Science, entry 2024</p>
+
+      <div class="error-message" th:if="${error}" th:text="${error}" role="alert"></div>
+
+      <p class="muted">
+        Written the same way as one requirement in requirements.json, and checked the same way.
+        It's added at the end of the set.
+      </p>
+      <details class="collapsible examples">
+        <summary class="link">Examples</summary>
+        <pre class="requirement-json">{ "category": "Lower division", "kind": "COURSE", "courses": ["CMPT 120", "CMPT 125"] }
+{ "category": "Lower division", "kind": "CHOOSE", "title": "Calculus I", "count": 1, "courses": ["MATH 150", "MATH 151"] }
+{ "category": "Upper division", "kind": "UNITS_FROM", "units": 12, "subject": "CMPT", "minNumber": 400, "excluded": ["CMPT 415"] }
+{ "category": "WQB", "kind": "DESIGNATION", "units": 6, "designations": ["W"], "minGrade": "C-" }
+{ "category": "Totals and notes", "kind": "NOTE", "text": "An upper-division GPA of 2.00." }</pre>
+        <p class="muted">docs/graduation-requirements.md lists every kind and field.</p>
+      </details>
+      <form method="post" th:action="@{/it/requirements/sets/{id}/add(id=${set.id})}">
+        <textarea name="json" class="input json-input" aria-label="Requirement as JSON" required
+                  th:text="${json}"></textarea>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Add requirement</button>
+          <a th:href="@{/it/requirements(set=${set.id})}" class="link">Cancel</a>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

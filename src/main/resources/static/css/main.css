@@ -551,3 +551,55 @@ button.link {
         animation: none;
     }
 }
+
+/* Graduation requirements: each requirement shown as the JSON it's edited as */
+.requirement-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.requirement-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.requirement-json {
+    margin: 0;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+/* A tall box for typing JSON, in a fixed-width font so the brackets line up */
+.json-input {
+    height: auto;
+    min-height: 14em;
+    padding: var(--space-sm);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+}
+
+/* Examples on the Add a requirement page: an arrow shows it opens, and points up once it's open */
+.examples {
+    margin: var(--space-md) 0;
+}
+
+.examples summary {
+    cursor: pointer;
+}
+
+.examples summary::after {
+    content: "▾";
+    display: inline-block;
+    margin-left: 0.35em;
+    transition: transform 0.15s;
+}
+
+.examples[open] summary::after {
+    transform: rotate(180deg);
+}
