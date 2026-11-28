@@ -100,25 +100,32 @@ public class RequirementLoader implements CommandLineRunner {
         // Positions follow the file, so requirements are shown in the same order they're written
         int position = 0;
         for (RuleEntry rule : entry.requirements()) {
-            GraduationRequirement requirement = new GraduationRequirement(set, position++, rule.category(), rule.kind());
-            requirement.setTitle(rule.title());
-            requirement.setCourseCount(rule.count());
-            requirement.setUnits(rule.units());
-            requirement.setSubject(rule.subject());
-            requirement.setMinNumber(rule.minNumber());
-            requirement.setLimitBelow(rule.maxCoursesBelow(), rule.belowNumber());
-            requirement.setDesignations(rule.designations());
-            requirement.setOutsideSubject(rule.outsideSubject());
-            requirement.setMinGrade(rule.minGrade());
-            requirement.setExclusive(rule.exclusive());
-            requirement.setText(rule.text());
-            requirementRepository.save(requirement);
-            for (CourseEntry course : rule.courses()) {
-                RequirementCourse saved = new RequirementCourse(requirement, course.subject(), course.number(),
-                        course.use());
-                saved.setArea(course.area());
-                courseRepository.save(saved);
-            }
+            saveRule(set, position++, rule);
         }
+    }
+
+    // Saves one rule and its courses at this position in the set. Also used by the Graduation requirements
+    // page to add or change a requirement, so a rule is saved the same way from the file or the page
+    public GraduationRequirement saveRule(RequirementSet set, int position, RuleEntry rule) {
+        GraduationRequirement requirement = new GraduationRequirement(set, position++, rule.category(), rule.kind());
+        requirement.setTitle(rule.title());
+        requirement.setCourseCount(rule.count());
+        requirement.setUnits(rule.units());
+        requirement.setSubject(rule.subject());
+        requirement.setMinNumber(rule.minNumber());
+        requirement.setLimitBelow(rule.maxCoursesBelow(), rule.belowNumber());
+        requirement.setDesignations(rule.designations());
+        requirement.setOutsideSubject(rule.outsideSubject());
+        requirement.setMinGrade(rule.minGrade());
+        requirement.setExclusive(rule.exclusive());
+        requirement.setText(rule.text());
+        requirementRepository.save(requirement);
+        for (CourseEntry course : rule.courses()) {
+            RequirementCourse saved = new RequirementCourse(requirement, course.subject(), course.number(),
+                    course.use());
+            saved.setArea(course.area());
+            courseRepository.save(saved);
+        }
+        return requirement;
     }
 }

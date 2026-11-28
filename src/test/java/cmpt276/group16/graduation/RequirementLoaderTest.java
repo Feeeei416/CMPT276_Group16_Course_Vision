@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
+import cmpt276.group16.graduation.RequirementFile.RuleEntry;
 import cmpt276.group16.models.Designation;
 import cmpt276.group16.models.GraduationRequirement;
 import cmpt276.group16.models.GraduationRequirementRepository;
@@ -298,5 +299,32 @@ class RequirementLoaderTest {
     void emptyFileAddsNothing() {
         assertThat(load("{ \"sets\": [] }")).isEmpty();
         assertThat(setRepository.count()).isZero();
+    }
+
+    // -- One rule, for the Graduation requirements page --
+
+    // A rule can be saved on its own at a given position, with its courses
+    @Test
+    void savesOneRuleAtTheGivenPosition() {
+        load(FILE);
+        RequirementSet cs = csSet();
+        RequirementLoader loader = new RequirementLoader(RequirementFile.fromJson(FILE), setRepository,
+                requirementRepository, courseRepository);
+        RuleEntry rule = RequirementFile.parseRequirement("""
+                { "category": "Upper division", "kind": "CHOOSE", "count": 1, "courses": ["CMPT 307", "CMPT 308"] }
+                """).get(0);
+
+        GraduationRequirement saved = loader.saveRule(cs, 8, rule);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(saved.getId()).isNotNull();
+        List<GraduationRequirement> requirements = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csSet());
+        GraduationRequirement last = requirements.get(requirements.size() - 1);
+        assertThat(last.getPosition()).isEqualTo(8);
+        assertThat(last.getCategory()).isEqualTo("Upper division");
+        assertThat(last.getCourseCount()).isEqualTo(1);
+        assertThat(courseRepository.findByRequirementOrderByIdAsc(last))
+                .extracting(RequirementCourse::getCode).containsExactly("CMPT 307", "CMPT 308");
     }
 }
