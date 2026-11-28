@@ -33,6 +33,12 @@ public class RequirementSet {
     @ColumnDefault("1")
     private int fileVersion = 1;
 
+    // Set once IT changes the set on the Graduation requirements page. The loader then leaves it alone,
+    // even when the file has a newer version, so the edits aren't lost on the next start
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private boolean editedInApp = false;
+
     protected RequirementSet() {}
 
     public RequirementSet(Program program, int entryYear, String calendarUrl) {
@@ -73,5 +79,14 @@ public class RequirementSet {
     // For example "Computing Science, entry 2024"
     public String getShowName() {
         return program.getShowName() + ", entry " + entryYear;
+    }
+
+    public boolean isEditedInApp() {
+        return editedInApp;
+    }
+
+    // There's no way back: once edited in the app, the file no longer decides this set
+    public void markEditedInApp() {
+        this.editedInApp = true;
     }
 }

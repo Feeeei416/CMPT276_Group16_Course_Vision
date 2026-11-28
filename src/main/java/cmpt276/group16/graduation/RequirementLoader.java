@@ -22,9 +22,8 @@ import cmpt276.group16.models.RequirementSetRepository;
 
 // Runs on startup and brings the saved requirement sets up to date with the requirements file:
 // - a set that isn't saved yet is added
-// - a saved set whose "version" in the file has gone up is replaced, so a fix to the file reaches Render
-// - any other saved set is left alone, even if the file has changed without a new version
-// Once IT can edit sets in the app (#70), a set edited there should be left alone too, so the edits aren't lost
+// - a saved set whose "version" in the file has gone up is replaced, so a fix to the file reaches Render,
+//   unless IT has edited it on the Graduation requirements page: then the edits win and a warning is logged
 @Component
 public class RequirementLoader implements CommandLineRunner {
 
@@ -72,8 +71,13 @@ public class RequirementLoader implements CommandLineRunner {
                         new RequirementSet(entry.program(), entry.entryYear(), entry.calendarUrl())), entry);
                 added.add(entry.name());
             } else if (saved.get().getFileVersion() < entry.version()) {
-                replace(saved.get(), entry);
-                replaced.add(entry.name());
+                if (saved.get().isEditedInApp()) {
+                    log.warn("Kept {} as edited on the Graduation requirements page; the file's newer version "
+                            + "wasn't loaded", entry.name());
+                } else {
+                    replace(saved.get(), entry);
+                    replaced.add(entry.name());
+                }
             }
         }
         return new LoadResult(added, replaced);

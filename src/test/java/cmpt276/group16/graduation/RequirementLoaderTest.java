@@ -209,6 +209,55 @@ class RequirementLoaderTest {
                 .hasSize((int) ceRequirements);
     }
 
+    // Once IT has edited a set on the Graduation requirements page, a newer version in the file doesn't
+    // replace it, so the edits aren't lost 
+    @Test
+    void setEditedInTheAppIsntReplacedByANewerVersion() {
+        load(FILE);
+        RequirementSet cs = csSet();
+        cs.markEditedInApp();
+        setRepository.saveAndFlush(cs);
+        List<RequirementKind> kinds = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(cs).stream()
+                .map(GraduationRequirement::getKind).toList();
+
+        RequirementLoader.LoadResult result = loadResult(csVersion(2, "Fixed"));
+
+        assertThat(result.replaced()).isEmpty();
+        RequirementSet after = csSet();
+        assertThat(after.getFileVersion()).isEqualTo(1);
+        assertThat(after.getCalendarUrl()).isEqualTo("https://www.sfu.ca/cs-2024");
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(after))
+                .extracting(GraduationRequirement::getKind).isEqualTo(kinds);
+    }
+
+    // Only the edited set is kept; another set with a newer version is still replaced
+    @Test
+    void onlyTheEditedSetIsKept() {
+        load(FILE);
+        RequirementSet cs = csSet();
+        cs.markEditedInApp();
+        setRepository.saveAndFlush(cs);
+
+        RequirementLoader.LoadResult result = loadResult("""
+                { "sets": [
+                  { "program": "COMPUTING_SCIENCE", "entryYear": 2024, "version": 2,
+                    "requirements": [ { "category": "Notes", "kind": "NOTE", "text": "Fixed" } ] },
+                  { "program": "COMPUTER_ENGINEERING", "entryYear": 2024, "version": 2,
+                    "requirements": [ { "category": "Notes", "kind": "NOTE", "text": "Fixed" } ] }
+                ] }
+                """);
+
+        assertThat(result.replaced()).containsExactly("Computer Engineering 2024");
+    }
+
+    // Sets from the file start out as the file's, so a newer version can still replace them
+    @Test
+    void setsFromTheFileArentMarkedEdited() {
+        load(FILE);
+
+        assertThat(csSet().isEditedInApp()).isFalse();
+    }
+
     @Test
     void sameOrOlderVersionLeavesTheSavedSetAlone() {
         loadResult(csVersion(3, "Version 3"));
