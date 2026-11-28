@@ -175,4 +175,16 @@ class GpaTest {
                 course("2024 Fall", "MATH", "1XX", "3.00", Grades.TRANSFER),
                 course("2025 Fall", "CMPT", "120", "3.00", "B+"))).isEqualTo("3.33");
     }
+
+    // Two topics of ENSC 461 are two courses, so both grades are in the GPA: (4.00 × 4 + 3.00 × 4) / 8 = 3.50
+    @Test
+    void differentTopicsBothCountInTheGpa() {
+        Gpa.Result gpa = Gpa.of(List.of(
+                new TranscriptCourse(null, "2025 Fall", "ENSC", "461", "Special Topics", new BigDecimal("4.00"), "A",
+                        "ST-Robotics"),
+                new TranscriptCourse(null, "2026 Spring", "ENSC", "461", "Special Topics", new BigDecimal("4.00"), "B",
+                        "ST-Machine Vision")));
+
+        assertThat(gpa.cumulative()).contains(new BigDecimal("3.50"));
+    }
 }
