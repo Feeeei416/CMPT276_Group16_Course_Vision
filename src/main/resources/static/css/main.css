@@ -603,3 +603,8 @@ button.link {
 .examples[open] summary::after {
     transform: rotate(180deg);
 }
+
+/* Copy this set, between Add a requirement and the requirements */
+.copy-form {
+    margin-bottom: var(--space-lg);
+}

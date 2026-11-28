@@ -26,6 +26,10 @@ import tools.jackson.databind.node.ObjectNode;
 @Transactional 
 public class RequirementEditor {
 
+    // The entry years a set can be copied to
+    static final int FIRST_ENTRY_YEAR = 2000;
+    static final int LAST_ENTRY_YEAR = 2100;
+
     // One requirement on the page, with its JSON to show
     public record Row(GraduationRequirement requirement, String json) {}
 
@@ -206,5 +210,30 @@ public class RequirementEditor {
     // 12 rather than 12.00, the way the file writes units
     private static BigDecimal plain(BigDecimal units) {
         return new BigDecimal(units.stripTrailingZeros().toPlainString());
+    }
+
+    // Copies a set to a new entry year of the same program, as a start for that year's Calendar (#70).
+    // Each requirement goes through its JSON, the same way the edit page saves it, so the copy matches exactly.
+    // Throws IllegalArgumentException with a message for the page when the year is taken or out of range
+    public RequirementSet copy(Long fromSetId, int entryYear) {
+        RequirementSet from = setRepository.findById(fromSetId).orElseThrow();
+        if (entryYear < FIRST_ENTRY_YEAR || entryYear > LAST_ENTRY_YEAR) {
+            throw new IllegalArgumentException(
+                    "Choose an entry year from " + FIRST_ENTRY_YEAR + " to " + LAST_ENTRY_YEAR + ".");
+        }
+        if (setRepository.findByProgramAndEntryYear(from.getProgram(), entryYear).isPresent()) {
+            throw new IllegalArgumentException(from.getProgram().getShowName() 
+                + " already has requirements for entry " + entryYear + ".");
+        }
+        
+        RequirementSet copy = setRepository.save(new RequirementSet(from.getProgram(), entryYear, from.getCalendarUrl()));
+        for (GraduationRequirement requirement : requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(from)) {
+            String json = toJson(requirement, courseRepository.findByRequirementOrderByIdAsc(requirement));
+            for (RuleEntry rule : RequirementFile.parseRequirement(json)) {
+                loader.saveRule(copy, requirement.getPosition(), rule);
+            }
+        }
+        copy.markEditedInApp();
+        return copy;
     }
 }

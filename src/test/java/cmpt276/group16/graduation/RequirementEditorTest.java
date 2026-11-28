@@ -99,6 +99,14 @@ class RequirementEditorTest {
                 .map(RequirementCourse::getCode).toList();
     }
 
+    private RequirementSet csFor(int year) {
+        return setRepository.findByProgramAndEntryYear(Program.COMPUTING_SCIENCE, year).orElseThrow();
+    }
+
+    private List<String> jsons(RequirementSet set) {
+        return editor.rows(set).stream().map(RequirementEditor.Row::json).toList();
+    }
+
     // -- Showing a requirement as JSON --
 
     // Opening a requirement and saving it unchanged mustn't change it: its JSON parses back to the same rule.
@@ -255,5 +263,75 @@ class RequirementEditorTest {
         assertThatThrownBy(() -> editor.json(999_999L)).isInstanceOf(NoSuchElementException.class);
         assertThatThrownBy(() -> editor.update(999_999L, NOTE)).isInstanceOf(NoSuchElementException.class);
         assertThatThrownBy(() -> editor.remove(999_999L)).isInstanceOf(NoSuchElementException.class);
+    }
+
+    // -- Copying to a new entry year --
+
+    // The copy has every requirement of the original, in the same order and written the same way
+    @Test
+    void copyHasTheSameRequirementsForTheNewYear() {
+        RequirementSet copy = editor.copy(cs().getId(), 2025);
+        reload();
+
+        RequirementSet saved = csFor(2025);
+        assertThat(saved.getId()).isEqualTo(copy.getId());
+        assertThat(saved.getProgram()).isEqualTo(Program.COMPUTING_SCIENCE);
+        assertThat(jsons(saved)).isEqualTo(jsons(cs()));
+        assertThat(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(saved))
+                .extracting(GraduationRequirement::getPosition)
+                .isEqualTo(requirements().stream().map(GraduationRequirement::getPosition).toList());
+    }
+
+    // The copy was made in the app, so requirements.json can't replace it; the original isn't touched
+    @Test
+    void copyIsMarkedEditedAndTheOriginalIsnt() {
+        editor.copy(cs().getId(), 2025);
+        reload();
+
+        assertThat(csFor(2025).isEditedInApp()).isTrue();
+        assertThat(cs().isEditedInApp()).isFalse();
+    }
+
+    // A year that already has requirements is turned down instead of being overwritten
+    @Test
+    void copyToAYearThatHasRequirementsIsTurnedDown() {
+        long sets = setRepository.count();
+
+        assertThatThrownBy(() -> editor.copy(cs().getId(), 2024))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Computing Science already has requirements for entry 2024.");
+
+        assertThat(setRepository.count()).isEqualTo(sets);
+    }
+
+    @Test
+    void copyToAYearOutOfRangeIsTurnedDown() {
+        assertThatThrownBy(() -> editor.copy(cs().getId(), 1999))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Choose an entry year from 2000 to 2100.");
+        assertThatThrownBy(() -> editor.copy(cs().getId(), 2101))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // The copy has its own rows, so changing it leaves the original as it was
+    @Test
+    void changingTheCopyLeavesTheOriginalAlone() {
+        List<String> original = jsons(cs());
+        editor.copy(cs().getId(), 2025);
+        reload();
+        Long firstOfCopy = requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csFor(2025)).get(0).getId();
+
+        editor.update(firstOfCopy, """
+                { "category": "Lower division", "kind": "COURSE", "courses": ["CMPT 130"] }
+                """);
+        editor.remove(requirementRepository.findByRequirementSetOrderByPositionAscIdAsc(csFor(2025)).get(1).getId());
+        reload();
+
+        assertThat(jsons(cs())).isEqualTo(original);
+    }
+
+    @Test
+    void copyOfAnUnknownSetIsNotFound() {
+        assertThatThrownBy(() -> editor.copy(999_999L, 2025)).isInstanceOf(NoSuchElementException.class);
     }
 }

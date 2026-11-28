@@ -42,6 +42,12 @@
               Add a requirement
             </a>
           </p>
+          <form method="post" class="inline-form copy-form" 
+                th:action="@{/it/requirements/sets/{id}/copy(id=${chosen.id})}">
+            <input type="number" name="entryYear" class="input" min="2000" max="2100" required
+                   aria-label="Entry year to copy to" placeholder="Copy to entry year, for example 2025" />
+            <button type="submit" class="btn btn-secondary">Copy this set</button>
+          </form>
           <p th:if="${rows.isEmpty()}" class="muted">No requirements yet.</p>
           <ol class="requirement-list">
             <li th:each="row : ${rows}" class="requirement-row">

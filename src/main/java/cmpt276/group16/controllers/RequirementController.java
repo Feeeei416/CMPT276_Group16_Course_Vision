@@ -109,6 +109,25 @@ public class RequirementController {
         return "redirect:/it/requirements?set=" + setId;
     }
 
+    /** POST /it/requirements/sets/{setId}/copy: copies the set to a new entry year, then shows the copy. */
+    @PostMapping("/it/requirements/sets/{setId}/copy")
+    public String copy(@PathVariable Long setId, @RequestParam(required = false) Integer entryYear,
+                       RedirectAttributes redirectAttributes) {
+        if (entryYear == null) {
+            redirectAttributes.addFlashAttribute("error", "Enter the entry year to copy to.");
+            return "redirect:/it/requirements?set=" + setId;
+        }
+        try {
+            RequirementSet copy = editor.copy(setId, entryYear);
+            redirectAttributes.addFlashAttribute("message",
+                    "Copied to " + copy.getShowName() + ". Change anything that's different for that year.");
+            return "redirect:/it/requirements?set=" + copy.getId();
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/it/requirements?set=" + setId;
+        }
+    }
+
     // A requirement or set that doesn't exist, from an old link or a changed form
     @ExceptionHandler(NoSuchElementException.class)
     public void notFound(HttpServletResponse response) throws IOException {

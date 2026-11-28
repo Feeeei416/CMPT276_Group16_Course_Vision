@@ -200,6 +200,47 @@ class RequirementControllerTest {
                .andExpect(content().string(containsString("count is 3 but only 2 courses are listed")));
     }
 
+    // -- Copying to a new entry year --
+
+    @Test
+    void pageOffersToCopyTheSet() throws Exception {
+        mockMvc.perform(get("/it/requirements").param("set", set.getId().toString()).session(itManager()))
+               .andExpect(content().string(containsString("/it/requirements/sets/" + set.getId() + "/copy")));
+    }
+
+    // A copy goes to the new set, so its differences can be changed straight away
+    @Test
+    void copyingGoesToTheNewSet() throws Exception {
+        MockHttpSession session = itManager();
+        mockMvc.perform(post("/it/requirements/sets/{id}/copy", set.getId()).param("entryYear", "2098")
+                       .session(session))
+               .andExpect(flash().attribute("message",
+                       "Copied to Computing Science, entry 2098. Change anything that's different for that year."));
+
+        RequirementSet copy = setRepository.findByProgramAndEntryYear(Program.COMPUTING_SCIENCE, 2098).orElseThrow();
+        assertThat(editor.rows(copy)).hasSize(1);
+        // Checked with a second copy, since a copy's id is only known once it's saved
+        mockMvc.perform(post("/it/requirements/sets/{id}/copy", set.getId()).param("entryYear", "2097")
+                       .session(session))
+               .andExpect(redirectedUrl("/it/requirements?set="
+                       + setRepository.findByProgramAndEntryYear(Program.COMPUTING_SCIENCE, 2097).orElseThrow().getId()));
+    }
+
+    @Test
+    void copyingToAYearThatHasRequirementsShowsAnError() throws Exception {
+        mockMvc.perform(post("/it/requirements/sets/{id}/copy", set.getId()).param("entryYear", "2099")
+                       .session(itManager()))
+               .andExpect(redirectedUrl(listUrl()))
+               .andExpect(flash().attribute("error", "Computing Science already has requirements for entry 2099."));
+    }
+
+    @Test
+    void copyingWithoutAYearShowsAnError() throws Exception {
+        mockMvc.perform(post("/it/requirements/sets/{id}/copy", set.getId()).session(itManager()))
+               .andExpect(redirectedUrl(listUrl()))
+               .andExpect(flash().attribute("error", "Enter the entry year to copy to."));
+    }
+
     // -- Removing --
 
     @Test
@@ -235,7 +276,11 @@ class RequirementControllerTest {
                .andExpect(redirectedUrl(LoginController.homePath(role)));
         mockMvc.perform(post("/it/requirements/sets/{id}/add", set.getId()).param("json", NOTE).session(session))
                .andExpect(redirectedUrl(LoginController.homePath(role)));
+        mockMvc.perform(post("/it/requirements/sets/{id}/copy", set.getId()).param("entryYear", "2098")
+                       .session(session))
+               .andExpect(redirectedUrl(LoginController.homePath(role)));
 
         assertThat(rows()).hasSize(1);
+        assertThat(setRepository.findByProgramAndEntryYear(Program.COMPUTING_SCIENCE, 2098)).isEmpty();
     }
 }
