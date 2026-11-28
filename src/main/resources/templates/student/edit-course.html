@@ -10,13 +10,16 @@
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
         <h1 class="page-title">Edit course</h1>
-        <p>Your changes are kept when you upload a new transcript.</p>
+        <p th:unless="${owner.byAdvisor()}">Your changes are kept when you upload a new transcript.</p>
+        <p class="muted" th:if="${owner.byAdvisor()}"
+           th:text="|Editing a course for ${owner.name()} (${owner.student().user.email}). Changes are kept when a new transcript is uploaded, and they see them on My courses.|">
+            Editing a course for Jack.</p>
 
-        <form th:action="@{/student/courses/{id}/edit(id=${courseId})}" method="post">
+        <form th:action="@{${owner.basePath()} + '/courses/{id}/edit'(id=${courseId})}" method="post">
             <th:block th:replace="~{fragments/course-form :: courseFields}"></th:block>
             <div class="actions">
                 <button type="submit" class="btn btn-primary">Save</button>
-                <a th:href="@{/student/courses}" class="link">Cancel</a>
+                <a th:href="@{${owner.basePath()} + '/courses'}" class="link">Cancel</a>
             </div>
         </form>
     </main>

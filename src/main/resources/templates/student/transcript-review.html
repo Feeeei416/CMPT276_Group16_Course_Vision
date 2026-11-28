@@ -9,14 +9,16 @@
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title">Review your courses</h1>
+        <h1 class="page-title" th:text="${owner.byAdvisor() ? 'Review the courses for ' + owner.name() : 'Review your courses'}">Review your courses</h1>
         <p th:text="|We found ${courses.size()} ${courses.size() == 1 ? 'course' : 'courses'}. Check them, then confirm to save them. Nothing is saved until you confirm.|">
             We found 8 courses.</p>
 
         <div th:if="${transcriptCourseCount > 0}" class="error-message" role="alert">
-            <p th:text="|You already have ${transcriptCourseCount} saved ${transcriptCourseCount == 1 ? 'course' : 'courses'} from a transcript. Confirming replaces them with the courses below. Courses you added or edited by hand are kept.|">
+            <p th:unless="${owner.byAdvisor()}" th:text="|You already have ${transcriptCourseCount} saved ${transcriptCourseCount == 1 ? 'course' : 'courses'} from a transcript. Confirming replaces them with the courses below. Courses you added or edited by hand are kept.|">
                 You already have 8 saved courses from a transcript. Confirming replaces them with the courses below.
                 Courses you added or edited by hand are kept.</p>
+            <p th:if="${owner.byAdvisor()}" th:text="|They already have ${transcriptCourseCount} saved ${transcriptCourseCount == 1 ? 'course' : 'courses'} from a transcript. Confirming replaces them with the courses below. Courses added or edited by hand are kept.|">
+                They already have 8 saved courses from a transcript.</p>
         </div>
 
         <div th:unless="${skippedLines.isEmpty()}" class="error-message" role="alert">
@@ -28,10 +30,10 @@
 
         <div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
 
-        <form th:action="@{/student/transcript/confirm}" method="post" class="actions">
+        <form th:action="@{${owner.basePath()} + '/transcript/confirm'}" method="post" class="actions">
             <button type="submit" class="btn btn-primary">Confirm and save</button>
-            <button type="submit" th:formaction="@{/student/transcript/cancel}" class="btn btn-secondary">Cancel</button>
-            <a th:href="@{/student/transcript}" class="link">Upload a different file</a>
+            <button type="submit" th:formaction="@{${owner.basePath()} + '/transcript/cancel'}" class="btn btn-secondary">Cancel</button>
+            <a th:href="@{${owner.basePath()} + '/transcript'}" class="link">Upload a different file</a>
         </form>
     </main>
 </body>

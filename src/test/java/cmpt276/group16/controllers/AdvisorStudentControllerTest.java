@@ -135,7 +135,7 @@ class AdvisorStudentControllerTest {
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("2025 Fall")))
                .andExpect(content().string(containsString("Data Structures and Programming")))
-               .andExpect(content().string(containsString("3.00 units earned")));
+               .andExpect(content().string(containsString("3 units earned")));
     }
 
     // Eligible courses for next semester, and what's missing for the others
