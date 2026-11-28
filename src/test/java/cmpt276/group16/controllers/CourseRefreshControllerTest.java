@@ -5,7 +5,9 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -26,6 +28,7 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -156,6 +159,18 @@ class CourseRefreshControllerTest {
                .andExpect(content().string(not(containsString("Running now"))));
     }
 
+    // A past term saves no sections, so its row only gives the courses
+    @Test
+    void logShowsAPastTermWithoutSections() throws Exception {
+        CourseRefresh past = new CourseRefresh(2025, Season.FALL, false, JULY_9);
+        past.finish(JULY_9.plusSeconds(20), 52, 0, 0, 0, List.of());
+        when(importService.refreshLog()).thenReturn(List.of(past));
+
+        mockMvc.perform(get("/it/course-refresh").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(content().string(containsString("52 courses saved")))
+               .andExpect(content().string(not(containsString("sections saved"))));
+    }
+
     // -- Refreshing --
  
     @Test
@@ -232,6 +247,15 @@ class CourseRefreshControllerTest {
         verify(importService, never()).refreshLog();
     }
 
+    // AuthInterceptor sends other roles home before the controller runs, so no past term is imported
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = "IT_MANAGER", mode = EnumSource.Mode.EXCLUDE)
+    void otherRolesCantImportPastTerms(Role role) throws Exception {
+        mockMvc.perform(post("/it/course-refresh/past-terms").session(sessionFor(role)))
+               .andExpect(redirectedUrl(LoginController.homePath(role)));
+        verify(importService, never()).importPastTerm(anyInt(), any());
+    }
+
     // -- Which terms are offered --
  
     @Test
@@ -245,5 +269,73 @@ class CourseRefreshControllerTest {
         assertThat(CourseRefreshController.termOptions(LocalDate.of(2027, 8, 31))).containsExactly(
                 new TermOption(2027, Season.SUMMER), new TermOption(2027, Season.FALL),
                 new TermOption(2028, Season.SPRING));
+    }
+
+    // -- Past terms --
+
+    // The page offers the past terms button, which shows a spinner while it works
+    @Test
+    void pageOffersPastTerms() throws Exception {
+        mockMvc.perform(get("/it/course-refresh").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(content().string(containsString("Import past terms")))
+               .andExpect(content().string(containsString("/it/course-refresh/past-terms")))
+               .andExpect(content().string(containsString("loading-button.js")));
+    }
+
+    // Each of the last 6 terms is imported, oldest first
+    @Test
+    void importsTheLastSixTerms() throws Exception {
+        mockMvc.perform(post("/it/course-refresh/past-terms").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(redirectedUrl("/it/course-refresh"))
+               .andExpect(flash()
+                    .attribute("message", "Imported past terms: 2024 Fall, 2025 Spring, 2025 Summer, 2025 Fall, 2026 Spring, 2026 Summer."));
+
+        InOrder inOrder = inOrder(importService);
+        inOrder.verify(importService).importPastTerm(2024, Season.FALL);
+        inOrder.verify(importService).importPastTerm(2025, Season.SPRING);
+        inOrder.verify(importService).importPastTerm(2025, Season.SUMMER);
+        inOrder.verify(importService).importPastTerm(2025, Season.FALL);
+        inOrder.verify(importService).importPastTerm(2026, Season.SPRING);
+        inOrder.verify(importService).importPastTerm(2026, Season.SUMMER);
+    }
+
+    // A term SFU can't give doesn't stop the others; it's named in the error
+    @Test
+    void oneTermFailingDoesntStopTheOthers() throws Exception {
+        when(importService.importPastTerm(2025, Season.SPRING)).thenThrow(new SfuApiException("SFU is down", null));
+
+        mockMvc.perform(post("/it/course-refresh/past-terms").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(flash().attribute("error", containsString("2025 Spring")))
+               .andExpect(flash().attribute("message", not(containsString("2025 Spring"))))
+               .andExpect(flash().attribute("message", containsString("2026 Summer")));
+
+        verify(importService, times(6)).importPastTerm(anyInt(), any());
+    }
+
+    // Another refresh running stops it straight away, since every later term would be turned down too
+    @Test
+    void stopsWhenARefreshIsAlreadyRunning() throws Exception {
+        when(importService.importPastTerm(anyInt(), any())).thenThrow(new ImportAlreadyRunningException());
+
+        mockMvc.perform(post("/it/course-refresh/past-terms").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(flash().attribute("error", containsString("already running")));
+
+        verify(importService, times(1)).importPastTerm(anyInt(), any());
+    }
+
+    // Stopping for a running refresh still reports the terms imported and failed before it
+    @Test
+    void stoppingForARunningRefreshKeepsWhatWasDoneBefore() throws Exception {
+        when(importService.importPastTerm(2025, Season.SPRING)).thenThrow(new SfuApiException("SFU is down", null));
+        when(importService.importPastTerm(2025, Season.SUMMER)).thenThrow(new ImportAlreadyRunningException());
+
+        mockMvc.perform(post("/it/course-refresh/past-terms").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(redirectedUrl("/it/course-refresh"))
+               .andExpect(flash().attribute("message", "Imported past terms: 2024 Fall."))
+               .andExpect(flash().attribute("error", containsString("Couldn't import 2025 Spring")))
+               .andExpect(flash().attribute("error", containsString("the rest weren't imported")));
+
+        // 2024 Fall, 2025 Spring and 2025 Summer were tried; nothing after the running refresh was
+        verify(importService, times(3)).importPastTerm(anyInt(), any());
     }
 }

@@ -24,7 +24,7 @@
           Next semester is also refreshed automatically once a day, and this term once a week.
         </p>
         <p class="notice-message" th:if="${running}" role="status">A refresh is running now.</p>
-        <form method="post" class="inline-form" th:action="@{/it/course-refresh/refresh}">
+        <form method="post" class="inline-form" th:action="@{/it/course-refresh/refresh}" data-loading>
           <select name="term" class="input" aria-label="Term" required>
             <option
               th:each="t : ${terms}"
@@ -34,6 +34,18 @@
             ></option>
           </select>
           <button type="submit" class="btn btn-primary">Refresh course data</button>
+        </form>
+      </section>
+
+      <section>
+        <h2 class="section-label">Past terms</h2>
+        <p class="muted">
+          Records which courses ran in each of the last 6 terms, so the app can tell which courses are offered
+          only once a year. Only the course lists are fetched, so this takes under a minute. Refresh this term and
+          next semester first: courses that aren't saved yet are skipped.
+        </p>
+        <form method="post" class="inline-form" th:action="@{/it/course-refresh/past-terms}" data-loading>
+          <button type="submit" class="btn btn-secondary">Import past terms</button>
         </form>
       </section>
 
@@ -65,7 +77,7 @@
                   </span>
                   <span th:if="${r.failed}" class="refresh-error" th:text="|Failed: ${r.error}|">Failed: SFU is down</span>
                   <th:block th:if="${r.finished and !r.failed}">
-                    <div th:text="|${r.courses} courses and ${r.sections} sections saved|">52 courses and 310 sections saved</div>
+                    <div th:text="${r.sections > 0} ? |${r.courses} courses and ${r.sections} sections saved| : |${r.courses} courses saved|">52 courses and 310 sections saved</div>
                     <div class="muted" th:if="${r.removedSections > 0 or r.notOffered > 0}"
                          th:text="|No longer offered: ${r.removedSections} ${r.removedSections == 1 ? 'section' : 'sections'} and ${r.notOffered} ${r.notOffered == 1 ? 'course' : 'courses'}|">
                       No longer offered: 2 sections and 1 course
@@ -88,5 +100,6 @@
         <a th:href="@{/it/home}" class="link">Back to home</a>
       </div>
     </main>
+    <script th:src="@{/js/loading-button.js}"></script>
   </body>
 </html>

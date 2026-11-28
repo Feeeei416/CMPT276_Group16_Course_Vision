@@ -2,6 +2,7 @@ package cmpt276.group16.courseimport;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -132,17 +133,28 @@ public class CourseImportService {
     // Throws SfuApiException if the API can't be used (nothing is saved then),
     // and ImportAlreadyRunningException if another import hasn't finished
     public ImportRun importTerm(int year, Season season) {
-        return importTerm(year, season, false);
+        return importTerm(year, season, false, false);
     }
 
     // The same, for a refresh the app starts on its own
     public ImportRun importTermAutomatically(int year, Season season) {
-        return importTerm(year, season, true);
+        return importTerm(year, season, true, false);
+    }
+
+    // Records which courses ran in a past term, so the app can tell how often a course is offered
+    // Only the department course lists are fetched, and only offerings are saved: a course's details, rules and
+    // sections are left as the newest import saved them. Courses that aren't saved yet are skipped
+    public ImportRun importPastTerm(int year, Season season) {
+        LocalDate today = LocalDate.now(clock);
+        if (new YearAndSeason(year, season).compareTo(YearAndSeason.of(today)) >= 0) {
+            throw new IllegalArgumentException("Only terms before this one can be imported as past terms");
+        }
+        return importTerm(year, season, false, true);
     }
 
     // Has to be called outside a transaction (the controller and the scheduler are), so the log row is saved
     // straight away and the save step gets its own transaction
-    private ImportRun importTerm(int year, Season season, boolean automatic) {
+    private ImportRun importTerm(int year, Season season, boolean automatic, boolean pastTerm) {
         if (!running.compareAndSet(false, true)) {
             throw new ImportAlreadyRunningException();
         }
@@ -153,10 +165,10 @@ public class CourseImportService {
             runningRefreshId.set(refresh.getId());
             Long refreshId = refresh.getId();
             List<String> notes = new ArrayList<>();
-            List<FetchedCourse> fetched = fetch(year, season, notes);
+            List<FetchedCourse> fetched = fetch(year, season, pastTerm, notes);
             Term term = findOrCreateTerm(year, season);
             ImportRun run = transaction.execute(status -> {
-                ImportRun saved = save(term, fetched, notes);
+                ImportRun saved = pastTerm ? saveOfferings(term, fetched, notes) : save(term, fetched, notes);
                 // In the same transaction as the courses, so the log can't say it finished
                 // when the courses weren't saved, or the other way round
                 refreshRepository.findById(refreshId).orElseThrow().finish(saved.finishedAt(), saved.courses(),
@@ -200,7 +212,7 @@ public class CourseImportService {
      * Step 1: everything from the API, nothing saved
      */
  
-    private List<FetchedCourse> fetch(int year, Season season, List<String> notes) {
+    private List<FetchedCourse> fetch(int year, Season season, boolean listOnly, List<String> notes) {
         List<FetchedCourse> result = new ArrayList<>();
         boolean anyDepartment = false;
         for (String dept : DEPARTMENTS) {
@@ -213,7 +225,12 @@ public class CourseImportService {
             for (CourseListing course : mapper.readCourses(list.get())) {
                 // Graduate courses (500 and up) aren't part of any undergraduate plan
                 if (course.number() != null && isUndergraduate(course.number())) {
-                    fetchCourse(year, season, dept, course.number(), notes).ifPresent(result::add);
+                    if (listOnly) {
+                        // A past term only needs to know the course ran, so its sections and outlines aren't fetched
+                        result.add(new FetchedCourse(dept, course.number(), null, List.of()));
+                    } else {
+                        fetchCourse(year, season, dept, course.number(), notes).ifPresent(result::add);
+                    }
                 }
             }
         }
@@ -306,6 +323,29 @@ public class CourseImportService {
         int notOffered = markOthersNotOffered(term, offeringIds);
         return new ImportRun(term.getTermYear(), term.getSeason(), Instant.now(clock), courses, sections,
                 removedSections, notOffered, List.copyOf(notes));
+    }
+
+    // For a past term: records an offering for each course that's already saved, and changes nothing else
+    private ImportRun saveOfferings(Term term, List<FetchedCourse> fetched, List<String> notes) {
+        int courses = 0;
+        Set<Long> offeringIds = new HashSet<>();
+        List<String> notSaved = new ArrayList<>();
+        for (FetchedCourse f : fetched) {
+            Optional<Course> course = courseRepository.findByNormalizedSubjectAndNumber(f.subject(), f.number());
+            if (course.isEmpty()) {
+                notSaved.add(f.subject() + " " + f.number());
+                continue;
+            }
+            CourseOffering offering = saveOffering(course.get(), term);
+            offeringIds.add(offering.getId());
+            courses++;
+        }
+        if (!notSaved.isEmpty()) {
+            notes.add("Not saved yet, so skipped: " + String.join(", ", notSaved));
+        }
+        int notOffered = markOthersNotOffered(term, offeringIds);
+        return new ImportRun(term.getTermYear(), term.getSeason(), Instant.now(clock), courses, 0, 0,
+                notOffered, List.copyOf(notes));
     }
  
     // Updates the course if it is already saved (for example a demo course), otherwise adds it.

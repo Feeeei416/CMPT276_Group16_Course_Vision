@@ -20,8 +20,10 @@ import cmpt276.group16.courseimport.SfuApiException;
 import cmpt276.group16.models.CourseRefresh;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.YearAndSeason;
+import cmpt276.group16.services.PastOfferings;
 
-// The IT manager's course refresh page: refresh one term's courses from the SFU API and see the log of past refreshes.
+// The IT manager's course refresh page: refresh one term's courses from the SFU API, 
+// import past terms' course lists, and see the log of past refreshes.
 @Controller 
 public class CourseRefreshController {
 
@@ -100,6 +102,45 @@ public class CourseRefreshController {
             // The service has already logged it and recorded it as a failed refresh
             redirectAttributes.addFlashAttribute("error",
                     "The refresh failed, so nothing was changed. Try again, and check the server log if it keeps failing.");
+        }
+        return "redirect:/it/course-refresh";
+    }
+
+    /** POST /it/course-refresh/past-terms : records which courses ran in each of the last 6 terms. */
+    @PostMapping("/it/course-refresh/past-terms")
+    public String importPastTerms(RedirectAttributes redirectAttributes) {
+        List<String> imported = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+        boolean alreadyRunning = false;
+        for (YearAndSeason term : PastOfferings.recentTerms(LocalDate.now(clock))) {
+            try {
+                importService.importPastTerm(term.year(), term.season());
+                imported.add(term.name());
+            } catch (ImportAlreadyRunningException e) {
+                // Every term after this one would be turned down too, so stop and report what was done so far
+                alreadyRunning = true;
+                break;
+            } catch (RuntimeException e) {
+                // SfuApiException or a database error. The service has logged it, so the other terms go on
+                failed.add(term.name());
+            }
+        }
+        if (!imported.isEmpty()) {
+            redirectAttributes.addFlashAttribute("message", "Imported past terms: " + String.join(", ", imported) + ".");
+        }
+        
+        // Both problems can happen in one run, and the page shows one error, so they're joined
+        List<String> errors = new ArrayList<>();
+        if (!failed.isEmpty()) {
+            errors.add("Couldn't import " + String.join(", ", failed) + ". The log below says why.");
+        }
+        if (alreadyRunning) {
+            boolean triedSome = !imported.isEmpty() || !failed.isEmpty();
+            errors.add("A refresh is already running, so " + (triedSome ? "the rest weren't" : "past terms weren't")
+                    + " imported. Wait for it to finish, then try again.");
+        }
+        if (!errors.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", String.join(" ", errors));
         }
         return "redirect:/it/course-refresh";
     }
