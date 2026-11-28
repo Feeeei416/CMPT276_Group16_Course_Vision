@@ -1,5 +1,6 @@
 package cmpt276.group16.models;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +14,7 @@ public interface CourseDesignationRepository extends JpaRepository<CourseDesigna
     // True if this course counts for this designation, for example whether CMPT 105W counts as W.
     // "IdDesignation" because designation lives inside the id, not on the entity itself
     boolean existsByCourseIdAndIdDesignation(Long courseId, Designation designation);
+
+    // Every designation of every course in the list, in one query. Used by the Graduation Report (#69)
+    List<CourseDesignation> findByCourseIdIn(Collection<Long> courseIds);
 }
