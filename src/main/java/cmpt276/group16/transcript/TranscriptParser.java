@@ -29,7 +29,8 @@ public class TranscriptParser {
     // units attempted, units completed, grade (blank while the term is in progress),
     // grade points, class average, and class enrollment
     // e.g. "ENSC 251 SW Design & Analysis for Engs 4.00 4.00 B+ 13.32 C+ 83"
-    // TODO: handle the Repeated column once I get ahold of transcript that uses it
+    // Retakes are found by course code (same code = same course). Special-topics courses are told apart by
+    // the "Course Topic:" line under them instead, so the Repeated column isn't needed
     private static final Pattern COURSE = Pattern.compile(
             "^([A-Z]{2,4}) (\\d{3}[A-Z]?) (.+?) (\\d+\\.\\d{2}) (\\d+\\.\\d{2})(?: ([A-Z]{1,2}[+-]?))?"
                     + " \\d+\\.\\d{2} \\S+ \\d+$");

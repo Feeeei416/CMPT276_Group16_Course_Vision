@@ -30,6 +30,7 @@ public final class UnitTotals {
     }
 
     // A course taken more than once counts once:
+    // Special-topics courses with different topics are different courses (see code())
     //  - if any attempt earned credit, the most recent of those counts
     //  - otherwise, an attempt still in progress counts towards inProgress
     // A course already passed isn't counted again while it's being retaken, so nothing is counted twice.

@@ -148,6 +148,8 @@ class TranscriptParserTest {
         assertThat(result.courses()).filteredOn(ParsedCourse::isInProgress)
                 .extracting(ParsedCourse::term).containsOnly("2026 Fall").hasSize(3);
         assertThat(result.skippedLines()).isEmpty();
+        assertThat(result.courses()).filteredOn(c -> c.number().equals("419"))
+                .extracting(ParsedCourse::topic).doesNotContainNull();
     }
 
     @Test
