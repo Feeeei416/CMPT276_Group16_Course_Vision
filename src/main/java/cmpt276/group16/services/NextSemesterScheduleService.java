@@ -63,7 +63,7 @@ public class NextSemesterScheduleService {
 
     public Optional<Term> nextSemesterTerm() {
 
-        PlanRules.YearAndSeason next = PlanRules.nextSemesterYearAndSeason(LocalDate.now(clock));
+        YearAndSeason next = YearAndSeason.of(LocalDate.now(clock)).next();
         return termRepository.findByTermYearAndSeason(next.year(), next.season());
     }
 

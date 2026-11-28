@@ -71,6 +71,6 @@ public class PlanTerm {
     }
 
     public static String nameOf(int year, Season season) {
-        return year + " " + season.getShowName();
+        return new YearAndSeason(year, season).name();
     }
 }
