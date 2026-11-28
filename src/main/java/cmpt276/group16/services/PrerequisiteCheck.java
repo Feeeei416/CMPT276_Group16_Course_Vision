@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import cmpt276.group16.models.Course;
 import cmpt276.group16.models.Grades;
 import cmpt276.group16.models.NodeType;
 import cmpt276.group16.models.PlannedCourse;
@@ -36,6 +37,20 @@ public final class PrerequisiteCheck {
         return check(rules, record, List.of(), List.of());
     }
 
+    // A course the student will have by the term being checked, but without a grade yet: one planned for an
+    // earlier term, or one in the same term or schedule. where finishes the sentence "CMPT 225 is ...",
+    // for example "planned for 2027 Spring" on My plan or "in your schedule" on My schedule (#74)
+    public record Upcoming(String code, BigDecimal units, boolean coop, String where) {
+
+        // A course in a plan: "planned for 2027 Spring"
+        public static Upcoming of(PlannedCourse planned) {
+            Course course = planned.getCourse();
+            return new Upcoming(planned.getCode(), planned.getUnits(),
+                    PlanRules.isCoopCourse(course.getSubject(), course.getNumber()),
+                    "planned for " + planned.getTerm().getName());
+        }
+    }
+
     // The same check for a course in a plan (#44).
     // planned: the courses planned for terms before the one being checked. They count as taken by then,
     //          but their grades aren't known yet, so each one used is passed on to confirm
@@ -43,6 +58,14 @@ public final class PrerequisiteCheck {
     //           the Calendar says may be taken concurrently
     public static Result check(List<RequisiteRule> rules, List<TranscriptCourse> record,
             List<PlannedCourse> planned, List<PlannedCourse> sameTerm) {
+        return checkUpcoming(rules, record, planned.stream().map(Upcoming::of).toList(),
+                sameTerm.stream().map(Upcoming::of).toList());
+    }
+
+    // The same check with the planned and same-term courses already turned into Upcoming, so a schedule can use it
+    // too (#74). Its other courses are sameTerm, and nothing is planned earlier, since next semester comes next
+    public static Result checkUpcoming(List<RequisiteRule> rules, List<TranscriptCourse> record,
+            List<Upcoming> planned, List<Upcoming> sameTerm) {
         List<RequisiteRule> roots = rules.stream().filter(rule -> rule.getParent() == null).toList();
         if (roots.isEmpty()) {
             return new Result(true, List.of(), List.of());
@@ -77,7 +100,7 @@ public final class PrerequisiteCheck {
     }
 
     private static Outcome evaluate(RequisiteRule node, List<RequisiteRule> rules, List<TranscriptCourse> record,
-            List<PlannedCourse> planned, List<PlannedCourse> sameTerm) {
+            List<Upcoming> planned, List<Upcoming> sameTerm) {
         if (node.getNodeType() == NodeType.COURSE) {
             return course(node, record, planned, sameTerm);
         }
@@ -148,8 +171,8 @@ public final class PrerequisiteCheck {
         return result;
     }
 
-    private static Outcome course(RequisiteRule node, List<TranscriptCourse> record, List<PlannedCourse> planned,
-            List<PlannedCourse> sameTerm) {
+    private static Outcome course(RequisiteRule node, List<TranscriptCourse> record, List<Upcoming> planned,
+            List<Upcoming> sameTerm) {
         String code = node.getReqSubject() + " " + node.getReqNumber();
         String minGrade = node.getMinGrade();
         List<TranscriptCourse> attempts = record.stream()
@@ -183,25 +206,25 @@ public final class PrerequisiteCheck {
             return result;
         }
         // Planned for an earlier term, so it will be taken by then, with a grade nobody knows yet
-        Optional<PlannedCourse> plannedEarlier = planned.stream().filter(p -> code.equals(p.getCode())).findFirst();
+        Optional<Upcoming> plannedEarlier = planned.stream().filter(p -> code.equals(p.code())).findFirst();
         if (plannedEarlier.isPresent()) {
-            String term = plannedEarlier.get().getTerm().getName();
+            String where = plannedEarlier.get().where();
             result.met = true;
             result.toConfirm.add(minGrade == null
-                    ? code + " is planned for " + term + "."
-                    : code + " is planned for " + term + ", and you need " + minGrade + " or better.");
+                    ? code + " is " + where + "."
+                    : code + " is " + where + ", and you need " + minGrade + " or better.");
             return result;
         }
         // Planned for the same term, which is only enough when the Calendar says it may be taken concurrently
-        Optional<PlannedCourse> plannedSameTerm = node.isConcurrentOk()
-                ? sameTerm.stream().filter(p -> code.equals(p.getCode())).findFirst()
+        Optional<Upcoming> plannedSameTerm = node.isConcurrentOk()
+                ? sameTerm.stream().filter(p -> code.equals(p.code())).findFirst()
                 : Optional.empty();
         if (plannedSameTerm.isPresent()) {
-            String term = plannedSameTerm.get().getTerm().getName();
+            String where = plannedSameTerm.get().where();
             result.met = true;
             result.toConfirm.add(minGrade == null
-                    ? code + " is planned for " + term + " too."
-                    : code + " is planned for " + term + " too, and you need " + minGrade + " or better.");
+                    ? code + " is " + where + " too."
+                    : code + " is " + where + " too, and you need " + minGrade + " or better.");
             return result;
         }
         result.have = bestLetterGrade(attempts);
@@ -237,14 +260,14 @@ public final class PrerequisiteCheck {
                 .orElse(null);
     }
 
-    private static Outcome units(RequisiteRule node, List<TranscriptCourse> record, List<PlannedCourse> planned) {
+    private static Outcome units(RequisiteRule node, List<TranscriptCourse> record, List<Upcoming> planned) {
         BigDecimal needed = node.getMinUnits();
         UnitTotals.Totals totals = UnitTotals.of(record);
         // Co-op work term courses (like CMPT 426) don't count towards an SFU degree, so their units are left out.
         // Only here: they still count when a course prerequisite names one
         BigDecimal plannedUnits = planned.stream()
-                .filter(p -> !PlanRules.isCoopCourse(p.getCourse().getSubject(), p.getCourse().getNumber()))
-                .map(PlannedCourse::getUnits)
+                .filter(p -> !p.coop())
+                .map(Upcoming::units)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Outcome result = new Outcome();
