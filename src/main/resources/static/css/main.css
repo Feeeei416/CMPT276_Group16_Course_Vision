@@ -528,26 +528,26 @@ button.link {
 
 /* A small spinning circle inside a button while a slow form is working (see js/loading-button.js) */
 .spinner {
-  display: inline-block;
-  width: 0.9em;
-  height: 0.9em;
-  margin-right: 0.5em;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  vertical-align: -0.1em;
-  animation: spin 0.8s linear infinite;
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    margin-right: 0.5em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.1em;
+    animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* People who turned off animations still see "Refreshing…", just without the spinning */
 @media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
+    .spinner {
+        animation: none;
+    }
 }

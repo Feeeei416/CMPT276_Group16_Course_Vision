@@ -322,4 +322,20 @@ class CourseRefreshControllerTest {
 
         verify(importService, times(1)).importPastTerm(anyInt(), any());
     }
+
+    // Stopping for a running refresh still reports the terms imported and failed before it
+    @Test
+    void stoppingForARunningRefreshKeepsWhatWasDoneBefore() throws Exception {
+        when(importService.importPastTerm(2025, Season.SPRING)).thenThrow(new SfuApiException("SFU is down", null));
+        when(importService.importPastTerm(2025, Season.SUMMER)).thenThrow(new ImportAlreadyRunningException());
+
+        mockMvc.perform(post("/it/course-refresh/past-terms").session(sessionFor(Role.IT_MANAGER)))
+               .andExpect(redirectedUrl("/it/course-refresh"))
+               .andExpect(flash().attribute("message", "Imported past terms: 2024 Fall."))
+               .andExpect(flash().attribute("error", containsString("Couldn't import 2025 Spring")))
+               .andExpect(flash().attribute("error", containsString("the rest weren't imported")));
+
+        // 2024 Fall, 2025 Spring and 2025 Summer were tried; nothing after the running refresh was
+        verify(importService, times(3)).importPastTerm(anyInt(), any());
+    }
 }

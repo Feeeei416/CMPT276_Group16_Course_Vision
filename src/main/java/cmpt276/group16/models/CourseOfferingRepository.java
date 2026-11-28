@@ -18,6 +18,6 @@ public interface CourseOfferingRepository extends JpaRepository<CourseOffering, 
     // One course's offering in a term, for example CMPT 225 in 2027 Spring
     Optional<CourseOffering> findByTermIdAndCourseSubjectAndCourseNumber(Long termId, String subject, String number);
 
-    // Every term this course ran in, for eorking out which recent terms it was offered in 
+    // Every term this course ran in, for working out which recent terms it was offered in
     List<CourseOffering> findByCourseIdAndOfferedTrue(Long courseId);
 }

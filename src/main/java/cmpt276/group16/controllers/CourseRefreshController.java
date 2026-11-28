@@ -111,16 +111,15 @@ public class CourseRefreshController {
     public String importPastTerms(RedirectAttributes redirectAttributes) {
         List<String> imported = new ArrayList<>();
         List<String> failed = new ArrayList<>();
+        boolean alreadyRunning = false;
         for (YearAndSeason term : PastOfferings.recentTerms(LocalDate.now(clock))) {
             try {
-                ImportRun run = importService.importPastTerm(term.year(), term.season());
+                importService.importPastTerm(term.year(), term.season());
                 imported.add(term.name());
             } catch (ImportAlreadyRunningException e) {
-                // Every term after this one would be turned down too
-                redirectAttributes.addFlashAttribute("error", "A refresh is already running, so past terms "
-                        + (imported.isEmpty() ? "weren't imported" : "after " + imported.get(imported.size() - 1)
-                        + " weren't imported") + ". Wait for it to finish, then try again.");
-                return "redirect:/it/course-refresh";
+                // Every term after this one would be turned down too, so stop and report what was done so far
+                alreadyRunning = true;
+                break;
             } catch (RuntimeException e) {
                 // SfuApiException or a database error. The service has logged it, so the other terms go on
                 failed.add(term.name());
@@ -129,9 +128,19 @@ public class CourseRefreshController {
         if (!imported.isEmpty()) {
             redirectAttributes.addFlashAttribute("message", "Imported past terms: " + String.join(", ", imported) + ".");
         }
+        
+        // Both problems can happen in one run, and the page shows one error, so they're joined
+        List<String> errors = new ArrayList<>();
         if (!failed.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error",
-                    "Couldn't import " + String.join(", ", failed) + ". The log below says why.");
+            errors.add("Couldn't import " + String.join(", ", failed) + ". The log below says why.");
+        }
+        if (alreadyRunning) {
+            boolean triedSome = !imported.isEmpty() || !failed.isEmpty();
+            errors.add("A refresh is already running, so " + (triedSome ? "the rest weren't" : "past terms weren't")
+                    + " imported. Wait for it to finish, then try again.");
+        }
+        if (!errors.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", String.join(" ", errors));
         }
         return "redirect:/it/course-refresh";
     }
