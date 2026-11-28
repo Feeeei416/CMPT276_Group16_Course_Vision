@@ -7,9 +7,9 @@ import org.springframework.stereotype.Component;
 import cmpt276.group16.models.StudentProfile;
 import jakarta.servlet.http.HttpSession;
 
-// Whose plans the My plan and All my plans pages work on (#73).
-// /student/plan... is the signed-in student's own plans. /advisor/students/5/plan... is student 5's plans,
-// opened by their advisor, so they can plan together in an appointment.
+// Whose plans the My plan and All my plans pages work on (#73), and whose record My courses and Edit course work
+// on (#78). /student/plan... is the signed-in student's own plans. /advisor/students/5/plan... is student 5's plans,
+// opened by their advisor, so they can plan together in an appointment. The same goes for /courses.
 // Both use the same handlers and templates; basePath is where the page's links, forms and redirects point
 public record PlanOwner(StudentProfile student, String basePath, boolean byAdvisor) {
 
