@@ -30,6 +30,7 @@ public final class UnitTotals {
     }
 
     // A course taken more than once counts once:
+    // Special-topics courses with different topics are different courses (see code())
     //  - if any attempt earned credit, the most recent of those counts
     //  - otherwise, an attempt still in progress counts towards inProgress
     // A course already passed isn't counted again while it's being retaken, so nothing is counted twice.
@@ -72,8 +73,12 @@ public final class UnitTotals {
         return groups;
     }
 
-    private static String code(TranscriptCourse course) {
-        return (course.getSubject() + " " + course.getNumber()).toUpperCase(Locale.ROOT);
+    static String code(TranscriptCourse course) {
+        String code = (course.getSubject() + " " + course.getNumber()).toUpperCase(Locale.ROOT);
+        if (course.getTopic() == null) {
+            return code;
+        }
+        return code + " / " + course.getTopic().toUpperCase(Locale.ROOT);
     }
 
     // Transfer credit that doesn't match one SFU course gets a number like "1XX" or "2XX"

@@ -148,6 +148,8 @@ class TranscriptParserTest {
         assertThat(result.courses()).filteredOn(ParsedCourse::isInProgress)
                 .extracting(ParsedCourse::term).containsOnly("2026 Fall").hasSize(3);
         assertThat(result.skippedLines()).isEmpty();
+        assertThat(result.courses()).filteredOn(c -> c.number().equals("419"))
+                .extracting(ParsedCourse::topic).doesNotContainNull();
     }
 
     @Test
@@ -174,5 +176,32 @@ class TranscriptParserTest {
         assertThatThrownBy(() -> parser.parse(TestTranscripts.blankPdf()))
                 .isInstanceOf(TranscriptParseException.class)
                 .hasMessageContaining("No courses");
+    }
+
+    // A special-topics course gets its topic from the line right under it
+    @Test
+    void readsTheTopicOfASpecialTopicsCourse() {
+        List<ParsedCourse> courses = parser.parseText("""
+                2026 Fall
+                ENSC 461 Special Topics Engineering Sci 4.00 4.00 A 16.00 B 37
+                Course Topic: ST-Robotics
+                CMPT 225 Data Structures/Programming 3.00 3.00 B- 8.01 C+ 162
+                """).courses();
+
+        assertThat(courses.get(0).topic()).isEqualTo("ST-Robotics");
+        assertThat(courses.get(1).topic()).isNull();
+    }
+
+    // A topic line that isn't right under a course isn't attached to anything
+    @Test
+    void topicNotRightUnderACourseIsIgnored() {
+        List<ParsedCourse> courses = parser.parseText("""
+                2026 Fall
+                CMPT 225 Data Structures/Programming 3.00 3.00 B- 8.01 C+ 162
+                Term Totals: 3.00 3.00 8.01
+                Course Topic: ST-Robotics
+                """).courses();
+
+        assertThat(courses.get(0).topic()).isNull();
     }
 }

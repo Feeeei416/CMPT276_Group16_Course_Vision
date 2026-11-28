@@ -42,7 +42,7 @@ public class TranscriptService {
         transcriptCourseRepository.saveAll(courses.stream()
                 .filter(c -> !manualCourses.contains(new CourseKey(c.term(), c.subject(), c.number())))
                 .map(c -> new TranscriptCourse(student, c.term(), c.subject(), c.number(),
-                        c.title(), c.units(), c.grade()))
+                        c.title(), c.units(), c.grade(), c.topic()))
                 .toList());
     }
 

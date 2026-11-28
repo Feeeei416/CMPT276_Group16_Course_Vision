@@ -124,7 +124,7 @@ public final class Gpa {
             if (course.getNumber().toUpperCase(Locale.ROOT).contains("XX")) {
                 groups.add(List.of(course));
             } else {
-                String code = (course.getSubject() + " " + course.getNumber()).toUpperCase(Locale.ROOT);
+                String code = UnitTotals.code(course);
                 byCode.computeIfAbsent(code, key -> new ArrayList<>()).add(course);
             }
         }

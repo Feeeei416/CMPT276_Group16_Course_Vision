@@ -29,10 +29,14 @@ public class TranscriptParser {
     // units attempted, units completed, grade (blank while the term is in progress),
     // grade points, class average, and class enrollment
     // e.g. "ENSC 251 SW Design & Analysis for Engs 4.00 4.00 B+ 13.32 C+ 83"
-    // TODO: handle the Repeated column once I get ahold of transcript that uses it
+    // Retakes are found by course code (same code = same course). Special-topics courses are told apart by
+    // the "Course Topic:" line under them instead, so the Repeated column isn't needed
     private static final Pattern COURSE = Pattern.compile(
             "^([A-Z]{2,4}) (\\d{3}[A-Z]?) (.+?) (\\d+\\.\\d{2}) (\\d+\\.\\d{2})(?: ([A-Z]{1,2}[+-]?))?"
                     + " \\d+\\.\\d{2} \\S+ \\d+$");
+
+    // The line SFU prints right under a special-topics course, for example "Course Topic: ST-Robotics"
+    private static final Pattern TOPIC = Pattern.compile("^Course Topic: (.+)$");
 
     // Starts like a course row, used to catch rows that COURSE missed
     private static final Pattern LOOKS_LIKE_COURSE = Pattern.compile("^[A-Z]{2,4} \\d{3}[A-Z]?\\b.*");
@@ -64,22 +68,41 @@ public class TranscriptParser {
         List<ParsedCourse> courses = new ArrayList<>();
         List<String> skippedLines = new ArrayList<>();
         String term = null;
+        //So a topic line is only attached to the course right above it
+        boolean lastLineWasCourse = false;
 
         for (String rawLine : text.split("\\R")) {
             // PDFBox sometimes puts extra spaces between words, for example "ECON 103"
             String line = rawLine.trim().replaceAll("\\s+", " ");
+            if (line.isEmpty()) {
+                continue;
+            }
 
             if (TERM.matcher(line).matches()) {
                 term = line;
+                lastLineWasCourse = false;
+                continue;
+            }
+
+            Matcher topic = TOPIC.matcher(line);
+            if (topic.matches()) {
+                if (lastLineWasCourse) {
+                    int last = courses.size() - 1;
+                    courses.set(last, courses.get(last).withTopic(topic.group(1)));
+                }
+                lastLineWasCourse = false;
                 continue;
             }
 
             Matcher course = COURSE.matcher(line);
             if (course.matches() && term != null) {
                 courses.add(toCourse(term, course));
+                lastLineWasCourse = true;
+                continue;
             } else if (LOOKS_LIKE_COURSE.matcher(line).matches()) {
                 skippedLines.add(line);
-            }
+            } 
+            lastLineWasCourse = false;
         }
         return new TranscriptParseResult(courses, skippedLines);
     }

@@ -24,6 +24,11 @@ class UnitTotalsTest {
                 TranscriptCourse.Source.MANUAL);
     }
 
+    private static TranscriptCourse topic(String term, String subject, String number, String units, String grade,
+            String topic) {
+        return new TranscriptCourse(null, term, subject, number, "Special Topics", new BigDecimal(units), grade, topic);
+    }
+
     @Test
     void emptyRecordHasNoUnits() {
         UnitTotals.Totals totals = UnitTotals.of(List.of());
@@ -166,5 +171,25 @@ class UnitTotalsTest {
                 manual("2025 Fall", "math", "151", "3.00", "B")));
 
         assertThat(totals.earned()).isEqualByComparingTo("3.00");
+    }
+
+    // Each topic is a different course, so both earn units
+    @Test
+    void specialTopicsWithDifferentTopicsBothCount() {
+        UnitTotals.Totals totals = UnitTotals.of(List.of(
+                topic("2025 Fall", "ENSC", "461", "4.00", "B", "ST-Robotics"),
+                topic("2026 Spring", "ENSC", "461", "4.00", "A", "ST-Machine Vision")));
+
+        assertThat(totals.earned()).isEqualByComparingTo("8.00");
+    }
+
+    // The same topic taken again is a retake, so it counts once
+    @Test
+    void sameTopicTakenAgainCountsOnce() {
+        UnitTotals.Totals totals = UnitTotals.of(List.of(
+                topic("2025 Fall", "ENSC", "461", "4.00", "F", "ST-Robotics"),
+                topic("2026 Spring", "ENSC", "461", "4.00", "B", "ST-Robotics")));
+
+        assertThat(totals.earned()).isEqualByComparingTo("4.00");
     }
 }
