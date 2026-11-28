@@ -72,8 +72,12 @@ public final class UnitTotals {
         return groups;
     }
 
-    private static String code(TranscriptCourse course) {
-        return (course.getSubject() + " " + course.getNumber()).toUpperCase(Locale.ROOT);
+    static String code(TranscriptCourse course) {
+        String code = (course.getSubject() + " " + course.getNumber()).toUpperCase(Locale.ROOT);
+        if (course.getTopic() == null) {
+            return code;
+        }
+        return code + " / " + course.getTopic().toUpperCase(Locale.ROOT);
     }
 
     // Transfer credit that doesn't match one SFU course gets a number like "1XX" or "2XX"
