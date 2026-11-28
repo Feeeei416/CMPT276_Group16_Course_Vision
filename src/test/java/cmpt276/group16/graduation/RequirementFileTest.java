@@ -282,4 +282,77 @@ class RequirementFileTest {
         assertThatThrownBy(() -> RequirementFile.fromJson("{ \"rules\": [] }"))
                 .hasMessage("Graduation requirements: the file needs a \"sets\" list");
     }
+
+        // -- One requirement from the Graduation requirements page (#70) --
+
+    @Test
+    void parsesOneRequirementTypedOnThePage() {
+        List<RuleEntry> rules = RequirementFile.parseRequirement("""
+                { "category": "Lower division", "kind": "CHOOSE", "title": "Calculus I", "count": 1,
+                  "courses": ["MATH 150", "MATH 151"] }
+                """);
+
+        assertThat(rules).hasSize(1);
+        RuleEntry rule = rules.get(0);
+        assertThat(rule.category()).isEqualTo("Lower division");
+        assertThat(rule.kind()).isEqualTo(RequirementKind.CHOOSE);
+        assertThat(rule.title()).isEqualTo("Calculus I");
+        assertThat(rule.count()).isEqualTo(1);
+        assertThat(rule.courses()).extracting(CourseEntry::code).containsExactly("MATH 150", "MATH 151");
+    }
+
+    // Like in the file, a COURSE entry with several courses becomes one requirement per course
+    @Test
+    void courseEntryTypedOnThePageGivesOneRequirementPerCourse() {
+        List<RuleEntry> rules = RequirementFile.parseRequirement("""
+                { "category": "Lower division", "kind": "COURSE", "courses": ["CMPT 120", "CMPT 125"] }
+                """);
+
+        assertThat(rules).extracting(rule -> rule.courses().get(0).code()).containsExactly("CMPT 120", "CMPT 125");
+    }
+
+    // The page uses the file's checks, so it gives the same message
+    @Test
+    void requirementTypedOnThePageGetsTheFilesChecks() {
+        assertThatThrownBy(() -> RequirementFile.parseRequirement("""
+                { "category": "Lower division", "kind": "CHOOSE", "count": 3, "courses": ["MATH 150", "MATH 151"] }
+                """))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("count is 3 but only 2 courses are listed");
+    }
+
+    // A typo in a field name is caught instead of ignored
+    @Test
+    void misspelledFieldIsTurnedDown() {
+        assertThatThrownBy(() -> RequirementFile.parseRequirement("""
+                { "category": "Totals", "kind": "TOTAL_UNITS", "unit": 120 }
+                """))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("TOTAL_UNITS doesn't use \"unit\"");
+    }
+
+    // Text that isn't JSON gets a short message instead of Jackson's
+    @Test
+    void textThatIsntJsonIsTurnedDown() {
+        assertThatThrownBy(() -> RequirementFile.parseRequirement("{ \"category\": \"Totals\", "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("That isn't valid JSON. Check the brackets, quotes and commas.");
+    }
+
+    @Test
+    void emptyBoxIsTurnedDown() {
+        assertThatThrownBy(() -> RequirementFile.parseRequirement("   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Type the requirement as JSON, like the examples.");
+    }
+
+    // One requirement is an object, so a list of them is turned down
+    @Test
+    void listInsteadOfOneRequirementIsTurnedDown() {
+        assertThatThrownBy(() -> RequirementFile.parseRequirement("""
+                [ { "category": "Totals", "kind": "TOTAL_UNITS", "units": 120 } ]
+                """))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("not a requirement");
+    }
 }

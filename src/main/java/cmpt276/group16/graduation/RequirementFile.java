@@ -23,6 +23,7 @@ import cmpt276.group16.models.Program;
 import cmpt276.group16.models.RequirementCourse;
 import cmpt276.group16.models.RequirementKind;
 import cmpt276.group16.services.PlanRules;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -99,6 +100,23 @@ public class RequirementFile {
     // For tests: the same format as the file, from a string
     static RequirementFile fromJson(String json) {
         return new RequirementFile(read(new ObjectMapper().readTree(json)));
+    }
+
+    // One requirement typed on the Graduation requirements page (#70), written the same way as an entry in the
+    // file and checked the same way. Usually one rule, but a COURSE entry with several courses gives one per course.
+    // Throws IllegalArgumentException with a message the page can show as it is
+    public static List<RuleEntry> parseRequirement(String json) {
+        if (json == null || json.isBlank()) {
+            throw new IllegalArgumentException("Type the requirement as JSON, like the examples.");
+        }
+        JsonNode node;
+        try {
+            node = new ObjectMapper().readTree(json);
+        } catch (JacksonException e) {
+            // Jackson's own message is long and quotes the text back, so this says what to look for instead
+            throw new IllegalArgumentException("That isn't valid JSON. Check the brackets, quotes and commas.", e);
+        }
+        return rules(node);
     }
 
     private RequirementFile(List<SetEntry> sets) {
