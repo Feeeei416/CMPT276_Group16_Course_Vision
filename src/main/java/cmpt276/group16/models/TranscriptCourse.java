@@ -47,6 +47,9 @@ public class TranscriptCourse {
     // This is Null while the course is in progress, and Grades.TRANSFER for transfer credit
     private String grade;
 
+    // For special-topics courses like ENSC 461, the topic from the transcript. Null for every other course
+    private String topic;
+
     // The matching course in the courses table.
     // Null until that course has been fetched, and for transfer credit
     // that isn't assigned to a real SFU course (for example CMPT 1XX)
@@ -71,6 +74,12 @@ public class TranscriptCourse {
     }
 
     public TranscriptCourse(StudentProfile student, String term, String subject, String number,
+            String title, BigDecimal units, String grade, String topic) {
+        this(student, term, subject, number, title, units, grade, Source.TRANSCRIPT);
+        this.topic = topic;
+    }
+
+    public TranscriptCourse(StudentProfile student, String term, String subject, String number,
             String title, BigDecimal units, String grade, Source source) {
         this.student = student;
         this.term = term;
@@ -88,6 +97,7 @@ public class TranscriptCourse {
             String grade) {
         if (!subject.equals(this.subject) || !number.equals(this.number)) {
             this.course = null;
+            this.topic=null;
         }
         this.term = term;
         this.subject = subject;
@@ -96,6 +106,10 @@ public class TranscriptCourse {
         this.units = units;
         this.grade = grade;
         this.source = Source.MANUAL;
+    }
+
+    public String getTopic() {
+        return topic;
     }
 
     public Long getId() {
