@@ -13,10 +13,17 @@
             <span th:text="${plan != null ? plan.name : 'My plan'}">My plan</span>
             <span class="badge" th:if="${plan != null and plan.main}">Main plan</span>
         </h1>
+        <!-- #73: an advisor planning for a student. The changes go to the student's own plans -->
+        <p class="muted" th:if="${owner.byAdvisor()}"
+           th:text="|Planning for ${owner.name()} (${owner.student().user.email}). Changes are saved to their plans, and they see them on their own pages.|">
+            Planning for Jack (jack@example.com). Changes are saved to their plans, and they see them on their own pages.</p>
         <p>Add the terms after next semester (<span th:text="${nextSemester}">2027 Spring</span>) and the courses you plan to take in each one.</p>
-        <!-- Opened from My plans, so say it isn't the one the Graduation Report uses -->
-        <p class="muted" th:if="${plan != null and !plan.main}">This isn't your main plan, so changes here don't
-            affect your main plan. You can make it your main plan on <a th:href="@{/student/plans}" class="link">My plans</a>.</p>
+        <!-- Opened from All my plans, so say it isn't the one the Graduation Report uses -->
+        <p class="muted" th:if="${plan != null and !plan.main and !owner.byAdvisor()}">This isn't your main plan, so changes here don't
+            affect your main plan. You can make it your main plan on <a th:href="@{${owner.basePath()} + '/plans'}" class="link">All my plans</a>.</p>
+        <p class="muted" th:if="${plan != null and !plan.main and owner.byAdvisor()}">This isn't their main plan, so changes
+            here don't affect their main plan. You can make it their main plan on
+            <a th:href="@{${owner.basePath()} + '/plans'}" class="link">All their plans</a>.</p>
 
         <!-- Set by the last change, before redirecting back here. A change inside a term shows in that term instead -->
         <th:block th:if="${changedTermId == null}">
@@ -29,8 +36,8 @@
         <!-- Above the terms, so it's in the same place however many terms there are -->
         <section class="plan-add-term">
             <h2 class="section-label">Add a term</h2>
-            <form method="post" class="inline-form" th:action="@{/student/plan/terms}">
-                <!-- Set when this page was opened from My plans, so the change goes to this plan and comes back here -->
+            <form method="post" class="inline-form" th:action="@{${owner.basePath()} + '/plan/terms'}">
+                <!-- Set when this page was opened from All my plans, so the change goes to this plan and comes back here -->
                 <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <select name="year" class="input" aria-label="Year" required>
                     <option value="">-- Year --</option>
@@ -63,7 +70,7 @@
                     <span class="muted" th:if="${term.kind.takesCourses()}" th:text="${termPlan.unitsText()}">9 units</span>
                 </div>
                 <!-- The script below opens the dialog instead of sending this form -->
-                <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}"
+                <form method="post" th:action="@{${owner.basePath()} + '/plan/terms/{id}/remove'(id=${term.id})}"
                       th:data-dialog="|remove-term-${term.id}|">
                     <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                     <button type="submit" class="btn btn-secondary">Remove term</button>
@@ -89,7 +96,7 @@
                     <form method="dialog">
                         <button class="btn btn-secondary" autofocus>Cancel</button>
                     </form>
-                    <form method="post" th:action="@{/student/plan/terms/{id}/remove(id=${term.id})}">
+                    <form method="post" th:action="@{${owner.basePath()} + '/plan/terms/{id}/remove'(id=${term.id})}">
                         <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                         <button type="submit" class="btn btn-primary">Remove term</button>
                     </form>
@@ -112,7 +119,7 @@
                         <span class="plan-course-flag" th:each="sentence : ${missing[course.id]}"
                               th:text="${sentence}">Needs CMPT 125 with C- or better.</span>
                     </span>
-                    <form method="post" th:action="@{/student/plan/courses/{id}/remove(id=${course.id})}">
+                    <form method="post" th:action="@{${owner.basePath()} + '/plan/courses/{id}/remove'(id=${course.id})}">
                         <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                         <button type="submit" class="link">Remove</button>
                     </form>
@@ -120,7 +127,7 @@
             </ul>
 
             <form method="post" class="inline-form" th:if="${term.kind.takesCourses()}"
-                  th:action="@{/student/plan/terms/{id}/courses(id=${term.id})}">
+                  th:action="@{${owner.basePath()} + '/plan/terms/{id}/courses'(id=${term.id})}">
                 <input type="hidden" name="planId" th:if="${viewedPlanId != null}" th:value="${viewedPlanId}">
                 <!-- Starts with what was typed when adding a course to this term just failed -->
                 <input type="text" name="code" class="input" maxlength="20"
@@ -132,8 +139,10 @@
         </section>
 
         <div class="actions">
-            <a th:href="@{/student/plans}" class="link">All my plans</a>
-            <a th:href="@{/student/home}" class="link">Back to home</a>
+            <a th:href="@{${owner.basePath()} + '/plans'}" class="link"
+               th:text="${owner.byAdvisor() ? 'All their plans' : 'All my plans'}">All my plans</a>
+            <a th:href="@{${owner.homePath()}}" class="link"
+               th:text="${owner.byAdvisor() ? 'Back to ' + owner.name() : 'Back to home'}">Back to home</a>
         </div>
     </main>
 

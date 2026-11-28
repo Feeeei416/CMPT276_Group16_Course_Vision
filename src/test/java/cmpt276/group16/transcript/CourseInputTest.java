@@ -104,12 +104,48 @@ class CourseInputTest {
         assertThat(CourseInput.validate(validFormWith("grade", grade))).containsExactly("Choose a grade from the list.");
     }
 
-    // Acceptance criterion: units that aren't a number show an error
+    // Acceptance criterion: units that aren't a number show an error.
+    // #76: SFU courses are worth whole units, so 3.01 and 3.5 are turned down too
     @ParameterizedTest
-    @ValueSource(strings = {"three", "3,00", "-1", "100", "3.005"})
-    void rejectsUnitsThatArentAValidNumber(String units) {
+    @ValueSource(strings = {"three", "3,00", "-1", "10", "15", "3.005", "3.01", "3.5", "0.5"})
+    void rejectsUnitsThatArentAWholeNumber(String units) {
         assertThat(CourseInput.validate(validFormWith("units", units)))
-                .containsExactly("Units must be a number from 0 to 99.99, such as 3 or 3.00.");
+                .containsExactly("Units must be a whole number from 0 to 9, such as 3.");
+    }
+
+    // "3.00" is how transcripts print units, so it still counts as 3.
+    // 9 is ENSC 499, the largest CMPT or ENSC course; 6 is CMPT 498, the CMPT honours project
+    @ParameterizedTest
+    @ValueSource(strings = {"3", "3.00", "4.0", "6", "9", "9.00"})
+    void acceptsWholeNumberUnits(String units) {
+        assertThat(CourseInput.validate(validFormWith("units", units))).isEmpty();
+    }
+
+    // #76 Edit: the course's units now are always allowed, since uploads aren't capped
+    @ParameterizedTest
+    @ValueSource(strings = {"15", "15.00"})
+    void keepingUnitsOverTheCapIsAllowed(String units) {
+        Map<String, String> form = validFormWith("units", units);
+        BigDecimal kept = new BigDecimal("15.00");
+
+        assertThat(CourseInput.validate(form, kept)).isEmpty();
+        assertThat(CourseInput.from(form, kept).units()).isEqualTo(new BigDecimal("15.00"));
+    }
+
+    @Test
+    void keepingAPartUnitIsAllowed() {
+        Map<String, String> form = validFormWith("units", "4.5");
+
+        assertThat(CourseInput.validate(form, new BigDecimal("4.50"))).isEmpty();
+        assertThat(CourseInput.from(form, new BigDecimal("4.50")).units()).isEqualTo(new BigDecimal("4.50"));
+    }
+
+    @Test
+    void changingToOtherUnitsStillHasTheUsualCheck() {
+        assertThat(CourseInput.validate(validFormWith("units", "12"), new BigDecimal("15.00")))
+                .containsExactly("Units must be a whole number from 0 to 9, such as 3.");
+        assertThat(CourseInput.validate(validFormWith("units", "3.5"), new BigDecimal("4.50")))
+                .containsExactly("Units must be a whole number from 0 to 9, such as 3.");
     }
 
     // Co-op terms are worth 0 units
@@ -168,7 +204,9 @@ class CourseInputTest {
 
         Map<String, String> form = CourseInput.formFor(course);
 
-        assertThat(form).containsEntry("year", "2026").containsEntry("season", "Spring").containsEntry("grade", "");
+        // "3", not "3.00", so it fits the form's whole-number units box
+        assertThat(form).containsEntry("year", "2026").containsEntry("season", "Spring").containsEntry("grade", "")
+                .containsEntry("units", "3");
         assertThat(CourseInput.validate(form)).isEmpty();
         assertThat(CourseInput.from(form)).isEqualTo(new CourseInput("2026 Spring", "CMPT", "125",
                 "Intro.Cmpt.Sci/Programming II", new BigDecimal("3.00"), null));

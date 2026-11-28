@@ -52,6 +52,17 @@
     font-size: 24px;
 }
 
+/* The header's Course Vision is a link home on every page, but reads as the app's name, not a link */
+a.site-title {
+    color: inherit;
+    text-decoration: none;
+}
+
+a.site-title:hover,
+a.site-title:focus-visible {
+    color: var(--color-primary);
+}
+
 /* Basic Element Sytles */
 .input {
     background-color: var(--color-surface);
@@ -240,6 +251,16 @@ a.btn {
     text-align: right;
 }
 
+/* Course refresh log: errors and skipped lists are long, so the Result column wraps */
+.refresh-log .refresh-result {
+    white-space: normal;
+    min-width: 18em;
+}
+
+.refresh-error {
+    color: var(--color-error);
+}
+
 /* My plan: Add a term sits above the term boxes */
 .plan-add-term {
     margin-bottom: var(--space-lg);
@@ -383,7 +404,7 @@ button.link {
     text-decoration: underline;
 }
 
-/* A small label next to a name, like Main plan on My plans */
+/* A small label next to a name, like Main plan on All my plans */
 .badge {
     display: inline-block;
     margin-left: var(--space-sm);
@@ -396,7 +417,7 @@ button.link {
     vertical-align: middle;
 }
 
-/* My plans: Rename opens a name box under the plan */
+/* All my plans: Rename opens a name box under the plan */
 .plan-rename summary {
     display: inline-block;
     cursor: pointer;
@@ -410,4 +431,180 @@ button.link {
 .badge-muted {
     background-color: var(--color-bg);
     color: var(--color-text);
+}
+
+/* Course suggestions as you type (static/js/course-search.js), on My schedule and My courses.
+   The list floats under the box, so it doesn't push the page down */
+.course-search {
+    position: relative;
+}
+
+.inline-form .course-search {
+    flex: 1 1 220px;
+}
+
+.inline-form .course-search .input {
+    width: 100%;
+}
+
+.course-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.course-suggestions li {
+    padding: 6px var(--space-sm);
+    cursor: pointer;
+    line-height: 1.25;
+}
+
+.course-suggestions li + li {
+    border-top: 1px solid var(--color-bg);
+}
+
+.course-suggestions li:hover,
+.course-suggestions li[aria-selected="true"] {
+    background: var(--color-bg);
+}
+
+.course-suggestion-code {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.course-suggestion-title {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+}
+
+/* The part of the code or title that matches what was typed */
+.course-suggestions mark {
+    background: rgb(255, 229, 143);
+    color: inherit;
+    padding: 0;
+}
+
+.field-hint {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+}
+
+/* A gentle note, not an error: for example units that don't match what SFU lists now */
+.field-note {
+    margin: var(--space-sm) 0;
+    padding: var(--space-sm) var(--space-md);
+    border-left: 4px solid rgb(214, 158, 46);
+    background: rgb(255, 248, 225);
+    color: var(--color-text);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+}
+
+/* My courses: CGPA and upper-division GPA next to units earned */
+.gpa-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    margin-bottom: 0;
+}
+
+.gpa-summary strong {
+    font-size: 1.15rem;
+}
+
+/* A small spinning circle inside a button while a slow form is working (see js/loading-button.js) */
+.spinner {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    margin-right: 0.5em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.1em;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* People who turned off animations still see "Refreshing…", just without the spinning */
+@media (prefers-reduced-motion: reduce) {
+    .spinner {
+        animation: none;
+    }
+}
+
+/* Graduation requirements: each requirement shown as the JSON it's edited as */
+.requirement-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.requirement-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.requirement-json {
+    margin: 0;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+/* A tall box for typing JSON, in a fixed-width font so the brackets line up */
+.json-input {
+    height: auto;
+    min-height: 14em;
+    padding: var(--space-sm);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+}
+
+/* Examples on the Add a requirement page: an arrow shows it opens, and points up once it's open */
+.examples {
+    margin: var(--space-md) 0;
+}
+
+.examples summary {
+    cursor: pointer;
+}
+
+.examples summary::after {
+    content: "▾";
+    display: inline-block;
+    margin-left: 0.35em;
+    transition: transform 0.15s;
+}
+
+.examples[open] summary::after {
+    transform: rotate(180deg);
+}
+
+/* Copy this set, between Add a requirement and the requirements */
+.copy-form {
+    margin-bottom: var(--space-lg);
 }

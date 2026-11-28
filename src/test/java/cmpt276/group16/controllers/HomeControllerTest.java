@@ -1,9 +1,11 @@
 package cmpt276.group16.controllers;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,7 +36,7 @@ public class HomeControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    // Mocks return an empty list unless a test says otherwise
+    // Mocks return empty results unless set up in saveUsers() or the test itself
     @MockitoBean
     private UserRepository userRepository;
 
@@ -46,9 +48,27 @@ public class HomeControllerTest {
     private final User advisor = new User("advisor@test.com", "hash", "Test Advisor", Role.ADVISOR);
     private final User itManager = new User("it@test.com", "hash", "Test IT Manager", Role.IT_MANAGER);
 
-    // A student assigned to the advisor, built the same way the app builds one
+    // Gives each user an id and lets AuthInterceptor find them, as if they were saved in the database
+    @BeforeEach 
+    void saveUser() {
+        student.setId(1L);
+        advisor.setId(10L);
+        itManager.setId(3L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(student));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(advisor));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(itManager));
+    }
+
+
+    // Ids for the test students, since only the database sets them
+    private long nextStudentId = 100;
+
+    // A student assigned to the advisor, built the same way the app builds one.
+    // Each gets an id, because the advisor home links to /advisor/students/{id}
     private StudentProfile studentProfile(String email, String name, Program program, int cohortYear) {
-        return new StudentProfile(new User(email, "hash", name, Role.STUDENT), program, cohortYear);
+        User user = new User(email, "hash", name, Role.STUDENT);
+        user.setId(nextStudentId++);
+        return new StudentProfile(user, program, cohortYear);
     }
 
     // #9 A home page redirects to /login when not logged in
@@ -63,7 +83,7 @@ public class HomeControllerTest {
     // (the student home is StudentHomeController, tested in StudentHomeControllerTest)
     @Test
     void advisorHome_asAdvisor_showsPage() throws Exception {
-        mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(view().name("advisor/home"))
                .andExpect(model().attribute("user", advisor));
@@ -71,7 +91,7 @@ public class HomeControllerTest {
 
     @Test
     void itHome_asItManager_showsPage() throws Exception {
-        mockMvc.perform(get("/it/home").sessionAttr(LoginController.SESSION_USER, itManager))
+        mockMvc.perform(get("/it/home").sessionAttr(SessionUser.SESSION_USER_ID, itManager.getId()))
                .andExpect(status().isOk())
                .andExpect(view().name("it/home"))
                .andExpect(model().attribute("user", itManager));
@@ -80,14 +100,14 @@ public class HomeControllerTest {
     // #11 A user who opens another role's page is sent to their own home page
     @Test
     void advisorHome_asStudent_redirectsToStudentHome() throws Exception {
-        mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, student))
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, student.getId()))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/student/home"));
     }
 
     @Test
     void itHome_asAdvisor_redirectsToAdvisorHome() throws Exception {
-        mockMvc.perform(get("/it/home").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/it/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/advisor/home"));
     }
@@ -95,7 +115,7 @@ public class HomeControllerTest {
     // #12 Protected pages tell the browser not to cache them
     @Test
     void advisorHome_asAdvisor_setsNoCacheHeaders() throws Exception {
-        mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(header().string("Cache-Control", "no-cache, no-store, must-revalidate"))
                .andExpect(header().string("Pragma", "no-cache"))
                .andExpect(header().string("Expires", "0"));
@@ -104,13 +124,12 @@ public class HomeControllerTest {
     // Advisor home: lists the advisor's assigned students with program and cohort
     @Test
     void advisorHome_listsAssignedStudents() throws Exception {
-        advisor.setId(10L);
         StudentProfile priya = studentProfile("priya@example.com", "Priya", Program.COMPUTING_SCIENCE, 2024);
         StudentProfile marcus = studentProfile("marcus@example.com", "Marcus", Program.COMPUTER_ENGINEERING, 2023);
         when(advisorAssignmentRepository.findByAdvisorIdOrderByStudentUserDisplayNameAsc(10L))
                 .thenReturn(List.of(new AdvisorAssignment(advisor, marcus), new AdvisorAssignment(advisor, priya)));
 
-        mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(model().attribute("students", List.of(marcus, priya)))
                .andExpect(content().string(containsString("Priya")))
@@ -123,9 +142,7 @@ public class HomeControllerTest {
     // Advisor home: only asks for this advisor's own students
     @Test
     void advisorHome_looksUpOnlyTheLoggedInAdvisorsStudents() throws Exception {
-        advisor.setId(10L);
-
-        mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk());
 
         verify(advisorAssignmentRepository).findByAdvisorIdOrderByStudentUserDisplayNameAsc(10L);
@@ -134,10 +151,23 @@ public class HomeControllerTest {
     // Advisor home: an advisor with no students sees a message instead of an empty table
     @Test
     void advisorHome_withNoStudents_showsEmptyMessage() throws Exception {
-        mockMvc.perform(get("/advisor/home").sessionAttr(LoginController.SESSION_USER, advisor))
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
                .andExpect(status().isOk())
                .andExpect(model().attribute("students", List.of()))
                .andExpect(content().string(containsString("No students are assigned to you yet.")));
+    }
+
+    // #71: each student's name links to their overview
+    @Test
+    void advisorHome_linksEachStudentToTheirOverview() throws Exception {
+        StudentProfile priya = studentProfile("priya@example.com", "Priya", Program.COMPUTING_SCIENCE, 2024);
+        when(advisorAssignmentRepository.findByAdvisorIdOrderByStudentUserDisplayNameAsc(10L))
+                .thenReturn(List.of(new AdvisorAssignment(advisor, priya)));
+
+        mockMvc.perform(get("/advisor/home").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString(
+                       "href=\"/advisor/students/" + priya.getUser().getId() + "\"")));
     }
 
     // IT home: lists every account with a readable role
@@ -146,7 +176,7 @@ public class HomeControllerTest {
         when(userRepository.findAllByOrderByRoleAscDisplayNameAsc())
                 .thenReturn(List.of(advisor, itManager, student));
 
-        mockMvc.perform(get("/it/home").sessionAttr(LoginController.SESSION_USER, itManager))
+        mockMvc.perform(get("/it/home").sessionAttr(SessionUser.SESSION_USER_ID, itManager.getId()))
                .andExpect(status().isOk())
                .andExpect(model().attribute("users", List.of(advisor, itManager, student)))
                .andExpect(content().string(containsString("3 accounts")))
@@ -161,7 +191,7 @@ public class HomeControllerTest {
         User withHash = new User("priya@example.com", "$2a$10$secretHashValue", "Priya", Role.STUDENT);
         when(userRepository.findAllByOrderByRoleAscDisplayNameAsc()).thenReturn(List.of(itManager, withHash));
 
-        mockMvc.perform(get("/it/home").sessionAttr(LoginController.SESSION_USER, itManager))
+        mockMvc.perform(get("/it/home").sessionAttr(SessionUser.SESSION_USER_ID, itManager.getId()))
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("priya@example.com")))
                .andExpect(content().string(not(containsString("secretHashValue"))));

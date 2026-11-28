@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <title th:text="${student.user.displayName}">Student</title>
+  </head>
+  <body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <!-- #71: nothing on this page changes the student's record, schedule or plan. The buttons open the pages
+         that do: their courses (#78) and their plans (#73) -->
+    <main class="page-content">
+      <h1 class="page-title" th:text="${student.user.displayName}">Priya</h1>
+      <p class="muted"
+         th:text="|${student.user.email} · ${student.program.showName} · Cohort ${student.cohortYear}|">
+        priya@example.com · Computing Science · Cohort 2024</p>
+      <!-- Set after confirming or cancelling a transcript upload for the student (#78) -->
+      <div th:if="${message}" th:text="${message}" class="notice-message" role="status">
+        Saved 8 courses from Priya's transcript.</div>
+
+      <section>
+        <h2 class="section-label">Course record</h2>
+        <p class="actions">
+          <a class="btn btn-primary" th:href="@{/advisor/students/{id}/courses(id=${student.user.id})}">Edit their courses</a>
+          <a class="link" th:href="@{/advisor/students/{id}/transcript(id=${student.user.id})}">Upload their transcript</a>
+        </p>
+        <p th:if="${coursesByTerm.isEmpty()}">No courses in their record yet.</p>
+        <!-- Each course counts once, from its most recent passing attempt, the same as My courses -->
+        <p th:unless="${coursesByTerm.isEmpty()}">
+          <strong th:text="|${@unitText.number(units.earned())} units earned|">45 units earned</strong>
+          <span th:if="${units.inProgress().signum() > 0}" class="muted"
+                th:text="|(${@unitText.number(units.inProgress())} in progress)|">(9 in progress)</span>
+        </p>
+        <!-- The shared course table, read-only since editable is not set -->
+        <th:block th:each="entry : ${coursesByTerm}">
+          <h3 th:text="${entry.key}">2025 Fall</h3>
+          <div th:replace="~{fragments/course-table :: courseTable(${entry.value})}"></div>
+        </th:block>
+      </section>
+
+      <hr>
+
+      <section th:with="e=${eligibility}">
+        <h2 class="section-label" th:text="|Eligible courses for ${e.term()}|">Eligible courses for 2027 Spring</h2>
+        <p th:unless="${e.termKnown()}"
+           th:text="|Course offerings for ${e.term()} have not been loaded yet.|">
+          Course offerings for 2027 Spring have not been loaded yet.</p>
+
+        <!-- The lists can be long, so each one starts closed -->
+        <th:block th:if="${e.termKnown()}">
+          <details>
+            <summary th:text="|Can take (${e.eligible().size()})|">Can take (12)</summary>
+            <p th:if="${e.eligible().isEmpty()}">None of next semester's courses match their record yet.</p>
+            <ul th:unless="${e.eligible().isEmpty()}">
+              <li th:each="r : ${e.eligible()}">
+                <strong th:text="|${r.course().subject} ${r.course().number}|">CMPT 276</strong>
+                <span th:text="${r.course().title}">Intro Software Engineering</span>
+                <ul th:unless="${r.notes().isEmpty()}" class="muted">
+                  <li th:each="note : ${r.notes()}" th:text="${note}">CMPT 225 is still in progress.</li>
+                </ul>
+              </li>
+            </ul>
+          </details>
+          <details>
+            <summary th:text="|Not yet (${e.notEligible().size()})|">Not yet (8)</summary>
+            <p th:if="${e.notEligible().isEmpty()}">Nothing is blocked by a missing prerequisite.</p>
+            <ul th:unless="${e.notEligible().isEmpty()}">
+              <li th:each="r : ${e.notEligible()}">
+                <strong th:text="|${r.course().subject} ${r.course().number}|">CMPT 300</strong>
+                <span th:text="${r.course().title}">Operating Systems I</span>
+                <ul>
+                  <li th:each="note : ${r.notes()}" th:text="${note}">Needs CMPT 225 with C- or better, you have D.</li>
+                </ul>
+              </li>
+            </ul>
+          </details>
+          <p th:unless="${e.unchecked().isEmpty()}" class="muted"
+             th:text="|${e.unchecked().size()} more ${e.unchecked().size() == 1 ? 'course has' : 'courses have'} prerequisites the app couldn't read.|">
+            3 more courses have prerequisites the app couldn't read.</p>
+        </th:block>
+      </section>
+
+      <hr>
+
+      <section>
+        <h2 class="section-label" th:text="|Schedule for ${eligibility.term()}|">Schedule for 2027 Spring</h2>
+        <p th:if="${scheduledCourses.isEmpty()}">No courses in their schedule yet.</p>
+        <th:block th:unless="${scheduledCourses.isEmpty()}">
+          <p th:text="|${scheduleUnits.stripTrailingZeros().toPlainString()} of ${unitLimit} units|">15 of 18 units</p>
+          <div class="error-message" role="alert" th:if="${scheduleUnits.compareTo(unitLimit) > 0}"
+               th:text="|Over the ${unitLimit}-unit limit for a term.|">Over the 18-unit limit for a term.</div>
+          <div class="error-message" role="alert" th:unless="${conflicts.isEmpty()}">
+            <div th:each="c : ${conflicts}"
+                 th:text="|${c.first.course} ${c.first.section} overlaps ${c.second.course} ${c.second.section} on ${#strings.capitalize(c.day.toString().toLowerCase())}.|">
+              CMPT 276 D100 overlaps CMPT 295 D100 on Monday.</div>
+          </div>
+          <ul>
+            <li th:each="c : ${scheduledCourses}">
+              <strong th:text="|${c.offering.course.subject} ${c.offering.course.number}|">CMPT 276</strong>
+              <span th:text="${c.offering.course.title}">Intro Software Engineering</span>
+              <span class="muted"
+                    th:text="${c.attachedSection == null ? c.primarySection.sectionCode : c.primarySection.sectionCode + ', ' + c.attachedSection.sectionCode}">
+                D100, D101</span>
+            </li>
+          </ul>
+        </th:block>
+      </section>
+
+      <hr>
+
+      <section>
+        <h2 class="section-label">Main plan</h2>
+        <!-- #73: the student's own My plan and All my plans pages, which the advisor can change -->
+        <p class="actions">
+          <a class="btn btn-primary" th:href="@{/advisor/students/{id}/plan(id=${student.user.id})}">Edit their plan</a>
+          <a class="link" th:href="@{/advisor/students/{id}/plans(id=${student.user.id})}">All their plans</a>
+        </p>
+        <p th:if="${termPlans.isEmpty()}">No plan yet.</p>
+        <th:block th:each="termPlan : ${termPlans}" th:with="term=${termPlan.term}, courses=${termPlan.courses}">
+          <h3>
+            <span th:text="${term.name}">2027 Fall</span>
+            <span class="badge badge-muted" th:if="${term.kind.name() != 'STUDY'}"
+                  th:text="${term.kind.showName}">Co-op</span>
+            <span class="muted" th:if="${term.kind.takesCourses()}" th:text="${termPlan.unitsText()}">9 units</span>
+          </h3>
+          <p th:unless="${term.kind.takesCourses()}" class="muted">Gap term.</p>
+          <p th:if="${term.kind.takesCourses() and courses.isEmpty()}" class="muted">No courses yet.</p>
+          <ul th:unless="${courses.isEmpty()}">
+            <li th:each="course : ${courses}">
+              <strong th:text="${course.code}">CMPT 225</strong>
+              <span class="muted" th:text="${course.title}">Data Structures and Programming</span>
+              <!-- Missing prerequisites, the same flags the student sees on My plan -->
+              <span class="plan-course-flag" th:each="sentence : ${missing[course.id]}" th:text="${sentence}">
+                Needs CMPT 125 before 2027 Fall.</span>
+            </li>
+          </ul>
+        </th:block>
+      </section>
+
+      <p class="actions"><a th:href="@{/advisor/home}" class="link">Back to your students</a></p>
+    </main>
+  </body>
+</html>

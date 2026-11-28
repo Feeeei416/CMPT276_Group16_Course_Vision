@@ -26,7 +26,7 @@
             <h2 class="section-label">Your courses</h2>
             <p th:if="${courses.isEmpty()}">No courses yet. Upload your transcript to add them, or add them by hand.</p>
             <!-- Shown even with no courses, since My courses is where courses are added by hand -->
-            <p><a th:href="@{/student/courses}" class="btn btn-primary">View My Courses</a></p>
+            <p><a th:href="@{/student/courses}" class="btn btn-primary">My courses</a></p>
             <th:block th:unless="${courses.isEmpty()}">
                 <div th:replace="~{fragments/course-table :: courseTable(${courses})}"></div>
             </th:block>
@@ -36,8 +36,11 @@
         
         <section>
             <h2 class="section-label">Your schedule</h2>
-            <p>Choose your courses and sections for next semester.</p>
-            <a class="btn btn-primary" th:href="@{/student/schedule/next-semester}">My schedule</a>
+            <p>Choose your courses and sections for next semester, and keep other versions to compare.</p>
+            <div class="actions">
+                <a class="btn btn-primary" th:href="@{/student/schedule/next-semester}">My schedule</a>
+                <a class="link" th:href="@{/student/schedules}">All my schedules</a>
+            </div>
         </section>
 
         <hr>

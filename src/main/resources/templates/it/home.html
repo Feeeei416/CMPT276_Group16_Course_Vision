@@ -15,6 +15,10 @@
         <p><a th:href="@{/it/course-refresh}" class="link">Refresh course data from SFU</a></p>
       </section>
       <section>
+        <h2 class="section-label">Graduation requirements</h2>
+        <p><a th:href="@{/it/requirements}" class="link">View and change graduation requirements</a></p>
+      </section>
+      <section>
         <h2 class="section-label">All accounts</h2>
         <p
           th:text="|${users.size()} ${users.size() == 1 ? 'account' : 'accounts'}|"

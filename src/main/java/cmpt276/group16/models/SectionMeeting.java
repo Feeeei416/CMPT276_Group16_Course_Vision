@@ -2,6 +2,9 @@ package cmpt276.group16.models;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
+import java.util.Locale;
 import java.util.Objects;
 
 import jakarta.persistence.*;
@@ -60,6 +63,24 @@ public class SectionMeeting {
  
     public String getCampus() {
         return campus;
+    }
+
+    // For example "8:30", not "08:30"
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("H:mm");
+
+    // For example "Tue"
+    public static String dayName(DayOfWeek day) {
+        return day.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+    }
+
+    // For example "10:30–12:20", with an en dash like a printed timetable
+    public static String timeRange(LocalTime start, LocalTime end) {
+        return TIME.format(start) + "–" + TIME.format(end);
+    }
+
+    // For example "Tue 10:30–12:20", as pages show one meeting
+    public String getShowText() {
+        return dayName(dayOfWeek) + " " + timeRange(startTime, endTime);
     }
 
     // A meeting has no id, so two meetings are the same when all their values are the same.

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -20,8 +22,11 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.transaction.AfterTransaction;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import cmpt276.group16.config.ClockConfig;
+import cmpt276.group16.courseimport.CourseImportService.ImportAlreadyRunningException;
 import cmpt276.group16.courseimport.CourseImportService.ImportRun;
 import cmpt276.group16.models.*;
 import cmpt276.group16.requisites.ManualRules;
@@ -67,8 +72,12 @@ class CourseImportServiceTest {
 
     @Autowired
     private RequisiteRuleRepository requisiteRuleRepository;
+
+    @Autowired
+    private CourseRefreshRepository refreshRepository;
  
     private Term spring;
+    private Term pastFall;
 
     private static String saved(String name) throws IOException {
         try (InputStream in = CourseImportServiceTest.class.getResourceAsStream("/sfu/" + name)) {
@@ -81,6 +90,7 @@ class CourseImportServiceTest {
     @BeforeEach
     void setUp() throws IOException {
         spring = termRepository.saveAndFlush(new Term(2027, Season.SPRING));
+        pastFall = termRepository.saveAndFlush(new Term(2025, Season.FALL));
         when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenReturn(Optional.of(CMPT_COURSES));
         answerSections(saved("cmpt-225-sections.json"));
         when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), eq("D100")))
@@ -104,6 +114,10 @@ class CourseImportServiceTest {
     private List<Section> cmpt225Sections() {
         return sectionRepository.findByOfferingIdOrderBySectionCodeAsc(cmpt225Offering().getId());
     }
+
+    private CourseRefresh latestRefresh() {
+        return refreshRepository.findTop50ByOrderByStartedAtDescIdDesc().get(0);
+    }
  
     // The term created by addsTheTermIfItIsNew is saved in its own transaction, so it isn't rolled back
     @AfterTransaction
@@ -118,7 +132,6 @@ class CourseImportServiceTest {
  
         assertThat(run.courses()).isEqualTo(1);
         assertThat(run.sections()).isEqualTo(10);
-        assertThat(run.error()).isNull();
  
         Course course = cmpt225();
         assertThat(course.getTitle()).isEqualTo("Data Structures and Programming");
@@ -179,7 +192,7 @@ class CourseImportServiceTest {
 
         ImportRun run = importService.importTerm(2027, Season.SPRING);
 
-        assertThat(run.error()).isNull();
+        assertThat(run.courses()).isEqualTo(1);
         assertThat(cmpt225().getParseStatus()).isEqualTo(Course.ParseStatus.FAILED);
         assertThat(requisiteRuleRepository.findByCourseIdAndRuleKindOrderByIdAsc(cmpt225().getId(),
                 RuleKind.PREREQUISITE)).isEmpty();
@@ -233,7 +246,8 @@ class CourseImportServiceTest {
                 .isInstanceOf(SfuApiException.class);
  
         assertThat(cmpt225Sections()).hasSize(10);
-        assertThat(importService.lastRun()).map(ImportRun::error).contains("SFU is down");
+        assertThat(latestRefresh().getError()).isEqualTo("SFU is down");
+        assertThat(latestRefresh().isFinished()).isTrue();
         assertThat(importService.isRunning()).isFalse();
     }
  
@@ -310,8 +324,8 @@ class CourseImportServiceTest {
                 .hasMessage("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
 
         assertThat(termRepository.findByTermYearAndSeason(NEW_TERM_YEAR, Season.FALL)).isEmpty();
-        assertThat(importService.lastRun()).map(ImportRun::error)
-                .contains("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
+        assertThat(latestRefresh().getTermName()).isEqualTo(NEW_TERM_YEAR + " Fall");
+        assertThat(latestRefresh().getError()).isEqualTo("SFU hasn't published " + NEW_TERM_YEAR + " Fall yet");
     }
 
     // Courses already saved for the term stay offered, instead of all being marked not offered
@@ -367,18 +381,193 @@ class CourseImportServiceTest {
         assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
     }
 
-    // A database error while saving (here units too big for the column) is recorded as a failed run,
-    // and another refresh can start afterwards
+    // A database error while saving (here units too big for the column) is logged as a failed refresh,
+    // and another refresh can start afterwards.
+    // Runs outside the test's transaction, the way the app runs it. A database error breaks the Hibernate session
+    // it happens in, and inside one test transaction the log would be read from that same broken session.
+    // Nothing is rolled back for it, so it removes what it saved itself
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void failureWhileSavingIsRecorded() {
-        when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), any()))
-                .thenReturn(Optional.of("{\"info\": {\"title\": \"Too Many Units\", \"units\": \"12345\"}}"));
+        try {
+            when(client.getOutline(anyInt(), any(), eq("CMPT"), eq("225"), any()))
+                    .thenReturn(Optional.of("{\"info\": {\"title\": \"Too Many Units\", \"units\": \"12345\"}}"));
 
-        assertThatThrownBy(() -> importService.importTerm(2027, Season.SPRING))
-                .isInstanceOf(RuntimeException.class);
+            assertThatThrownBy(() -> importService.importTerm(2027, Season.SPRING))
+                    .isInstanceOf(RuntimeException.class);
 
-        assertThat(importService.lastRun()).map(ImportRun::error)
-                .hasValueSatisfying(error -> assertThat(error).contains("nothing was changed"));
-        assertThat(importService.isRunning()).isFalse();
+            assertThat(latestRefresh().getError()).contains("nothing was changed");
+            assertThat(latestRefresh().isFinished()).isTrue();
+            assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
+            assertThat(importService.isRunning()).isFalse();
+        } finally {
+            refreshRepository.deleteAll();
+            termRepository.delete(spring);
+            termRepository.delete(pastFall);
+        }
+    }
+
+    // -- The log --
+
+    // A refresh from the page is logged as manual, with the same counts and notes the run reports
+    @Test
+    void manualRefreshIsLogged() {
+        ImportRun run = importService.importTerm(2027, Season.SPRING);
+
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).hasSize(1);
+        CourseRefresh refresh = latestRefresh();
+        assertThat(refresh.getTermName()).isEqualTo("2027 Spring");
+        assertThat(refresh.isAutomatic()).isFalse();
+        assertThat(refresh.isFinished()).isTrue();
+        assertThat(refresh.isFailed()).isFalse();
+        assertThat(refresh.getCourses()).isEqualTo(1);
+        assertThat(refresh.getSections()).isEqualTo(10);
+        assertThat(refresh.getNotes()).isEqualTo(run.notes()).contains("ENSC has no courses this term");
+        assertThat(importService.isRunning(refresh)).isFalse();
+    }
+
+    @Test
+    void automaticRefreshIsLoggedAsAutomatic() {
+        importService.importTermAutomatically(2027, Season.SPRING);
+
+        assertThat(latestRefresh().isAutomatic()).isTrue();
+        assertThat(latestRefresh().getCourses()).isEqualTo(1);
+    }
+
+    // A failed automatic refresh keeps the saved data and shows its error in the log
+    @Test
+    void failedAutomaticRefreshKeepsTheDataAndLogsTheError() {
+        importService.importTerm(2027, Season.SPRING);
+        when(client.listSections(anyInt(), any(), eq("CMPT"), eq("225")))
+                .thenThrow(new SfuApiException("SFU is down", null));
+
+        assertThatThrownBy(() -> importService.importTermAutomatically(2027, Season.SPRING))
+                .isInstanceOf(SfuApiException.class);
+
+        assertThat(cmpt225Sections()).hasSize(10);
+        CourseRefresh failed = latestRefresh();
+        assertThat(failed.isAutomatic()).isTrue();
+        assertThat(failed.getError()).isEqualTo("SFU is down");
+        assertThat(failed.getCourses()).isZero();
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).hasSize(2);
+    }
+
+    // The row is saved before anything is fetched, so a refresh cut off partway still shows in the log.
+    // While it runs, it's the one isRunning reports
+    @Test
+    void refreshIsLoggedBeforeAnythingIsFetched() {
+        when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenAnswer(call -> {
+            CourseRefresh running = latestRefresh();
+            assertThat(running.getTermName()).isEqualTo("2027 Spring");
+            assertThat(running.isFinished()).isFalse();
+            assertThat(importService.isRunning(running)).isTrue();
+            return Optional.of(CMPT_COURSES);
+        });
+
+        importService.importTerm(2027, Season.SPRING);
+
+        assertThat(latestRefresh().isFinished()).isTrue();
+        assertThat(importService.isRunning(latestRefresh())).isFalse();
+    }
+
+    // A refresh turned down because another is running didn't do anything, so it isn't logged
+    @Test
+    void refreshTurnedDownWhileOneIsRunningIsntLogged() {
+        when(client.listCourses(anyInt(), any(), eq("CMPT"))).thenAnswer(call -> {
+            assertThatThrownBy(() -> importService.importTermAutomatically(2027, Season.SPRING))
+                    .isInstanceOf(ImportAlreadyRunningException.class);
+            return Optional.of(CMPT_COURSES);
+        });
+
+        importService.importTerm(2027, Season.SPRING);
+
+        assertThat(refreshRepository.findTop50ByOrderByStartedAtDescIdDesc()).hasSize(1);
+    }
+
+    // -- Past terms --
+
+    // A past term only gets an offering for each saved course: no sections are fetched or saved
+    @Test
+    void pastTermRecordsOfferingsOnly() {
+        importService.importTerm(2027, Season.SPRING);
+
+        ImportRun run = importService.importPastTerm(2025, Season.FALL);
+
+        assertThat(run.courses()).isEqualTo(1);
+        assertThat(run.sections()).isZero();
+
+        CourseOffering offering = offeringRepository.findByCourseIdAndTermId(cmpt225().getId(), pastFall.getId()).orElseThrow();
+
+        assertThat(offering.isOffered()).isTrue();
+        assertThat(sectionRepository.findByOfferingIdOrderBySectionCodeAsc(offering.getId())).isEmpty();
+
+        verify(client, never()).listSections(eq(2025), eq(Season.FALL), any(), any());
+    }
+
+    // A past term doesn't change the course's details, prerequisite rules or parse status
+    @Test
+    void pastTermDoesntChangeTheCourse() {
+        importService.importTerm(2027, Season.SPRING);
+        Course before = cmpt225();
+        String title = before.getTitle();
+        BigDecimal units = before.getUnits();
+        String prereqText = before.getPrereqText();
+        Course.ParseStatus parseStatus = before.getParseStatus();
+        long rules = requisiteRuleRepository.count();
+
+        importService.importPastTerm(2025, Season.FALL);
+
+        Course after = cmpt225();
+        assertThat(after.getTitle()).isEqualTo(title);
+        assertThat(after.getUnits()).isEqualByComparingTo(units);
+        assertThat(after.getPrereqText()).isEqualTo(prereqText);
+        assertThat(after.getParseStatus()).isEqualTo(parseStatus);
+        assertThat(requisiteRuleRepository.count()).isEqualTo(rules);
+    }
+
+    // A course that isn't saved yet can't be added from a course list (it has no units), so it's skipped
+    @Test
+    void pastTermSkipsCoursesThatArentSaved() {
+        // No full import first, so CMPT 225 isn't saved
+
+        ImportRun run = importService.importPastTerm(2025, Season.FALL);
+
+        assertThat(run.courses()).isZero();
+        assertThat(run.notes()).anySatisfy(note -> assertThat(note).contains("CMPT 225"));
+        assertThat(courseRepository.findByNormalizedSubjectAndNumber("CMPT", "225")).isEmpty();
+    }
+
+    // A saved course that isn't in the past term's list is marked not offered in that term only
+    @Test
+    void pastTermMarksOtherCoursesNotOffered() {
+        importService.importTerm(2027, Season.SPRING);
+        Course cmpt999 = courseRepository.save(
+                new Course("CMPT", "999", "Not in the list", new BigDecimal("3"), null, null, null));
+        CourseOffering offering = offeringRepository.save(new CourseOffering(cmpt999, pastFall, true));
+
+        ImportRun run = importService.importPastTerm(2025, Season.FALL);
+
+        assertThat(run.notOffered()).isEqualTo(1);
+        assertThat(offering.isOffered()).isFalse();
+    }
+
+    // A past term is logged like any other import
+    @Test
+    void pastTermIsLogged() {
+        importService.importTerm(2027, Season.SPRING);
+
+        importService.importPastTerm(2025, Season.FALL);
+
+        CourseRefresh refresh = latestRefresh();
+        assertThat(refresh.getTermName()).isEqualTo("2025 Fall");
+        assertThat(refresh.getFinishedAt()).isNotNull();
+        assertThat(refresh.getCourses()).isEqualTo(1);
+    }
+
+    // This term and later ones need the full import, with sections
+    @Test
+    void onlyPastTermsCanBeImportedAsPast() {
+        assertThatThrownBy(() -> importService.importPastTerm(2098, Season.FALL))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 }

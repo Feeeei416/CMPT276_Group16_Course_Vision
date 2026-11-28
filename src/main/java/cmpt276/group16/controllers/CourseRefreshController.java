@@ -15,10 +15,15 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import cmpt276.group16.courseimport.CourseImportService;
 import cmpt276.group16.courseimport.CourseImportService.ImportAlreadyRunningException;
 import cmpt276.group16.courseimport.CourseImportService.ImportRun;
+import cmpt276.group16.courseimport.CourseRefreshScheduler;
 import cmpt276.group16.courseimport.SfuApiException;
+import cmpt276.group16.models.CourseRefresh;
 import cmpt276.group16.models.Season;
+import cmpt276.group16.models.YearAndSeason;
+import cmpt276.group16.services.PastOfferings;
 
-// The IT manager's course refresh page: refresh one term's courses from the SFU API and see what the last refresh did.
+// The IT manager's course refresh page: refresh one term's courses from the SFU API, 
+// import past terms' course lists, and see the log of past refreshes.
 @Controller 
 public class CourseRefreshController {
 
@@ -29,23 +34,33 @@ public class CourseRefreshController {
         }
  
         public String name() {
-            return year + " " + season.getShowName();
+            return new YearAndSeason(year, season).name();
+        }
+    }
+
+    // One refresh in the log. runningNow is true for the refresh running at the moment.
+    // One that hasn't finished and isn't running was cut off by the app stopping
+    public record LogRow(CourseRefresh refresh, String startedAt, boolean runningNow) {
+        public boolean cutOff() {
+            return !refresh.isFinished() && !runningNow;
         }
     }
 
     // for example "Nov 15, 2026, 3:10 PM", in the clock's time zone (Vancouver).
     // English rather than Canadian English, which would write "p.m."
-    private static final DateTimeFormatter FINISHED_AT = DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter STARTED_AT = DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a", Locale.ENGLISH);
  
     private final CourseImportService importService;
+    private final CourseRefreshScheduler scheduler;
     private final Clock clock;
  
-    public CourseRefreshController(CourseImportService importService, Clock clock) {
+    public CourseRefreshController(CourseImportService importService, CourseRefreshScheduler scheduler, Clock clock) {
         this.importService = importService;
+        this.scheduler = scheduler;
         this.clock = clock;
     }
 
-    /** GET /it/course-refresh : the refresh form and the result of the last refresh. */
+    /** GET /it/course-refresh : the refresh form and the log of past refreshes. */
     @GetMapping("/it/course-refresh")
     public String showCourseRefresh(Model model) {
         List<TermOption> terms = termOptions(LocalDate.now(clock));
@@ -53,10 +68,11 @@ public class CourseRefreshController {
         // Next semester is the one students are registering for, so it is picked to start with
         model.addAttribute("selectedTerm", terms.get(1).value());
         model.addAttribute("running", importService.isRunning());
-        Optional<ImportRun> lastRun = importService.lastRun();
-        model.addAttribute("lastRun", lastRun.orElse(null));
-        model.addAttribute("lastRunTime",
-                lastRun.map(run -> FINISHED_AT.format(run.finishedAt().atZone(clock.getZone()))).orElse(null));
+        model.addAttribute("autoRefresh", scheduler.description());
+        model.addAttribute("log", importService.refreshLog().stream()
+                .map(refresh -> new LogRow(refresh, STARTED_AT.format(refresh.getStartedAt().atZone(clock.getZone())),
+                        importService.isRunning(refresh)))
+                .toList());
         return "it/course-refresh";
     }
 
@@ -89,21 +105,53 @@ public class CourseRefreshController {
         }
         return "redirect:/it/course-refresh";
     }
+
+    /** POST /it/course-refresh/past-terms : records which courses ran in each of the last 6 terms. */
+    @PostMapping("/it/course-refresh/past-terms")
+    public String importPastTerms(RedirectAttributes redirectAttributes) {
+        List<String> imported = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+        boolean alreadyRunning = false;
+        for (YearAndSeason term : PastOfferings.recentTerms(LocalDate.now(clock))) {
+            try {
+                importService.importPastTerm(term.year(), term.season());
+                imported.add(term.name());
+            } catch (ImportAlreadyRunningException e) {
+                // Every term after this one would be turned down too, so stop and report what was done so far
+                alreadyRunning = true;
+                break;
+            } catch (RuntimeException e) {
+                // SfuApiException or a database error. The service has logged it, so the other terms go on
+                failed.add(term.name());
+            }
+        }
+        if (!imported.isEmpty()) {
+            redirectAttributes.addFlashAttribute("message", "Imported past terms: " + String.join(", ", imported) + ".");
+        }
+        
+        // Both problems can happen in one run, and the page shows one error, so they're joined
+        List<String> errors = new ArrayList<>();
+        if (!failed.isEmpty()) {
+            errors.add("Couldn't import " + String.join(", ", failed) + ". The log below says why.");
+        }
+        if (alreadyRunning) {
+            boolean triedSome = !imported.isEmpty() || !failed.isEmpty();
+            errors.add("A refresh is already running, so " + (triedSome ? "the rest weren't" : "past terms weren't")
+                    + " imported. Wait for it to finish, then try again.");
+        }
+        if (!errors.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", String.join(" ", errors));
+        }
+        return "redirect:/it/course-refresh";
+    }
  
     // This term and the next two, for example 2026 Fall, 2027 Spring and 2027 Summer in November 2026.
-    // Spring is January to April, Summer is May to August, and Fall is September to December
     static List<TermOption> termOptions(LocalDate today) {
-        Season[] seasons = Season.values();
-        int year = today.getYear();
-        int index = (today.getMonthValue() - 1) / 4;
+        YearAndSeason thisTerm = YearAndSeason.of(today);
         List<TermOption> options = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
-            options.add(new TermOption(year, seasons[index]));
-            index++;
-            if (index == seasons.length) {
-                index = 0;
-                year++;
-            }
+            YearAndSeason term = thisTerm.plus(i);
+            options.add(new TermOption(term.year(), term.season()));
         }
         return options;
     }

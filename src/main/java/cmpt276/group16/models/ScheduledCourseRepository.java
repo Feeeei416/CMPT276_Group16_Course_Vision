@@ -15,4 +15,10 @@ public interface ScheduledCourseRepository extends JpaRepository<ScheduledCourse
     
     // Finds the course only if its in this student's schedule, for safe removal
     Optional<ScheduledCourse> findByIdAndScheduleStudent(Long id, StudentProfile student);
+
+    // How many courses a schedule has, for the list of schedules
+    long countBySchedule(NextSemesterSchedule schedule);
+
+    // Used when a schedule is deleted, so its courses go with it
+    long deleteBySchedule(NextSemesterSchedule schedule);
 }

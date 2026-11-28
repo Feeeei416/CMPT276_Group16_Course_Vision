@@ -61,8 +61,10 @@ public class LoginControllerTest {
     @Test 
     void loginPage_whenLoggedIn_redirectsToStudentHome() throws Exception {
         User student = new User("student@test.com", encoder.encode("test123"), "Test Student", Role.STUDENT);
+        student.setId(1L);
+        when(repo.findById(1L)).thenReturn(Optional.of(student));
 
-        mockMvc.perform(get("/login").sessionAttr(LoginController.SESSION_USER, student))
+        mockMvc.perform(get("/login").sessionAttr(SessionUser.SESSION_USER_ID, student.getId()))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/student/home"));
     }
@@ -71,6 +73,7 @@ public class LoginControllerTest {
     @Test 
     void login_withCorrectPassword_redirectsToStudentHome() throws Exception {
         User user = new User("student@test.com", encoder.encode("test123"), "Test Student", Role.STUDENT);
+        user.setId(1L);
         when(repo.findByNormalizedEmail("student@test.com")).thenReturn(Optional.of(user));
 
         mockMvc.perform(post("/login")
@@ -78,13 +81,14 @@ public class LoginControllerTest {
                         .param("password", "test123"))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/student/home"))
-               .andExpect(request().sessionAttribute(LoginController.SESSION_USER, user));
+               .andExpect(request().sessionAttribute(SessionUser.SESSION_USER_ID, user.getId()));
     }
 
     // #4 POST /login with correct email and password redirects an advisor to the advisor home page
     @Test 
     void login_withCorrectPassword_redirectsToAdvisorHome() throws Exception {
         User user = new User("advisor@test.com", encoder.encode("test456"), "Test Advisor", Role.ADVISOR);
+        user.setId(1L);
         when(repo.findByNormalizedEmail("advisor@test.com")).thenReturn(Optional.of(user));
 
         mockMvc.perform(post("/login")
@@ -92,13 +96,14 @@ public class LoginControllerTest {
                         .param("password", "test456"))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/advisor/home"))
-               .andExpect(request().sessionAttribute(LoginController.SESSION_USER, user));
+               .andExpect(request().sessionAttribute(SessionUser.SESSION_USER_ID, user.getId()));
     }
 
     // #4 POST /login with correct email and password redirects an IT manager to the IT home page
     @Test 
     void login_withCorrectPassword_redirectsToITHome() throws Exception {
         User user = new User("it@test.com", encoder.encode("test789"), "Test IT Manager", Role.IT_MANAGER);
+        user.setId(1L);
         when(repo.findByNormalizedEmail("it@test.com")).thenReturn(Optional.of(user));
 
         mockMvc.perform(post("/login")
@@ -106,7 +111,7 @@ public class LoginControllerTest {
                         .param("password", "test789"))
                .andExpect(status().is3xxRedirection())
                .andExpect(redirectedUrl("/it/home"))
-               .andExpect(request().sessionAttribute(LoginController.SESSION_USER, user));
+               .andExpect(request().sessionAttribute(SessionUser.SESSION_USER_ID, user.getId()));
     }
 
     // #5 POST /login with a wrong password shows the login page with an error and the typed email
@@ -122,7 +127,7 @@ public class LoginControllerTest {
                .andExpect(view().name("login/login"))
                .andExpect(model().attribute("error", LOGIN_ERROR))
                .andExpect(model().attribute("email", "student@test.com"))
-               .andExpect(request().sessionAttributeDoesNotExist(LoginController.SESSION_USER));
+               .andExpect(request().sessionAttributeDoesNotExist(SessionUser.SESSION_USER_ID));
     }
 
     // #6 POST /login with an unknown email shows the same error as a wrong password
@@ -137,7 +142,7 @@ public class LoginControllerTest {
                .andExpect(view().name("login/login"))
                .andExpect(model().attribute("error", LOGIN_ERROR))
                .andExpect(model().attribute("email", "nobody@test.com"))
-               .andExpect(request().sessionAttributeDoesNotExist(LoginController.SESSION_USER));
+               .andExpect(request().sessionAttributeDoesNotExist(SessionUser.SESSION_USER_ID));
     }
 
     // #7 POST /login with a blank email shows an error without searching the database
@@ -170,8 +175,9 @@ public class LoginControllerTest {
     @Test
     void logout_invalidatesSessionAndRedirects() throws Exception {
         User student = new User("student@test.com", encoder.encode("test123"), "Test Student", Role.STUDENT);
+        student.setId(1L);
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute(LoginController.SESSION_USER, student);
+        SessionUser.signIn(session,student);
 
         mockMvc.perform(post("/logout").session(session))
                .andExpect(status().is3xxRedirection())

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
     <body>
-        <!-- Used by the home page (saved courses), the review page (parsed courses) and My courses.
-             My courses sets editable=true to add Edit and Remove to each row -->
+        <!-- Used by the home page (saved courses), the review page (parsed courses), My courses and the advisor's
+             overview. My courses sets editable=true to add Edit and Remove to each row; their links go under
+             owner.basePath(), so the advisor's version of My courses (#78) edits that student's record -->
         <div th:fragment="courseTable(courses)" class="table-scroll">
             <table class="course-table">
                 <thead>
@@ -22,15 +23,15 @@
                         <td th:text="${course.subject}">CMPT</td>
                         <td th:text="${course.number}">225</td>
                         <td th:text="${course.title}">Data Structures/Programming</td>
-                        <td class="number" th:text="${course.units}">3.00</td>
+                        <td class="number" th:text="${@unitText.number(course.units)}">3</td>
                         <td th:if="${course.inProgress}" class="muted">In progress</td>
                         <td th:if="${course.transferCredit}" class="muted">Transfer credit</td>
                         <td th:unless="${course.inProgress or course.transferCredit}" th:text="${course.grade}">A</td>
                         <td th:if="${editable}" class="row-actions">
-                            <a th:href="@{/student/courses/{id}/edit(id=${course.id})}" class="link">Edit</a>
+                            <a th:href="@{${owner.basePath()} + '/courses/{id}/edit'(id=${course.id})}" class="link">Edit</a>
                             <!-- The confirm text is in a data attribute, so course names never end up inside the script -->
-                            <form th:action="@{/student/courses/{id}/remove(id=${course.id})}" method="post"
-                                  th:data-confirm="|Remove ${course.subject} ${course.number} (${course.term}) from your record?|"
+                            <form th:action="@{${owner.basePath()} + '/courses/{id}/remove'(id=${course.id})}" method="post"
+                                  th:data-confirm="|Remove ${course.subject} ${course.number} (${course.term}) from ${owner.byAdvisor() ? 'their' : 'your'} record?|"
                                   onsubmit="return confirm(this.dataset.confirm)">
                                 <button type="submit" class="link">Remove</button>
                             </form>

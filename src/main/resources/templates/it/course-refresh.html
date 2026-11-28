@@ -20,8 +20,11 @@
           Gets every undergraduate CMPT, ENSC, MACM and MATH course in the term from the SFU Course Outlines API.
           This can take a few minutes.
         </p>
+        <p class="muted" th:text="${autoRefresh}">
+          Next semester is also refreshed automatically once a day, and this term once a week.
+        </p>
         <p class="notice-message" th:if="${running}" role="status">A refresh is running now.</p>
-        <form method="post" class="inline-form" th:action="@{/it/course-refresh/refresh}">
+        <form method="post" class="inline-form" th:action="@{/it/course-refresh/refresh}" data-loading>
           <select name="term" class="input" aria-label="Term" required>
             <option
               th:each="t : ${terms}"
@@ -35,29 +38,68 @@
       </section>
 
       <section>
-        <h2 class="section-label">Last refresh</h2>
-        <p th:if="${lastRun == null}" class="muted">
-          No refresh since the app last started.
+        <h2 class="section-label">Past terms</h2>
+        <p class="muted">
+          Records which courses ran in each of the last 6 terms, so the app can tell which courses are offered
+          only once a year. Only the course lists are fetched, so this takes under a minute. Refresh this term and
+          next semester first: courses that aren't saved yet are skipped.
         </p>
-        <div th:if="${lastRun != null}">
-          <p>
-            <span th:text="${lastRun.termName()}"></span>,
-            finished <span th:text="${lastRunTime}"></span>
-          </p>
-          <p class="error-message" th:if="${lastRun.error() != null}" th:text="|Stopped: ${lastRun.error()}|"></p>
-          <ul th:if="${lastRun.error() == null}">
-            <li th:text="|${lastRun.courses()} courses and ${lastRun.sections()} sections saved|"></li>
-            <li th:text="|${lastRun.removedSections()} sections are no longer offered this term|"></li>
-            <li th:text="|${lastRun.notOffered()} courses are no longer offered this term|"></li>
-          </ul>
-          <div th:if="${lastRun.error() == null and !lastRun.notes().isEmpty()}">
-            <h3 class="section-label">Skipped</h3>
-            <ul>
-              <li th:each="note : ${lastRun.notes()}" th:text="${note}"></li>
-            </ul>
-          </div>
+        <form method="post" class="inline-form" th:action="@{/it/course-refresh/past-terms}" data-loading>
+          <button type="submit" class="btn btn-secondary">Import past terms</button>
+        </form>
+      </section>
+
+      <section>
+        <h2 class="section-label">Refresh log</h2>
+        <p th:if="${log.isEmpty()}" class="muted">No refreshes yet.</p>
+        <!-- The latest 50, newest first. Automatic refreshes and ones started here are both listed -->
+        <div th:unless="${log.isEmpty()}" class="table-scroll">
+          <table class="course-table refresh-log">
+            <thead>
+              <tr>
+                <th>Term</th>
+                <th>Started</th>
+                <th>Type</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="row : ${log}" th:with="r=${row.refresh()}">
+                <td th:text="${r.termName}">2027 Spring</td>
+                <td th:text="${row.startedAt()}">Nov 9, 2026, 12:00 PM</td>
+                <td th:text="${r.automatic ? 'Automatic' : 'Manual'}">Manual</td>
+                <td class="refresh-result">
+                  <span th:if="${row.runningNow()}">Running now</span>
+                  <!-- No finish time and not running: the app stopped partway through, and the save step
+                       rolled back (or never started) -->
+                  <span th:if="${row.cutOff()}" class="refresh-error">
+                    Didn't finish: the app stopped partway through, so nothing was changed.
+                  </span>
+                  <span th:if="${r.failed}" class="refresh-error" th:text="|Failed: ${r.error}|">Failed: SFU is down</span>
+                  <th:block th:if="${r.finished and !r.failed}">
+                    <div th:text="${r.sections > 0} ? |${r.courses} courses and ${r.sections} sections saved| : |${r.courses} courses saved|">52 courses and 310 sections saved</div>
+                    <div class="muted" th:if="${r.removedSections > 0 or r.notOffered > 0}"
+                         th:text="|No longer offered: ${r.removedSections} ${r.removedSections == 1 ? 'section' : 'sections'} and ${r.notOffered} ${r.notOffered == 1 ? 'course' : 'courses'}|">
+                      No longer offered: 2 sections and 1 course
+                    </div>
+                    <details th:unless="${r.notes.isEmpty()}">
+                      <summary th:text="|${r.notes.size()} skipped|">3 skipped</summary>
+                      <ul>
+                        <li th:each="note : ${r.notes}" th:text="${note}">MATH 495 has no outline, skipped</li>
+                      </ul>
+                    </details>
+                  </th:block>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
+
+      <div class="actions">
+        <a th:href="@{/it/home}" class="link">Back to home</a>
+      </div>
     </main>
+    <script th:src="@{/js/loading-button.js}"></script>
   </body>
 </html>

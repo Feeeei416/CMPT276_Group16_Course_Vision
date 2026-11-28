@@ -83,9 +83,6 @@ public class ProfileController {
             studentProfileRepository.save(profile);
         }
 
-        // Login keeps a copy of the user in the session, so replace it or pages keep showing the old name
-        session.setAttribute(LoginController.SESSION_USER, user);
-
         redirectAttributes.addFlashAttribute("message", "Your profile was saved.");
         return "redirect:/profile";
     }
@@ -115,16 +112,14 @@ public class ProfileController {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-        session.setAttribute(LoginController.SESSION_USER, user);
 
         redirectAttributes.addFlashAttribute("message", "Your password was changed.");
         return "redirect:/profile";
     }
 
-    // Loads the user from the database, since the session copy can be out of date
+    // Loaded from the database each time, so the page shows the latest name and role
     private User currentUser(HttpSession session) {
-        User sessionUser = (User) session.getAttribute(LoginController.SESSION_USER);
-        return userRepository.findById(sessionUser.getId()).orElseThrow();
+        return SessionUser.user(session, userRepository).orElseThrow();
     }
 
     // errors belong to the details form and passwordErrors to the password form, so each shows next to its own form

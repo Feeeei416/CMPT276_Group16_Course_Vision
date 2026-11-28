@@ -7,13 +7,20 @@
     <style>
     .conflict { color: #a6192e; font-weight: 600; }
     </style>
-    <title>My schedule</title>
+    <title th:text="${schedule != null ? schedule.name : 'My schedule'}">My schedule</title>
   </head>
   <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-      <h1 class="page-title">My schedule</h1>
+      <h1 class="page-title">
+        <span th:text="${schedule != null ? schedule.name : 'My schedule'}">My schedule</span>
+        <span class="badge" th:if="${schedule != null and schedule.main}">Main schedule</span>
+      </h1>
       <p>Choose your courses and sections for next semester.</p>
+      <!-- Opened from All my schedules, so say it isn't the one My schedule shows -->
+      <p class="muted" th:if="${schedule != null and !schedule.main}">This isn't your main schedule, so changes
+        here don't affect your main schedule. You can make it your main schedule on
+        <a th:href="@{/student/schedules}" class="link">All my schedules</a>.</p>
 
       <!-- Shows "Course added." / "Course removed." or the problems from the last add or remove -->
       <div
@@ -30,22 +37,30 @@
 
       <section>
         <h2 class="section-label">Add a course</h2>
+        <!-- Stays on the schedule being viewed, so the sections to choose from show up on the same one -->
         <form
           method="get"
           class="inline-form"
-          th:action="@{/student/schedule/next-semester}"
+          th:action="@{${pageUrl}}"
         >
-          <input
-            type="text"
-            name="code"
-            class="input"
-            list="course-suggestions"
-            autocomplete="off"
-            placeholder="Course code, e.g. CMPT 225"
-            aria-label="Course code"
-            th:value="${param.code}"
-            required
-          />
+          <!-- static/js/course-search.js suggests next semester's courses as the student types, and picking one
+               opens its sections. Without JavaScript the browser's own list below is used instead -->
+          <div class="course-search">
+            <input
+              type="text"
+              name="code"
+              class="input"
+              list="course-suggestions"
+              autocomplete="off"
+              placeholder="Code or title, e.g. CMPT 225"
+              aria-label="Course code"
+              data-course-search="course-options"
+              data-fill="submit"
+              th:value="${param.code}"
+              required
+            />
+          </div>
+          <script type="application/json" id="course-options" th:utext="${courseOptionsJson}">[]</script>
           <datalist id="course-suggestions">
             <option
               th:each="o : ${offerings}"
@@ -70,6 +85,8 @@
           </h3>
           <input type="hidden" name="offeringId" th:value="${chosen.id}" />
           <input type="hidden" name="code" th:value="|${chosen.course.subject} ${chosen.course.number}|">
+          <!-- Set when this page was opened from All my schedules, so the course goes into this schedule -->
+          <input type="hidden" name="scheduleId" th:if="${viewedScheduleId != null}" th:value="${viewedScheduleId}">
 
           <label
             >Lecture
@@ -79,9 +96,9 @@
                 th:each="s : ${lectures}"
                 th:value="${s.id}"
                 th:data-group="${s.associatedClass}"
-                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : s.timesText}|"
               >
-                D100 LEC – MONDAY 10:30-11:20
+                D100 LEC – Mon, Wed, Fri 10:30–11:20 (Burnaby)
               </option>
             </select>
           </label>
@@ -94,9 +111,9 @@
                 th:each="s : ${attachedSections}"
                 th:value="${s.id}"
                 th:data-group="${s.associatedClass}"
-                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : #strings.listJoin(s.meetings, ', ')}|"
+                th:text="|${s.sectionCode} ${s.sectionType} – ${s.meetings.isEmpty() ? 'Times not confirmed' : s.timesText}|"
               >
-                D101 TUT – FRIDAY 9:30-10:20
+                D101 TUT – Fri 9:30–10:20 (Burnaby)
               </option>
             </select>
           </label>
@@ -108,7 +125,7 @@
       <p th:if="${courses.isEmpty()}" class="muted">No courses yet.</p>
       <!-- Units and overlap warnings. They only warn; the schedule is still saved -->
 <div th:unless="${courses.isEmpty()}">
-    <p th:text="|Total: ${totalUnits.stripTrailingZeros().toPlainString()} of ${unitLimit} units|">Total: 15 of 18 units</p>
+    <p th:text="|Total: ${@unitText.number(totalUnits)} of ${unitLimit} units|">Total: 15 of 18 units</p>
     <div class="error-message" role="alert" th:if="${totalUnits.compareTo(unitLimit) > 0}"
          th:text="|You're over the ${unitLimit}-unit limit for a term.|">You're over the 18-unit limit for a term.</div>
     <div class="error-message" role="alert" th:unless="${conflicts.isEmpty()}">
@@ -133,6 +150,7 @@
             method="post"
             th:action="@{/student/schedule/next-semester/courses/{id}/remove(id=${c.id})}"
           >
+            <input type="hidden" name="scheduleId" th:if="${viewedScheduleId != null}" th:value="${viewedScheduleId}">
             <button type="submit" class="link">Remove</button>
           </form>
         </li>
@@ -151,7 +169,7 @@
             <li
               th:each="t : ${day.value}"
               th:classappend="${#lists.contains(conflicts.![first], t) or #lists.contains(conflicts.![second], t)} ? 'conflict'"
-              th:text="|${t.start}–${t.end} ${t.course} ${t.section} ${t.type}|"
+              th:text="|${t.timeText()} ${t.course} ${t.section} ${t.type}|"
             >
               10:30–11:20 CMPT 225 D100 LEC
             </li>
@@ -160,9 +178,11 @@
       </section>
 
       <div class="actions">
+        <a th:href="@{/student/schedules}" class="link">All my schedules</a>
         <a th:href="@{/student/home}" class="link">Back to home</a>
       </div>
     </main>
+    <script th:src="@{/js/course-search.js}" defer></script>
     <script>
     // Shows only the labs and tutorials that go with the chosen lecture (same group number).
     // Without JavaScript every one is listed, and the server still rejects a pair that doesn't match

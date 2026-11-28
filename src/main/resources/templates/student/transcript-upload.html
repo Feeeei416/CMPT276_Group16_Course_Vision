@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- #78: owner is missing when UploadErrorHandler shows the page, so it falls back to the student's own version -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:with="byAdvisor=${owner != null and owner.byAdvisor()},
+               base=${owner != null ? owner.basePath() : '/student'},
+               home=${owner != null ? owner.homePath() : '/student/home'}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,13 +13,16 @@
 <body class="page">
     <header th:replace="~{fragments/header :: header}"></header>
     <main class="page-content">
-        <h1 class="page-title">Upload your transcript</h1>
-        <p>Download your unofficial transcript PDF from goSFU, then upload it here.
+        <h1 class="page-title" th:text="${byAdvisor ? 'Upload a transcript for ' + owner.name() : 'Upload your transcript'}">Upload your transcript</h1>
+        <p th:unless="${byAdvisor}">Download your unofficial transcript PDF from goSFU, then upload it here.
             You'll see the courses we found before anything is saved.</p>
+        <p th:if="${byAdvisor}"
+           th:text="|${owner.name()} can download their unofficial transcript PDF from goSFU. Upload it here, and you'll see the courses found before anything is saved to their record.|">
+            Jack can download their unofficial transcript PDF from goSFU.</p>
 
         <div th:if="${error}" th:text="${error}" class="error-message" role="alert">That file isn't a PDF.</div>
 
-        <form th:action="@{/student/transcript}" method="post" enctype="multipart/form-data">
+        <form th:action="@{${base} + '/transcript'}" method="post" enctype="multipart/form-data">
             <div class="form-field">
                 <label class="form-label" for="file">Transcript PDF</label>
                 <input type="file" id="file" name="file" accept="application/pdf,.pdf" required
@@ -24,7 +31,7 @@
             </div>
             <div class="actions">
                 <button type="submit" class="btn btn-primary">Upload</button>
-                <a th:href="@{/student/home}" class="link">Cancel</a>
+                <a th:href="@{${home}}" class="link">Cancel</a>
             </div>
         </form>
     </main>

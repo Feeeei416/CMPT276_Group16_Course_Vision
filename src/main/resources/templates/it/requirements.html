@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <title>Graduation requirements</title>
+  </head>
+  <body class="page">
+    <header th:replace="~{fragments/header :: header}"></header>
+    <main class="page-content">
+      <h1 class="page-title">Graduation requirements</h1>
+
+      <div class="notice-message" th:if="${message}" th:text="${message}" role="status"></div>
+      <div class="error-message" th:if="${error}" th:text="${error}" role="alert"></div>
+
+      <p th:if="${sets.isEmpty()}" class="muted">No requirement sets yet.</p>
+
+      <form method="get" class="inline-form" th:action="@{/it/requirements}" th:unless="${sets.isEmpty()}">
+        <select name="set" class="input" aria-label="Program and entry year">
+          <option
+            th:each="s : ${sets}"
+            th:value="${s.id}"
+            th:text="${s.showName}"
+            th:selected="${chosen != null and s.id == chosen.id}"
+          >Computing Science, entry 2024</option>
+        </select>
+        <button type="submit" class="btn btn-secondary">Show</button>
+      </form>
+
+      <th:block th:if="${chosen != null}">
+        <section>
+          <h2 class="section-label" th:text="${chosen.showName}">Computing Science, entry 2024</h2>
+          <p class="muted">
+            <a th:if="${chosen.calendarUrl}" th:href="${chosen.calendarUrl}" class="link">SFU Calendar page</a>
+            <span th:if="${chosen.editedInApp}">
+              Changed on this page, so requirements.json no longer replaces this set.
+            </span>
+          </p>
+          <p>
+            <a th:href="@{/it/requirements/sets/{id}/add(id=${chosen.id})}" class="btn btn-primary">
+              Add a requirement
+            </a>
+          </p>
+          <form method="post" class="inline-form copy-form" 
+                th:action="@{/it/requirements/sets/{id}/copy(id=${chosen.id})}">
+            <input type="number" name="entryYear" class="input" min="2000" max="2100" required
+                   aria-label="Entry year to copy to" placeholder="Copy to entry year, for example 2025" />
+            <button type="submit" class="btn btn-secondary">Copy this set</button>
+          </form>
+          <p th:if="${rows.isEmpty()}" class="muted">No requirements yet.</p>
+          <ol class="requirement-list">
+            <li th:each="row : ${rows}" class="requirement-row">
+              <pre class="requirement-json" th:text="${row.json()}">{ "category": "Lower division", ... }</pre>
+              <div class="row-actions">
+                <a th:href="@{/it/requirements/{id}/edit(id=${row.requirement().id})}" class="link">Edit</a>
+                <form method="post" th:action="@{/it/requirements/{id}/remove(id=${row.requirement().id})}">
+                  <button type="submit" class="link">Remove</button>
+                </form>
+              </div>
+            </li>
+          </ol>
+        </section>
+      </th:block>
+
+      <div class="actions">
+        <a th:href="@{/it/home}" class="link">Back to home</a>
+      </div>
+    </main>
+  </body>
+</html>

@@ -84,7 +84,7 @@ class EligibleCoursesControllerTest {
 
     private MockHttpSession sessionFor(User user) {
         MockHttpSession session = new MockHttpSession();
-        session.setAttribute(LoginController.SESSION_USER, user);
+        SessionUser.signIn(session, user);
         return session;
     }
 
@@ -161,7 +161,7 @@ class EligibleCoursesControllerTest {
 
         String page = page(student);
 
-        assertThat(page).contains("Courses for 2027 Spring");
+        assertThat(page).contains("Eligible courses for 2027 Spring");
         assertThat(page).containsSubsequence("You can take", "CMPT 225", "Not yet", "CMPT 210",
                 "Needs MACM 101 with C- or better, you have D.");
     }

@@ -10,9 +10,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
-import cmpt276.group16.models.PlanTerm;
 import cmpt276.group16.models.Season;
 import cmpt276.group16.models.TermKind;
+import cmpt276.group16.models.YearAndSeason;
 
 // What can go in a plan: which terms can be planned and what a course code looks like
 public final class PlanRules {
@@ -26,11 +26,6 @@ public final class PlanRules {
     // A 2 to 4 letter subject and a 3 digit number, with an optional letter like the W in 105W.
     // Spaces between them are optional, so "cmpt225" works too
     private static final Pattern COURSE_CODE = Pattern.compile("^([A-Za-z]{2,4})\\s*(\\d{3}[A-Za-z]?)$");
-
-    // Season lists them in the order they happen within a year
-    private static final Season[] SEASONS = Season.values();
-
-    private static final int TERMS_PER_YEAR = SEASONS.length;
 
     private PlanRules() {}
 
@@ -82,33 +77,25 @@ public final class PlanRules {
 
     // For example "2027 Spring" in November 2026
     public static String nextSemester(LocalDate today) {
-        return termName(currentTerm(today) + 1);
-    }
-
-    // Holds a year and a season, for example 2027 and SPRING
-    public record YearAndSeason(int year, Season season) {}
-
-    // Returns next semester's year and season, using the same calculation as nextSemester()
-    public static YearAndSeason nextSemesterYearAndSeason(LocalDate today) {
-    int next = currentTerm(today) + 1;
-    return new YearAndSeason(next / TERMS_PER_YEAR, SEASONS[next % TERMS_PER_YEAR]);
+        return YearAndSeason.of(today).next().name();
     }
 
     // The years to offer on the My plan page, from the first plannable term to the last
     public static List<Integer> plannableYears(LocalDate today) {
-        int firstYear = (currentTerm(today) + 2) / TERMS_PER_YEAR;
+        // The first term that can be planned is the one after next semester
+        int firstYear = YearAndSeason.of(today).plus(2).year();
         return IntStream.rangeClosed(firstYear, lastYear(today)).boxed().toList();
     }
 
     // Returns every rule the term breaks; an empty list means it can be added to a plan
     public static List<String> problemsWithTerm(int year, Season season, LocalDate today) {
         List<String> problems = new ArrayList<>();
-        int nextSemester = currentTerm(today) + 1;
-        if (termNumber(year, season) <= nextSemester) {
-            problems.add("Choose a term after next semester (" + termName(nextSemester) + ").");
+        YearAndSeason nextSemester = YearAndSeason.of(today).next();
+        if (new YearAndSeason(year, season).compareTo(nextSemester) <= 0) {
+            problems.add("Choose a term after next semester (" + nextSemester.name() + ").");
         }
         if (year > lastYear(today)) {
-            problems.add("Choose a term no later than " + PlanTerm.nameOf(lastYear(today), Season.FALL) + ".");
+            problems.add("Choose a term no later than " + new YearAndSeason(lastYear(today), Season.FALL).name() + ".");
         }
         return problems;
     }
@@ -116,30 +103,27 @@ public final class PlanRules {
     // Takes a name that's already trimmed. Whether the student already has a plan with that name is checked
     // by the service, since that needs the database
     public static List<String> problemsWithPlanName(String name) {
+        return problemsWithName(name, "plan");
+    }
+
+    // Schedules follow the same rules as plans, so both lists fit names of the same length
+    public static List<String> problemsWithScheduleName(String name) {
+        return problemsWithName(name, "schedule");
+    }
+
+    // thing is "plan" or "schedule", for the messages
+    private static List<String> problemsWithName(String name, String thing) {
         if (name.isEmpty()) {
-            return List.of("Give the plan a name.");
+            return List.of("Give the " + thing + " a name.");
         }
         if (name.length() > MAX_PLAN_NAME_LENGTH) {
-            return List.of("Plan names can be at most " + MAX_PLAN_NAME_LENGTH + " characters.");
+            String capitalized = Character.toUpperCase(thing.charAt(0)) + thing.substring(1);
+            return List.of(capitalized + " names can be at most " + MAX_PLAN_NAME_LENGTH + " characters.");
         }
         return List.of();
     }
 
-    // Terms are numbered three a year, so the term after any term is one more
-    private static int termNumber(int year, Season season) {
-        return year * TERMS_PER_YEAR + season.ordinal();
-    }
-
-    private static String termName(int termNumber) {
-        return PlanTerm.nameOf(termNumber / TERMS_PER_YEAR, SEASONS[termNumber % TERMS_PER_YEAR]);
-    }
-
-    // Spring is January to April, Summer is May to August, and Fall is September to December
-    private static int currentTerm(LocalDate today) {
-        return termNumber(today.getYear(), SEASONS[(today.getMonthValue() - 1) / 4]);
-    }
-
     private static int lastYear(LocalDate today) {
-        return (currentTerm(today) + 1) / TERMS_PER_YEAR + MAX_YEARS_AHEAD;
+        return YearAndSeason.of(today).next().year() + MAX_YEARS_AHEAD;
     }
 }
