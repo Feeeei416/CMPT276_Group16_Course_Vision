@@ -75,6 +75,13 @@ a.site-title:focus-visible {
     font: inherit;
 }
 
+/* A text box is as tall as its rows, and only stretches downward */
+textarea.input {
+    height: auto;
+    padding: var(--space-sm);
+    resize: vertical;
+}
+
 .btn {
     border-radius: var(--radius);
     height: var(--height-input);
@@ -220,6 +227,41 @@ a.btn {
 .error-message p,
 .error-message ul {
     margin: 0;
+}
+
+/* #72: advisors' comments on a Graduation Report, each in a box like a GitHub comment */
+.comments {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-lg) 0 0;
+}
+
+.comment {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-md);
+}
+
+/* The advisor's name and the date across the top, with Delete pushed to the right */
+.comment-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.comment-header form {
+    margin-left: auto;
+}
+
+/* pre-wrap keeps the line breaks the advisor typed, and a long link breaks instead of widening the page */
+.comment-body {
+    margin: 0;
+    padding: var(--space-md);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 /* Course table */

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <body>
+        <!-- #72: an advisor's comments on a student's Graduation Report, newest first.
+             Used by the advisor's student overview, and by the student's own report once #69 is in.
+             comments: from AdvisorCommentService.rowsFor. studentId: whose report it is, for the Delete form.
+             Delete only shows on a row with byViewer, which the student's own report never has -->
+        <ul th:fragment="commentList(comments, studentId)" class="comments">
+            <li class="comment" th:each="c : ${comments}">
+                <!-- A div, since a form can't go inside a p -->
+                <div class="comment-header">
+                    <strong th:text="${c.advisorName()}">Alex</strong>
+                    <span class="muted" th:text="${c.date()}">Nov 25, 2026</span>
+                    <!-- Only on the advisor's own comments. The service checks again, so a hand-made request can't
+                         delete someone else's -->
+                    <form th:if="${c.byViewer()}" method="post" onsubmit="return confirm('Delete this comment?')"
+                          th:action="@{/advisor/students/{id}/comments/{commentId}/delete(id=${studentId},commentId=${c.id()})}">
+                        <button type="submit" class="link">Delete</button>
+                    </form>
+                </div>
+                <p class="comment-body" th:text="${c.body()}">Take CMPT 225 in Spring.</p>
+            </li>
+        </ul>
+    </body>
+</html>

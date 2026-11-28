@@ -41,6 +41,8 @@ import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
 import cmpt276.group16.models.User;
 import cmpt276.group16.models.UserRepository;
+import cmpt276.group16.services.AdvisorCommentService;
+import cmpt276.group16.services.AdvisorCommentService.CommentRow;
 import cmpt276.group16.services.EligibilityService;
 import cmpt276.group16.services.EligibilityService.CourseResult;
 import cmpt276.group16.services.EligibilityService.Eligibility;
@@ -80,6 +82,9 @@ class AdvisorStudentControllerTest {
 
     @MockitoBean
     private PlanPrerequisites planPrerequisites;
+
+    @MockitoBean
+    private AdvisorCommentService commentService;
 
     // AuthInterceptor loads the signed-in user by id on each request
     @MockitoBean
@@ -213,7 +218,59 @@ class AdvisorStudentControllerTest {
                .andExpect(status().isOk())
                .andExpect(content().string(containsString("No courses in their record yet.")))
                .andExpect(content().string(containsString("No courses in their schedule yet.")))
-               .andExpect(content().string(containsString("No plan yet.")));
+               .andExpect(content().string(containsString("No plan yet.")))
+               .andExpect(content().string(containsString("No comments yet.")));
+    }
+
+    // #72: the comments on the student's report, with each advisor's name and date
+    @Test
+    void showsTheComments() throws Exception {
+        when(commentService.rowsFor(priya, advisor.getId())).thenReturn(List.of(
+                new CommentRow(2L, "Test Advisor", "Nov 25, 2026", "Take CMPT 225 in Spring.", true),
+                new CommentRow(1L, "Sam", "Nov 20, 2026", "Bring your transcript next time.", false)));
+
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("Take CMPT 225 in Spring.")))
+               .andExpect(content().string(containsString("Nov 25, 2026")))
+               .andExpect(content().string(containsString("Bring your transcript next time.")))
+               .andExpect(content().string(containsString("Sam")))
+               .andExpect(content().string(not(containsString("No comments yet."))));
+    }
+
+    // Delete only shows on the advisor's own comment (2), not on Sam's (1)
+    @Test
+    void onlyTheAdvisorsOwnCommentHasDelete() throws Exception {
+        when(commentService.rowsFor(priya, advisor.getId())).thenReturn(List.of(
+                new CommentRow(2L, "Test Advisor", "Nov 25, 2026", "Take CMPT 225 in Spring.", true),
+                new CommentRow(1L, "Sam", "Nov 20, 2026", "Bring your transcript next time.", false)));
+
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("action=\"/advisor/students/5/comments/2/delete\"")))
+               .andExpect(content().string(not(containsString("/advisor/students/5/comments/1/delete"))));
+    }
+
+    // The form posts to AdvisorCommentController, and the browser stops a comment at 2000 characters
+    @Test
+    void showsTheCommentForm() throws Exception {
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId()))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString("action=\"/advisor/students/5/comments\"")))
+               .andExpect(content().string(containsString("maxlength=\"2000\"")));
+    }
+
+    // After a comment is turned down, the reason shows and the text is back in the box
+    @Test
+    void turnedDownComment_showsWhyAndKeepsTheText() throws Exception {
+        String tooLong = "A comment can be at most 2000 characters (this one has 2001).";
+
+        mockMvc.perform(get("/advisor/students/5").sessionAttr(SessionUser.SESSION_USER_ID, advisor.getId())
+                       .flashAttr("commentErrors", List.of(tooLong))
+                       .flashAttr("commentText", "A long comment"))
+               .andExpect(status().isOk())
+               .andExpect(content().string(containsString(tooLong)))
+               .andExpect(content().string(containsString(">A long comment</textarea>")));
     }
 
     // Read-only: none of the Edit, Remove or Add course controls from the student's own pages

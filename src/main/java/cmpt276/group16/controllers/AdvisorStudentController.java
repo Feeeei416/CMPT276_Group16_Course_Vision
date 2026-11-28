@@ -14,6 +14,7 @@ import cmpt276.group16.models.ScheduledCourse;
 import cmpt276.group16.models.StudentProfile;
 import cmpt276.group16.models.TranscriptCourse;
 import cmpt276.group16.models.TranscriptCourseRepository;
+import cmpt276.group16.services.AdvisorCommentService;
 import cmpt276.group16.services.EligibilityService;
 import cmpt276.group16.services.NextSemesterScheduleService;
 import cmpt276.group16.services.PlanPrerequisites;
@@ -26,6 +27,7 @@ import jakarta.servlet.http.HttpSession;
 // #71: an advisor's read-only view of one assigned student, to prepare for an advising appointment:
 // their course record, eligible courses, next semester's schedule and main plan.
 // The Graduation Report joins this page with #69. The plan links open the student's plans for editing (#73).
+// The advisor's comments on the student's report are listed here too, and posted to AdvisorCommentController (#72).
 // AuthInterceptor only lets advisors reach /advisor/**, so students and IT managers never get here
 @Controller
 public class AdvisorStudentController {
@@ -36,17 +38,19 @@ public class AdvisorStudentController {
     private final NextSemesterScheduleService scheduleService;
     private final PlanService planService;
     private final PlanPrerequisites planPrerequisites;
+    private final AdvisorCommentService commentService;
 
     public AdvisorStudentController(AssignedStudent assignedStudent,
             TranscriptCourseRepository transcriptCourseRepository, EligibilityService eligibilityService,
             NextSemesterScheduleService scheduleService, PlanService planService,
-            PlanPrerequisites planPrerequisites) {
+            PlanPrerequisites planPrerequisites, AdvisorCommentService commentService) {
         this.assignedStudent = assignedStudent;
         this.transcriptCourseRepository = transcriptCourseRepository;
         this.eligibilityService = eligibilityService;
         this.scheduleService = scheduleService;
         this.planService = planService;
         this.planPrerequisites = planPrerequisites;
+        this.commentService = commentService;
     }
 
     /** GET /advisor/students/5 : the overview of student 5, if they're assigned to the logged-in advisor. */
@@ -73,6 +77,8 @@ public class AdvisorStudentController {
         model.addAttribute("conflicts", scheduleService.conflicts(scheduledCourses));
         model.addAttribute("termPlans", termPlans);
         model.addAttribute("missing", planPrerequisites.missingFor(student, termPlans));
+        // The advisor's own comments get a Delete button
+        model.addAttribute("comments", commentService.rowsFor(student, SessionUser.id(session).orElse(null)));
         return "advisor/student";
     }
 }
